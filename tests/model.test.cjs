@@ -1,0 +1,108 @@
+const { readFileSync } = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const { test } = require('node:test');
+const model = vm.createContext({});
+vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), model);
+const plain = value => JSON.parse(JSON.stringify(value));
+
+test('ADB parses states, model names, transports and ignores daemon chatter', () => {
+  const rows = model.parseDevices(`* daemon started successfully\nList of devices attached\nUSB123 device usb:1-2 product:oriole model:Pixel_6 device:oriole transport_id:1\nLOCKED unauthorized usb:1-3\nNOACCESS no permissions (user in plugdev group; are your udev rules wrong?)\n192.168.1.3:5555 offline transport_id:3\nemulator-5554 device product:sdk model:SDK\nadb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9\nUSB123 device\n`);
+  assert.equal(rows.length, 6);
+  assert.equal(rows[0].name, 'Pixel 6');
+  assert.deepEqual(plain(rows.map(r => r.transport)), ['USB', 'USB', 'USB', 'Wireless', 'Emulator', 'Wireless']);
+  assert.equal(rows[2].status, 'no permissions');
+  assert.equal(rows[3].status, 'offline');
+});
+
+test('Avahi records preserve pairing ports, scope IPv6 and deduplicate endpoints', () => {
+  const rows = model.parseMdns([
+    '=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001;',
+    '=;wlan0;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001;',
+    '=;eno1;IPv4;adb-PHONE-other;_adb-tls-pairing._tcp;local;phone.local;192.168.1.3;42000;',
+    '=;wlan0;IPv6;old;_adb._tcp;local;old.local;fe80::1;5555;',
+    '=;eno1;IPv4;noise;_http._tcp;local;other.local;192.168.1.1;80;',
+    '=;eno1;IPv4;bad;_adb._tcp;local;other.local;192.168.1.1;99999;',
+    '+;eno1;IPv4;unresolved;_adb._tcp;local'
+  ].join('\n'));
+  assert.equal(rows.length, 3);
+  assert.equal(rows[1].pair, true);
+  assert.equal(rows[1].endpoint, '192.168.1.3:42000');
+  assert.equal(rows[2].endpoint, '[fe80::1%wlan0]:5555');
+});
+
+test('merge only matches exact wireless service or endpoint, keeps USB and pairing', () => {
+  const devices = model.parseDevices('PHONE device usb:1 model:Pixel\nadb-PHONE-random._adb-tls-connect._tcp.local. device model:Pixel\n192.168.1.4:5555 offline');
+  const services = model.parseMdns('=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001\n=;eno1;IPv4;adb-PHONE-pair;_adb-tls-pairing._tcp;local;phone.local;192.168.1.3;42000\n=;eno1;IPv4;other;_adb._tcp;local;other.local;192.168.1.4;5555');
+  const rows = model.deviceRows(devices, services);
+  assert.equal(rows.length, 4);
+  assert.equal(rows.filter(r => r.source === 'mdns').length, 1);
+  assert.equal(rows.find(r => r.serial.includes('.local.')).endpoint, '192.168.1.3:37001');
+  assert.equal(devices[1].endpoint, '');
+});
+
+test('Avahi decimal escaping preserves service names without treating them as shell code', () => {
+  const rows = model.parseMdns(String.raw`=;eno1;IPv4;Phone\032name\059test;_adb-tls-connect._tcp;local;phone.local;192.168.1.2;1234;`);
+  assert.equal(rows[0].name, 'Phone name;test');
+  assert.equal(rows[0].serial, 'Phone name;test');
+  const unicode = model.parseMdns(String.raw`=;eno1;IPv4;Caf\195\169\032100%;_adb._tcp;local;phone.local;192.168.1.2;1234;`);
+  assert.equal(unicode[0].name, 'Café 100%');
+});
+
+test('endpoints reject invalid ports and command injection', () => {
+  for (const value of ['host', 'host:0', 'host:65536', '-bad:123', '127.0.0.999:123', 'host:123;touch /tmp/pwn', '$(id):123', 'host:12\n--help']) assert.equal(model.endpoint(value), '', value);
+  assert.equal(model.endpoint(' 192.168.1.2:05555 '), '192.168.1.2:5555');
+  assert.equal(model.endpoint('android.local:1234'), 'android.local:1234');
+});
+
+test('ADB actions always target one endpoint and never expose a pairing code in argv', () => {
+  assert.deepEqual(plain(model.adbCommand('pair', 'phone.local:12345')), ['adb', 'pair', 'phone.local:12345']);
+  assert.deepEqual(plain(model.adbCommand('disconnect', 'adb-PHONE-abc._adb-tls-connect._tcp')), ['adb', 'disconnect', 'adb-PHONE-abc._adb-tls-connect._tcp']);
+  for (const target of ['', '--help', 'USB123', '; reboot']) assert.throws(() => model.adbCommand('disconnect', target));
+  assert.throws(() => model.adbCommand('kill-server', 'phone:1234'));
+  assert.equal(model.actionSucceeded('connect', 0, 'failed to connect to phone:1234', ''), false);
+  assert.equal(model.actionSucceeded('connect', 0, 'already connected to phone:1234', ''), true);
+  assert.equal(model.actionSucceeded('pair', 0, 'Successfully paired to phone:1234 [guid=abc]', ''), true);
+  assert.equal(model.actionSucceeded('disconnect', 0, 'disconnected phone:1234', ''), true);
+  assert.equal(model.actionSucceeded('connect', 1, 'connected to phone:1234', ''), false);
+});
+
+test('scrcpy combines every option and safely preserves serial/path as single arguments', () => {
+  const profile = plain(model.builtInProfiles()[0]);
+  Object.assign(profile, { audio: false, screenOff: true, fullscreen: true, record: true, codec: 'av1' });
+  const path = '/tmp/My recordings/$(no-shell).mkv';
+  assert.deepEqual(plain(model.scrcpyCommand('device;literal', profile, path)), ['scrcpy', '--serial=device;literal', '--video-codec=av1', '--video-bit-rate=8M', '--max-size=1080', '--max-fps=60', '--no-audio', '--turn-screen-off', '--fullscreen', '--record=' + path]);
+  Object.assign(profile, { maxSize: '0', fps: '0', audio: true, record: false, fullscreen: false, screenOff: false });
+  assert.deepEqual(plain(model.scrcpyCommand('USB', profile, '')), ['scrcpy', '--serial=USB', '--video-codec=av1', '--video-bit-rate=8M']);
+  assert.throws(() => model.scrcpyCommand('', profile, ''));
+  profile.bitrate = '8; whoami';
+  assert.throws(() => model.scrcpyCommand('USB', profile, ''));
+});
+
+test('audio-only runs without a window and records audio as MKA', () => {
+  const profile = plain(model.builtInProfiles()[0]);
+  assert.deepEqual(plain(model.audioOnlyCommand('USB', profile, '')), ['scrcpy', '--serial=USB', '--no-video', '--no-window']);
+  profile.record = true;
+  const path = model.recordingPath('/tmp', 'USB', new Date('2026-09-07T20:00:00Z'), 'audio', 'mka');
+  assert.match(path, /\.mka$/);
+  assert.deepEqual(plain(model.audioOnlyCommand('USB', profile, path)), ['scrcpy', '--serial=USB', '--no-video', '--no-window', '--record=' + path, '--record-format=mka']);
+  assert.throws(() => model.audioOnlyCommand('USB', profile, path.replace(/mka$/, 'mkv')));
+});
+
+test('saved profiles survive roundtrip and reject corrupt, duplicate and built-in names', () => {
+  const p = { ...plain(model.builtInProfiles()[0]), name: 'My phone' };
+  assert.deepEqual(plain(model.savedProfiles(JSON.stringify([p, p, { ...p, codec: 'bad' }, model.builtInProfiles()[0]]))), [p]);
+  assert.deepEqual(plain(model.savedProfiles('not json')), []);
+  assert.deepEqual(plain(model.savedProfiles('{}')), []);
+  assert.equal(model.builtInProfiles().every(model.validProfile), true);
+});
+
+test('recording names are unique MKV files and malformed paths fail', () => {
+  const date = new Date('2026-09-07T20:00:00Z');
+  const a = model.recordingPath('/tmp/My recordings/', '192.168.1.2:1234', date, 'a');
+  const b = model.recordingPath('/tmp/My recordings/', '192.168.1.2:1234', date, 'b');
+  assert.equal(a, '/tmp/My recordings/DroidLink-192_168_1_2_1234-2026-09-07T20-00-00-000Z-a.mkv');
+  assert.notEqual(a, b);
+  assert.throws(() => model.recordingPath('relative', 'USB', date, 'x'));
+  assert.throws(() => model.recordingPath('/tmp\ninvalid', 'USB', date, 'x'));
+});
