@@ -127,7 +127,18 @@ function validProfile(p) {
     ["0", "15", "24", "30", "60", "90", "120"].indexOf(String(p.fps)) >= 0 &&
     ["h264", "h265", "av1"].indexOf(p.codec) >= 0 &&
     ["2", "4", "8", "12", "16", "20", "32", "50"].indexOf(String(p.bitrate)) >= 0 &&
-    ["audio", "record", "screenOff", "fullscreen"].every(function(key) { return typeof p[key] === "boolean"; });
+    ["audio", "record", "screenOff", "fullscreen"].every(function(key) { return typeof p[key] === "boolean"; }) &&
+    (p.keepActive === undefined || typeof p.keepActive === "boolean");
+}
+
+/** Resolve legacy profiles without discarding saved options. Example: preventsIdleSleep({screenOff: true}).
+ * @param {{screenOff: boolean, keepActive?: boolean}} profile
+ * @returns {boolean}
+ */
+function preventsIdleSleep(profile) {
+  if (typeof profile.keepActive === "boolean") return profile.keepActive;
+  // scrcpy v4.1 doc/device.md: inactivity sleep is separate from display power.
+  return profile.screenOff;
 }
 
 function savedProfiles(json) {
@@ -150,6 +161,7 @@ function scrcpyCommand(serial, profile, recordPath) {
   if (String(profile.fps) !== "0") args.push("--max-fps=" + profile.fps);
   if (!profile.audio) args.push("--no-audio");
   if (profile.screenOff) args.push("--turn-screen-off");
+  if (preventsIdleSleep(profile)) args.push("--keep-active");
   if (profile.fullscreen) args.push("--fullscreen");
   if (profile.record) {
     if (!recordPath || recordPath[0] !== "/" || /[\x00-\x1f\x7f]/.test(recordPath) || !/\.mkv$/i.test(recordPath)) throw new Error("Choose an absolute recording folder.");

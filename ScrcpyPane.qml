@@ -59,6 +59,8 @@ ColumnLayout {
   function changeOption(key, value) {
     var next = Object.assign({}, profile);
     next[key] = value;
+    if (key === "screenOff" && value)
+      next.keepActive = true;
     profile = next;
     profileName = "Custom";
   }
@@ -273,6 +275,22 @@ ColumnLayout {
     font.pixelSize: Style.font.bodySmall
     color: Util.alpha(Color.foreground, 0.7)
   }
+  ActionButton {
+    Layout.fillWidth: true
+    text: (selected ? "✓ " : "○ ") + "Prevent idle sleep"
+    selected: Model.preventsIdleSleep(root.profile)
+    tooltipText: "For the next video session: prevent Android inactivity sleep, including on Wi-Fi. The phone may stay unlocked until you lock it manually."
+    Accessible.role: Accessible.CheckBox
+    Accessible.checkable: true
+    Accessible.checked: selected
+    onClicked: root.changeOption("keepActive", !selected)
+  }
+  Label {
+    Layout.fillWidth: true
+    text: "Screen-off mode enables Prevent idle sleep. You can turn it off above. These options apply to the next video session."
+    font.pixelSize: Style.font.bodySmall
+    color: Util.alpha(Color.foreground, 0.7)
+  }
   TextField {
     id: folderField
     Layout.fillWidth: true
@@ -343,6 +361,12 @@ ColumnLayout {
     wrapMode: Text.WrapAnywhere
     color: Color.accent
     font.pixelSize: Style.font.bodySmall
+  }
+  ScreenPowerControls {
+    Layout.fillWidth: true
+    visible: root.busy && !root.sessionAudioOnly
+    sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
+    sessionPid: mirror.childPid
   }
   Label {
     Layout.fillWidth: true

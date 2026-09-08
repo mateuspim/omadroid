@@ -28,7 +28,7 @@ first). Large device lists and forms scroll within the available screen height.
 
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
 (`timeout`), Avahi (`avahi-browse` and a running `avahi-daemon`), and
-scrcpy 2.0+ for mirroring. This implementation was checked against the
+scrcpy 4.1+ for mirroring and idle prevention. This implementation was checked against the
 installed scrcpy 4.1 command-line options. Node is only needed for development
 tests; there are no npm packages or Python runtime helpers.
 
@@ -114,6 +114,33 @@ profiles, the last selected profile, and recording folder persist in
 does not modify Omarchy settings, saved profiles, the recording folder, or any
 device connection.
 
+### Phone screen and authentication
+
+During a video session, **Phone screen on** lights the physical display for
+passwords or fingerprint authentication; **Phone screen off** darkens it again
+without restarting the session or interrupting its recording. The buttons send
+scrcpy's Alt+Shift+O / Alt+O shortcuts to the owned scrcpy process through
+Hyprland's Lua dispatcher. They do not target the focused window. Dispatch
+acknowledgement is reported as a request, not as verified phone display state.
+If dispatch fails, use those shortcuts directly in the scrcpy window.
+
+Android or an app can exclude protected content from capture. Authenticate on
+the physical phone in that case; DroidLink does not detect protected prompts
+automatically or change Android's capture protections.
+
+**Prevent idle sleep** uses scrcpy 4.1's `--keep-active`, which also works without
+a charger. Selecting **Device screen off** enables it; it can be unchecked
+independently before launch. Older saved screen-off profiles also default to
+idle prevention unless explicitly opted out. This may delay automatic locking
+while mirroring: lock the phone yourself when needed. It applies only to video
+sessions and lasts for the session; editing launch options does not reconfigure
+a running session.
+
+This addresses normal inactivity sleep, not forced locks or every manufacturer's
+display behavior. Android can still light the screen after physical power-button
+or lock/wake events. Use **Phone screen off** again instead of restarting scrcpy.
+See [scrcpy's device controls](https://github.com/Genymobile/scrcpy/blob/v4.1/doc/device.md).
+
 Recording creates a unique timestamped `.mkv` file in the selected existing,
 writable folder; the default is your home directory. Audio-only sessions instead
 create `.mka` files. The session displays its exact path. Audio is included only
@@ -139,13 +166,18 @@ Validate the plugin:
 omarchy plugin validate /home/me/Projects/droidlink
 node tests/model.test.cjs
 node tests/mdns.test.cjs
+node tests/screen-power.test.cjs
 bash tests/smoke.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/smoke.sh
 ```
 
-The two Node suites run offline; the shell-helper suite uses a fake Avahi command
+All Node suites run offline (`node --test tests/*.test.cjs`); the shell-helper suite uses a fake Avahi command
 and covers partial failures, timeouts, removals, and temporary-file cleanup.
 Ask before running live discovery or desktop tests in an active user session.
+Screen-power tests execute the command builder and QML method bodies with fake
+commands/timers; they do not exercise QML bindings or deliver real compositor
+shortcuts. Physical authentication, screen-power changes, and idle behavior still
+require an approved real-device test.
 
 The smoke test needs access to a running Wayland session. It creates an isolated
 hidden QML shell, temporary settings, and fake ADB/Avahi/scrcpy executables. It checks

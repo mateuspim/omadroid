@@ -71,7 +71,7 @@ test('scrcpy combines every option and safely preserves serial/path as single ar
   const profile = plain(model.builtInProfiles()[0]);
   Object.assign(profile, { audio: false, screenOff: true, fullscreen: true, record: true, codec: 'av1' });
   const path = '/tmp/My recordings/$(no-shell).mkv';
-  assert.deepEqual(plain(model.scrcpyCommand('device;literal', profile, path)), ['scrcpy', '--serial=device;literal', '--video-codec=av1', '--video-bit-rate=8M', '--max-size=1080', '--max-fps=60', '--no-audio', '--turn-screen-off', '--fullscreen', '--record=' + path]);
+  assert.deepEqual(plain(model.scrcpyCommand('device;literal', profile, path)), ['scrcpy', '--serial=device;literal', '--video-codec=av1', '--video-bit-rate=8M', '--max-size=1080', '--max-fps=60', '--no-audio', '--turn-screen-off', '--keep-active', '--fullscreen', '--record=' + path]);
   Object.assign(profile, { maxSize: '0', fps: '0', audio: true, record: false, fullscreen: false, screenOff: false });
   assert.deepEqual(plain(model.scrcpyCommand('USB', profile, '')), ['scrcpy', '--serial=USB', '--video-codec=av1', '--video-bit-rate=8M']);
   assert.throws(() => model.scrcpyCommand('', profile, ''));
@@ -95,6 +95,29 @@ test('saved profiles survive roundtrip and reject corrupt, duplicate and built-i
   assert.deepEqual(plain(model.savedProfiles('not json')), []);
   assert.deepEqual(plain(model.savedProfiles('{}')), []);
   assert.equal(model.builtInProfiles().every(model.validProfile), true);
+});
+
+test('screen-off profiles prevent idle sleep with an explicit opt-out', () => {
+  const profile = { ...plain(model.builtInProfiles()[0]), screenOff: true };
+  assert.equal(model.preventsIdleSleep(profile), true);
+  assert.ok(model.scrcpyCommand('USB', profile, '').includes('--keep-active'));
+  profile.keepActive = false;
+  assert.equal(model.preventsIdleSleep(profile), false);
+  assert.ok(!model.scrcpyCommand('USB', profile, '').includes('--keep-active'));
+  profile.screenOff = false;
+  profile.keepActive = true;
+  assert.ok(model.scrcpyCommand('USB', profile, '').includes('--keep-active'));
+  assert.ok(!model.audioOnlyCommand('USB', profile, '').includes('--keep-active'));
+});
+
+test('legacy and new profiles preserve screen-power preferences through storage', () => {
+  const legacy = { ...plain(model.builtInProfiles()[0]), name: 'Legacy', screenOff: true };
+  const optOut = { ...legacy, name: 'Allow idle lock', keepActive: false };
+  const invalid = { ...legacy, name: 'Invalid', keepActive: 'yes' };
+  const restored = model.savedProfiles(JSON.stringify([legacy, optOut, invalid]));
+  assert.deepEqual(plain(restored), [legacy, optOut]);
+  assert.equal(model.preventsIdleSleep(restored[0]), true);
+  assert.equal(model.preventsIdleSleep(restored[1]), false);
 });
 
 test('recording names are unique MKV files and malformed paths fail', () => {

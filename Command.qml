@@ -11,6 +11,8 @@ Item {
   property string input: ""
   property bool stopRequested: false
   property bool forceStopped: false
+  // Only this owned child may receive the mirroring screen-power shortcuts.
+  readonly property int childPid: process.running ? Number(process.processId) || 0 : 0
   signal finished(int code, string output, string error)
 
   function start(args, seconds, stdinText) {
