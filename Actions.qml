@@ -7,6 +7,7 @@ Item {
   property bool failed: false
   property string action: ""
   property string target: ""
+  property var discovery: null
   readonly property bool busy: command.busy
   signal changed
 
@@ -39,6 +40,8 @@ Item {
       root.failed = !Model.actionSucceeded(root.action, code, output, error);
       root.message = root.failed ? Model.commandError(code, output, error, "ADB " + root.action) : root.action === "pair" ? "Paired with " + root.target + ". Now connect using the connection port on Android's Wireless debugging page." : (root.action === "connect" ? "Connected to " : "Disconnected ") + root.target + ".";
       root.changed();
+      if (root.discovery)
+        root.discovery.refresh();
     }
   }
 }

@@ -2,15 +2,17 @@
   "schemaVersion": 1,
   "id": "pym.droidlink",
   "name": "DroidLink",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "pym",
   "license": "MIT",
   "description": "Discover ADB devices and launch scrcpy from the Omarchy bar.",
   "kinds": [
-    "bar-widget"
+    "bar-widget",
+    "service"
   ],
   "entryPoints": {
-    "barWidget": "Panel.qml"
+    "barWidget": "Panel.qml",
+    "service": "Discovery.qml"
   },
   "barWidget": {
     "displayName": "DroidLink",

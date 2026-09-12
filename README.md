@@ -6,7 +6,7 @@ settings.
 
 ## Features
 
-- **Devices:** parallel `adb devices -l` and Avahi-based mDNS discovery;
+- **Devices:** one process-wide discovery service runs parallel `adb devices -l` and Avahi-based mDNS discovery for every monitor;
   device model/name, serial or service identity, status, and transport. The bar
   badge counts authorized, ready transports. Refresh on open and every 15 seconds
   by default; the existing widget setting accepts 5–3600 seconds.
@@ -167,6 +167,8 @@ omarchy plugin validate /home/me/Projects/droidlink
 node tests/model.test.cjs
 node tests/mdns.test.cjs
 node tests/screen-power.test.cjs
+bash tests/shared-discovery.sh
+DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
 bash tests/smoke.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/smoke.sh
 ```
@@ -179,7 +181,9 @@ commands/timers; they do not exercise QML bindings or deliver real compositor
 shortcuts. Physical authentication, screen-power changes, and idle behavior still
 require an approved real-device test.
 
-The smoke test needs access to a running Wayland session. It creates an isolated
+The shared-discovery test creates two real widget consumers of one injected service and
+uses fake ADB/Avahi executables to prove startup is singular and queued refreshes never
+overlap. The smoke test needs access to a running Wayland session. It creates an isolated
 hidden QML shell, temporary settings, and fake ADB/Avahi/scrcpy executables. It checks
 discovery/merging, stdin pairing, connect/disconnect, failure reporting, timeouts,
 missing executables, profile persistence, launch options, graceful stop, and

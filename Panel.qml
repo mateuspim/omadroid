@@ -14,18 +14,26 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
   property string page: "devices"
+  readonly property var discovery: discoveryConsumer.discovery
 
-  Discovery {
-    id: discovery
+  DiscoveryConsumer {
+    id: discoveryConsumer
+    shell: root.bar ? root.bar.shell : null
+    pluginId: root.moduleName
     intervalSec: Number(root.setting("refreshIntervalSec", 15)) || 15
   }
+
+  function refreshDiscovery() {
+    discoveryConsumer.refresh();
+  }
+
   Actions {
     id: actions
-    onChanged: discovery.refresh()
+    discovery: discoveryConsumer.sharedDiscovery
   }
   onOpenedChanged: {
     if (opened)
-      discovery.refresh();
+      root.refreshDiscovery();
     else
       connectionForm.clearCode();
   }
@@ -80,7 +88,7 @@ Panel {
       Keys.onPressed: event => {
         if (event.key === Qt.Key_F5) {
           if (!discovery.busy)
-            discovery.refresh();
+            root.refreshDiscovery();
           event.accepted = true;
         }
       }
@@ -122,7 +130,7 @@ Panel {
           opacity: enabled ? 1 : 0.8
           tooltipText: "Refresh USB and wireless devices (F5)" + (discovery.updatedAt ? "\nLast scan: " + discovery.updatedAt : "")
           Accessible.name: discovery.busy ? "Scanning for devices" : "Refresh devices"
-          onClicked: discovery.refresh()
+          onClicked: root.refreshDiscovery()
 
           TextMetrics {
             id: refreshLabelMetrics
