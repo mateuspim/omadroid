@@ -30,6 +30,11 @@ function pairingPrefill(row, rows) {
   return { host: selected.host || pairingAddress.host, port: pairingAddress.port };
 }
 
+function needsPairingFallback(row, connectFailed) {
+  return !!connectFailed && !!row && row.source === "mdns" && !row.pair &&
+    row.transport === "Wireless" && endpoint(row.endpoint) !== "";
+}
+
 function serviceId(value) {
   return String(value).replace(/\._adb(?:-tls-connect|-tls-pairing)?\._tcp\.?(?:local\.?)?$/, "");
 }
@@ -113,7 +118,7 @@ function statusHint(row) {
   if (row.status === "no permissions") return "Check the host's Android udev rules and reconnect USB.";
   if (row.status === "offline") return "Reconnect the cable or wireless endpoint, then refresh.";
   if (row.pair) return "Open Wireless debugging → Pair device with pairing code on Android.";
-  if (row.source === "mdns") return "Connect if this host is paired, or choose Pair… for a new host.";
+  if (row.source === "mdns") return "Choose Connect. If authentication fails, DroidLink opens Pair with this host.";
   if (row.status !== "device") return "Mirroring requires an authorized device in normal Android mode.";
   return "";
 }

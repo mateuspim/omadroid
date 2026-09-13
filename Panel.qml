@@ -14,6 +14,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
   property string page: "devices"
+  property var pendingPairFallback: null
   readonly property var discovery: discoveryConsumer.discovery
 
   DiscoveryConsumer {
@@ -30,6 +31,14 @@ Panel {
   Actions {
     id: actions
     discovery: discoveryConsumer.sharedDiscovery
+    onChanged: {
+      var row = root.pendingPairFallback;
+      root.pendingPairFallback = null;
+      if (!Model.needsPairingFallback(row, actions.failed))
+        return;
+      root.page = "wireless";
+      connectionForm.beginPair(row, discovery.rows, true);
+    }
   }
   onOpenedChanged: {
     if (opened)
@@ -272,16 +281,21 @@ Panel {
                     text: "Connect"
                     visible: !modelData.pair && (modelData.source === "mdns" || (modelData.status === "offline" && modelData.endpoint !== ""))
                     enabled: !actions.busy
-                    onClicked: actions.run("connect", modelData.endpoint, "")
+                    tooltipText: modelData.source === "mdns" ? "Connect if already paired; open Pair automatically if it fails" : "Reconnect this wireless endpoint"
+                    onClicked: {
+                      root.pendingPairFallback = modelData.source === "mdns" ? modelData : null;
+                      if (!actions.run("connect", modelData.endpoint, ""))
+                        root.pendingPairFallback = null;
+                    }
                   }
                   ActionButton {
                     text: "Pair…"
-                    visible: modelData.pair || (modelData.source === "mdns" && modelData.endpoint !== "")
+                    visible: modelData.pair
                     enabled: !actions.busy
-                    tooltipText: modelData.pair ? "Use this advertised pairing port" : "Reuse this host and enter Android's separate pairing port"
+                    tooltipText: "Use this advertised pairing port"
                     onClicked: {
                       root.page = "wireless";
-                      connectionForm.beginPair(modelData, discovery.rows);
+                      connectionForm.beginPair(modelData, discovery.rows, true);
                     }
                   }
                   ActionButton {

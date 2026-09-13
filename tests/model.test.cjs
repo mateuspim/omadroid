@@ -45,6 +45,14 @@ test('pairing prefill reuses the host but never substitutes a connection port', 
   assert.equal(model.pairingEndpoint('fe80::1%wlan0', '42001'), '[fe80::1%wlan0]:42001');
 });
 
+test('only a failed discovered wireless connection enters pairing fallback', () => {
+  const discovered = model.parseMdns('=;eno1;IPv4;phone;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001;')[0];
+  assert.equal(model.needsPairingFallback(discovered, true), true);
+  assert.equal(model.needsPairingFallback(discovered, false), false);
+  assert.equal(model.needsPairingFallback({ ...discovered, pair: true }, true), false);
+  assert.equal(model.needsPairingFallback({ ...discovered, source: 'adb', status: 'offline' }, true), false);
+});
+
 test('merge only matches exact wireless service or endpoint, keeps USB and pairing', () => {
   const devices = model.parseDevices('PHONE device usb:1 model:Pixel\nadb-PHONE-random._adb-tls-connect._tcp.local. device model:Pixel\n192.168.1.4:5555 offline');
   const services = model.parseMdns('=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001\n=;eno1;IPv4;adb-PHONE-pair;_adb-tls-pairing._tcp;local;phone.local;192.168.1.3;42000\n=;eno1;IPv4;other;_adb._tcp;local;other.local;192.168.1.4;5555');

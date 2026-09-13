@@ -8,6 +8,7 @@ ColumnLayout {
   id: root
   required property var actions
   property bool pairing: false
+  property bool fixedPairingHost: false
   spacing: Style.space(8)
 
   function focusPairingInput(hostKnown) {
@@ -18,20 +19,22 @@ ColumnLayout {
         field.selectAll();
     });
   }
-  function beginPair(row, rows) {
+  function beginPair(row, rows, fixHost) {
     var selected = typeof row === "string" ? { endpoint: row, pair: false } : row;
     var prefill = Model.pairingPrefill(selected, rows);
     pairing = true;
+    fixedPairingHost = !!fixHost && prefill.host !== "";
     pairingHostField.text = prefill.host;
     pairingPortField.text = prefill.port;
     codeField.text = "";
     focusPairingInput(prefill.host !== "");
   }
   function beginManualPair() {
-    beginPair({ endpoint: endpointField.text, pair: false }, []);
+    beginPair({ endpoint: endpointField.text, pair: false }, [], false);
   }
   function showConnect() {
     pairing = false;
+    fixedPairingHost = false;
     clearCode();
     Qt.callLater(function() { endpointField.forceActiveFocus(); });
   }
@@ -58,7 +61,7 @@ ColumnLayout {
   }
   Label {
     Layout.fillWidth: true
-    text: root.pairing ? "Use the host, pairing port, and code from “Pair device with pairing code”. The connection port is different." : "Enter the IP and port shown on Android's Wireless debugging page. Pair first for a new device."
+    text: root.pairing ? (root.fixedPairingHost ? "Open “Pair device with pairing code” on Android, then enter only its pairing port and code." : "Use the host, pairing port, and code from “Pair device with pairing code”. The connection port is different.") : "Enter the IP and port shown on Android's Wireless debugging page. Pair first for a new device."
     color: Util.alpha(Color.foreground, 0.7)
     font.pixelSize: Style.font.bodySmall
   }
@@ -75,9 +78,18 @@ ColumnLayout {
   RowLayout {
     Layout.fillWidth: true
     visible: root.pairing
+    Label {
+      Layout.fillWidth: true
+      visible: root.fixedPairingHost
+      text: "Device · " + pairingHostField.text
+      wrapMode: Text.WrapAnywhere
+      color: Util.alpha(Color.foreground, 0.8)
+      Accessible.name: "Pairing device " + pairingHostField.text
+    }
     TextField {
       id: pairingHostField
       Layout.fillWidth: true
+      visible: !root.fixedPairingHost
       placeholderText: "Host/IP · 192.168.1.42"
       maximumLength: 240
       enabled: !root.actions.busy

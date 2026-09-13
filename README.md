@@ -62,14 +62,15 @@ transports.
 For Android wireless debugging, keep the phone and computer on the same network:
 
 1. Enable Developer options → Wireless debugging on Android.
-2. For a new host, open **Pair device with pairing code**, then select **Pair…**
-   on the discovered wireless service. DroidLink carries over the host/IP, but
-   never copies the connection port into the pairing-port field. If Android's
-   pairing service is advertised, its actual pairing port is filled in.
-3. Enter or confirm the pairing port, enter the six-digit code, and select
-   **Pair**. The fully manual Pair form remains available in Wireless.
-4. Use the address on the main Wireless debugging page to **Connect**. This is
-   normally a different port. Refresh discovery after pairing if necessary.
+2. Choose **Connect** on the discovered wireless connection service. If this
+   workstation is already paired, it connects immediately.
+3. If the connection fails, DroidLink opens Pair with the discovered host/IP
+   locked in place. Open **Pair device with pairing code** on Android, then
+   enter only its separate pairing port and six-digit code. If Android's
+   pairing service is already advertised, its actual pairing port is filled in.
+4. Select **Pair**. DroidLink refreshes discovery so the connection service can
+   be used. Direct Pair on an advertised pairing service and the fully manual
+   Pair and Connect forms remain available in Wireless.
 
 Pairing codes are passed on stdin, cleared after submission or dismissal, and
 never saved in profiles or included in command arguments. Pairing grants ADB
