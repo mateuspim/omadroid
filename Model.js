@@ -7,6 +7,29 @@ function endpoint(value) {
   return match[1] + ":" + Number(match[2]);
 }
 
+function endpointParts(value) {
+  var address = endpoint(value);
+  if (!address) return { host: "", port: "" };
+  var separator = address.lastIndexOf(":");
+  return { host: address.slice(0, separator), port: address.slice(separator + 1) };
+}
+
+function pairingEndpoint(host, port) {
+  var pairingHost = String(host || "").trim();
+  if (pairingHost[0] !== "[" && pairingHost.indexOf(":") >= 0)
+    pairingHost = "[" + pairingHost + "]";
+  return endpoint(pairingHost + ":" + String(port || "").trim());
+}
+
+function pairingPrefill(row, rows) {
+  var selected = endpointParts(row && row.endpoint);
+  var pairing = row && row.pair ? row : (Array.isArray(rows) ? rows : []).find(function(candidate) {
+    return candidate.pair && endpointParts(candidate.endpoint).host === selected.host;
+  });
+  var pairingAddress = endpointParts(pairing && pairing.endpoint);
+  return { host: selected.host || pairingAddress.host, port: pairingAddress.port };
+}
+
 function serviceId(value) {
   return String(value).replace(/\._adb(?:-tls-connect|-tls-pairing)?\._tcp\.?(?:local\.?)?$/, "");
 }
@@ -90,7 +113,7 @@ function statusHint(row) {
   if (row.status === "no permissions") return "Check the host's Android udev rules and reconnect USB.";
   if (row.status === "offline") return "Reconnect the cable or wireless endpoint, then refresh.";
   if (row.pair) return "Open Wireless debugging → Pair device with pairing code on Android.";
-  if (row.source === "mdns") return "Service name shown; the device model is available after connecting.";
+  if (row.source === "mdns") return "Connect if this host is paired, or choose Pair… for a new host.";
   if (row.status !== "device") return "Mirroring requires an authorized device in normal Android mode.";
   return "";
 }

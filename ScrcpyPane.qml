@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as Controls
 import QtCore as Core
 import Quickshell
 import qs.Commons
@@ -28,7 +29,7 @@ ColumnLayout {
         value: row.serial,
         label: row.name + " · " + row.transport + " · " + row.serial
       }))
-  spacing: Style.space(10)
+  spacing: Style.space(6)
 
   Core.Settings {
     id: saved
@@ -136,10 +137,20 @@ ColumnLayout {
     }
   }
 
-  Label {
-    text: "Mirror with scrcpy"
-    font.bold: true
-    font.pixelSize: Style.font.title
+  RowLayout {
+    Layout.fillWidth: true
+    Label {
+      Layout.fillWidth: true
+      text: "Mirror with scrcpy"
+      font.bold: true
+      font.pixelSize: Style.font.title
+    }
+    Label {
+      visible: root.busy
+      text: root.stopping ? "Stopping…" : "● Active"
+      color: Color.accent
+      Accessible.name: root.stopping ? "Mirroring session stopping" : "Mirroring session active"
+    }
   }
   Label {
     Layout.fillWidth: true
@@ -147,33 +158,42 @@ ColumnLayout {
     text: readyDevices.length === 0 ? "Connect and authorize a device to start mirroring." : "The selected device is no longer ready. Choose another device or reconnect it."
     color: Util.alpha(Color.foreground, 0.7)
   }
-  Dropdown {
+  GridLayout {
     Layout.fillWidth: true
-    label: "Device"
-    value: root.selectedSerial
-    options: root.deviceOptions
-    enabled: !root.busy && root.readyDevices.length > 0
-    onChanged: value => root.chooseDevice(value)
-  }
-  Dropdown {
-    Layout.fillWidth: true
-    label: "Launch profile"
-    value: root.profileName
-    options: root.profiles.map(p => p.name).concat(root.profileName === "Custom" ? ["Custom"] : [])
-    onChanged: value => {
-      if (value !== "Custom")
-        root.selectProfile(value);
+    columns: 2
+    columnSpacing: Style.space(8)
+    Dropdown {
+      Layout.fillWidth: true
+      Layout.preferredWidth: 1
+      label: "Device"
+      value: root.selectedSerial
+      options: root.deviceOptions
+      enabled: !root.busy && root.readyDevices.length > 0
+      Accessible.name: "Mirror device"
+      onChanged: value => root.chooseDevice(value)
+    }
+    Dropdown {
+      Layout.fillWidth: true
+      Layout.preferredWidth: 1
+      label: "Profile"
+      value: root.profileName
+      options: root.profiles.map(p => p.name).concat(root.profileName === "Custom" ? ["Custom"] : [])
+      Accessible.name: "Launch profile"
+      onChanged: value => {
+        if (value !== "Custom")
+          root.selectProfile(value);
+      }
     }
   }
   GridLayout {
     Layout.fillWidth: true
     columns: 2
-    columnSpacing: Style.space(12)
-    rowSpacing: Style.space(10)
+    columnSpacing: Style.space(6)
+    rowSpacing: Style.space(4)
     Dropdown {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
-      label: "Resolution · max edge"
+      label: "Resolution"
       value: root.profile.maxSize
       options: [
         {
@@ -181,6 +201,7 @@ ColumnLayout {
           label: "Native"
         },
         "720", "1080", "1440", "1920", "2560"]
+      Accessible.name: "Resolution maximum edge"
       onChanged: value => root.changeOption("maxSize", value)
     }
     Dropdown {
@@ -194,12 +215,13 @@ ColumnLayout {
           label: "Unlimited"
         },
         "15", "24", "30", "60", "90", "120"]
+      Accessible.name: "FPS limit"
       onChanged: value => root.changeOption("fps", value)
     }
     Dropdown {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
-      label: "Video codec"
+      label: "Codec"
       value: root.profile.codec
       options: [
         {
@@ -215,81 +237,67 @@ ColumnLayout {
           label: "AV1"
         }
       ]
+      Accessible.name: "Video codec"
       onChanged: value => root.changeOption("codec", value)
     }
     Dropdown {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
-      label: "Bitrate · Mbps"
+      label: "Bitrate"
       value: root.profile.bitrate
       options: ["2", "4", "8", "12", "16", "20", "32", "50"]
+      Accessible.name: "Video bitrate in megabits per second"
       onChanged: value => root.changeOption("bitrate", value)
     }
-  }
-  Label {
-    Layout.fillWidth: true
-    text: "Resolution limits the longest edge and keeps the aspect ratio. Codec and FPS support depend on the device."
-    color: Util.alpha(Color.foreground, 0.7)
-    font.pixelSize: Style.font.bodySmall
   }
   GridLayout {
     Layout.fillWidth: true
     columns: 2
-    columnSpacing: Style.space(10)
-    rowSpacing: Style.space(6)
+    columnSpacing: Style.space(6)
+    rowSpacing: Style.space(4)
     Repeater {
       model: [
         {
           key: "audio",
-          label: "Forward audio"
+          label: "Audio",
+          tip: "Forward Android audio; support depends on the Android version"
         },
         {
           key: "record",
-          label: "Record session"
+          label: "Recording",
+          tip: "Record video as MKV or an audio-only session as MKA"
         },
         {
           key: "screenOff",
-          label: "Device screen off"
+          label: "Device screen off",
+          tip: "Turn the phone display off when the next video session starts"
+        },
+        {
+          key: "keepActive",
+          label: "Prevent idle sleep",
+          tip: "Prevent Android inactivity sleep during the next video session"
         },
         {
           key: "fullscreen",
-          label: "Fullscreen"
+          label: "Fullscreen",
+          tip: "Start the next scrcpy video window in fullscreen"
         }
       ]
       delegate: ActionButton {
         required property var modelData
         Layout.fillWidth: true
         Layout.preferredWidth: 1
-        text: (root.profile[modelData.key] ? "✓ " : "○ ") + modelData.label
-        selected: root.profile[modelData.key]
+        readonly property bool optionSelected: modelData.key === "keepActive" ? Model.preventsIdleSleep(root.profile) : root.profile[modelData.key]
+        text: (optionSelected ? "✓ " : "○ ") + modelData.label
+        selected: optionSelected
+        tooltipText: modelData.tip
         Accessible.role: Accessible.CheckBox
         Accessible.checkable: true
-        Accessible.checked: selected
-        onClicked: root.changeOption(modelData.key, !root.profile[modelData.key])
+        Accessible.checked: optionSelected
+        Accessible.name: modelData.label
+        onClicked: root.changeOption(modelData.key, !optionSelected)
       }
     }
-  }
-  Label {
-    Layout.fillWidth: true
-    text: "Audio forwarding requires Android 11+. Audio only plays in the background without a window. Stop it here in DroidLink."
-    font.pixelSize: Style.font.bodySmall
-    color: Util.alpha(Color.foreground, 0.7)
-  }
-  ActionButton {
-    Layout.fillWidth: true
-    text: (selected ? "✓ " : "○ ") + "Prevent idle sleep"
-    selected: Model.preventsIdleSleep(root.profile)
-    tooltipText: "For the next video session: prevent Android inactivity sleep, including on Wi-Fi. The phone may stay unlocked until you lock it manually."
-    Accessible.role: Accessible.CheckBox
-    Accessible.checkable: true
-    Accessible.checked: selected
-    onClicked: root.changeOption("keepActive", !selected)
-  }
-  Label {
-    Layout.fillWidth: true
-    text: "Screen-off mode enables Prevent idle sleep. You can turn it off above. These options apply to the next video session."
-    font.pixelSize: Style.font.bodySmall
-    color: Util.alpha(Color.foreground, 0.7)
   }
   TextField {
     id: folderField
@@ -298,14 +306,9 @@ ColumnLayout {
     text: saved.recordingFolder
     placeholderText: "Existing recording folder · absolute path"
     Accessible.name: "Recording folder"
+    Controls.ToolTip.text: "A unique MKV is created for video; audio-only creates MKA. Stop the session to finalize it."
+    Controls.ToolTip.visible: hovered
     onEditingFinished: saved.recordingFolder = text.trim()
-  }
-  Label {
-    Layout.fillWidth: true
-    visible: root.profile.record
-    text: "A uniquely named MKV file is created for mirroring; audio-only creates MKA. Stop the session to finish the recording."
-    font.pixelSize: Style.font.bodySmall
-    color: Util.alpha(Color.foreground, 0.7)
   }
   RowLayout {
     Layout.fillWidth: true
@@ -320,11 +323,13 @@ ColumnLayout {
     ActionButton {
       text: "Save"
       enabled: nameField.text.trim() !== ""
+      tooltipText: "Save the current options as a reusable profile"
       onClicked: root.saveProfile()
     }
     ActionButton {
       text: "Remove"
       visible: root.customProfiles.some(p => p.name === root.profileName)
+      tooltipText: "Remove this saved profile"
       onClicked: root.removeProfile()
     }
     ActionButton {
@@ -340,17 +345,20 @@ ColumnLayout {
       text: root.busy && !root.sessionAudioOnly ? "Mirroring…" : "Launch scrcpy"
       selected: true
       enabled: root.selectedReady && !root.busy
+      tooltipText: "Start video mirroring with the selected options"
       onClicked: root.launch(false)
     }
     ActionButton {
       text: root.busy && root.sessionAudioOnly ? "Audio playing…" : "Audio only"
       enabled: root.selectedReady && !root.busy
+      tooltipText: "Start windowless audio; stop it here in DroidLink"
       onClicked: root.launch(true)
     }
     ActionButton {
       text: root.stopping ? "Stopping…" : root.sessionAudioOnly ? "Stop audio" : "Stop mirroring"
       visible: root.busy
       enabled: !root.stopping
+      tooltipText: "Request a clean scrcpy shutdown so recordings can finalize"
       onClicked: root.stop()
     }
   }
@@ -359,8 +367,11 @@ ColumnLayout {
     visible: root.busy
     text: "Session: " + root.sessionSerial + (root.sessionAudioOnly ? " · Audio only" : "") + (root.sessionRecording ? "\nRecording: " + root.sessionRecording : "")
     wrapMode: Text.WrapAnywhere
+    maximumLineCount: 2
+    elide: Text.ElideRight
     color: Color.accent
     font.pixelSize: Style.font.bodySmall
+    Accessible.name: text
   }
   ScreenPowerControls {
     Layout.fillWidth: true
@@ -374,5 +385,8 @@ ColumnLayout {
     text: root.message
     color: root.failed ? Color.urgent : Color.accent
     wrapMode: Text.WrapAnywhere
+    maximumLineCount: 3
+    elide: Text.ElideRight
+    Accessible.name: text
   }
 }

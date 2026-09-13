@@ -10,17 +10,37 @@ ColumnLayout {
   property bool pairing: false
   spacing: Style.space(8)
 
-  function beginPair(address) {
+  function focusPairingInput(hostKnown) {
+    Qt.callLater(function() {
+      var field = hostKnown ? pairingPortField : pairingHostField;
+      field.forceActiveFocus();
+      if (hostKnown)
+        field.selectAll();
+    });
+  }
+  function beginPair(row, rows) {
+    var selected = typeof row === "string" ? { endpoint: row, pair: false } : row;
+    var prefill = Model.pairingPrefill(selected, rows);
     pairing = true;
-    endpointField.text = address;
+    pairingHostField.text = prefill.host;
+    pairingPortField.text = prefill.port;
     codeField.text = "";
-    codeField.forceActiveFocus();
+    focusPairingInput(prefill.host !== "");
+  }
+  function beginManualPair() {
+    beginPair({ endpoint: endpointField.text, pair: false }, []);
+  }
+  function showConnect() {
+    pairing = false;
+    clearCode();
+    Qt.callLater(function() { endpointField.forceActiveFocus(); });
   }
   function clearCode() {
     codeField.text = "";
   }
   function submit() {
-    if (actions.run(pairing ? "pair" : "connect", endpointField.text, codeField.text))
+    var target = pairing ? Model.pairingEndpoint(pairingHostField.text, pairingPortField.text) : endpointField.text;
+    if (actions.run(pairing ? "pair" : "connect", target, codeField.text))
       codeField.text = "";
   }
 
@@ -33,29 +53,50 @@ ColumnLayout {
     }
     ActionButton {
       text: root.pairing ? "Connect instead" : "Pair a device"
-      onClicked: {
-        root.pairing = !root.pairing;
-        root.clearCode();
-      }
+      onClicked: root.pairing ? root.showConnect() : root.beginManualPair()
     }
   }
   Label {
     Layout.fillWidth: true
-    text: root.pairing ? "Use the address and code from “Pair device with pairing code”. The pairing port differs from the connection port." : "Enter the IP and port shown on Android's Wireless debugging page. Pair first for a new device."
+    text: root.pairing ? "Use the host, pairing port, and code from “Pair device with pairing code”. The connection port is different." : "Enter the IP and port shown on Android's Wireless debugging page. Pair first for a new device."
     color: Util.alpha(Color.foreground, 0.7)
     font.pixelSize: Style.font.bodySmall
   }
   TextField {
     id: endpointField
     Layout.fillWidth: true
-    placeholderText: root.pairing ? "Pairing address · 192.168.1.42:42000" : "Connection address · 192.168.1.42:37001"
+    visible: !root.pairing
+    placeholderText: "Connection address · 192.168.1.42:37001"
     maximumLength: 260
     enabled: !root.actions.busy
-    Accessible.name: root.pairing ? "Pairing address" : "Connection address"
-    onAccepted: if (root.pairing)
-      codeField.forceActiveFocus()
-    else
-      root.submit()
+    Accessible.name: "Connection address"
+    onAccepted: root.submit()
+  }
+  RowLayout {
+    Layout.fillWidth: true
+    visible: root.pairing
+    TextField {
+      id: pairingHostField
+      Layout.fillWidth: true
+      placeholderText: "Host/IP · 192.168.1.42"
+      maximumLength: 240
+      enabled: !root.actions.busy
+      Accessible.name: "Pairing host or IP"
+      onAccepted: pairingPortField.forceActiveFocus()
+    }
+    TextField {
+      id: pairingPortField
+      Layout.preferredWidth: Style.space(125)
+      placeholderText: "Pairing port"
+      maximumLength: 5
+      inputMethodHints: Qt.ImhDigitsOnly
+      validator: RegularExpressionValidator {
+        regularExpression: /[0-9]{0,5}/
+      }
+      enabled: !root.actions.busy
+      Accessible.name: "Pairing port"
+      onAccepted: codeField.forceActiveFocus()
+    }
   }
   RowLayout {
     Layout.fillWidth: true
@@ -76,7 +117,7 @@ ColumnLayout {
     }
     ActionButton {
       text: root.actions.busy ? "Working…" : root.pairing ? "Pair" : "Connect"
-      enabled: !root.actions.busy && Model.endpoint(endpointField.text) !== "" && (!root.pairing || codeField.text.length === 6)
+      enabled: !root.actions.busy && (root.pairing ? Model.pairingEndpoint(pairingHostField.text, pairingPortField.text) !== "" && codeField.text.length === 6 : Model.endpoint(endpointField.text) !== "")
       onClicked: root.submit()
     }
   }

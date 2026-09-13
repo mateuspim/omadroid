@@ -11,7 +11,8 @@ settings.
   badge counts authorized, ready transports. Refresh on open and every 15 seconds
   by default; the existing widget setting accepts 5–3600 seconds.
 - **Wireless:** explicit connect, targeted disconnect, six-digit wireless
-  pairing, and manual `IP:port` / `hostname:port` / `[IPv6]:port` entry.
+  pairing, pairing prefill from discovered services, and manual
+  `IP:port` / `hostname:port` / `[IPv6]:port` entry.
 - **Mirror:** select an authorized device, choose a built-in or saved profile,
   and launch scrcpy. Change resolution, FPS, H.264/H.265/AV1 codec, video bitrate,
   audio forwarding, recording, screen-off, and fullscreen independently. Launch
@@ -22,7 +23,9 @@ settings.
 The popup follows the active Omarchy theme and uses its native buttons, inputs,
 dropdowns, typography, and keyboard focus styles. Tab moves between controls;
 Enter/Space activates buttons; Escape dismisses the popup (or an open dropdown
-first). Large device lists and forms scroll within the available screen height.
+first). Device lists and the Wireless form scroll when needed; the compact
+Mirror page keeps its options, primary actions, and session controls visible
+without scrolling.
 
 ## Requirements and enabling
 
@@ -59,9 +62,12 @@ transports.
 For Android wireless debugging, keep the phone and computer on the same network:
 
 1. Enable Developer options → Wireless debugging on Android.
-2. For a new host, open **Pair device with pairing code**. Select **Pair…** on
-   the discovered pairing service, or enter its pairing address in Wireless.
-3. Enter the six-digit code and select **Pair**.
+2. For a new host, open **Pair device with pairing code**, then select **Pair…**
+   on the discovered wireless service. DroidLink carries over the host/IP, but
+   never copies the connection port into the pairing-port field. If Android's
+   pairing service is advertised, its actual pairing port is filled in.
+3. Enter or confirm the pairing port, enter the six-digit code, and select
+   **Pair**. The fully manual Pair form remains available in Wireless.
 4. Use the address on the main Wireless debugging page to **Connect**. This is
    normally a different port. Refresh discovery after pairing if necessary.
 

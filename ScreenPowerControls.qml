@@ -13,7 +13,7 @@ ColumnLayout {
   property string pressFailure: ""
   property bool controlFailed: false
   readonly property bool controlBusy: keyPress.busy || releaseDelay.running || keyRelease.busy
-  spacing: Style.space(6)
+  spacing: Style.space(4)
 
   onSessionPidChanged: {
     controlMessage = "";
@@ -68,6 +68,7 @@ ColumnLayout {
       text: "Phone screen on"
       enabled: root.sessionActive && root.sessionPid > 0 && !root.controlBusy
       tooltipText: "Show the physical screen for a password or fingerprint prompt"
+      Accessible.name: "Turn phone screen on"
       onClicked: root.requestScreenPower(true)
     }
     ActionButton {
@@ -75,14 +76,9 @@ ColumnLayout {
       text: "Phone screen off"
       enabled: root.sessionActive && root.sessionPid > 0 && !root.controlBusy
       tooltipText: "Darken the physical display again without restarting mirroring"
+      Accessible.name: "Turn phone screen off"
       onClicked: root.requestScreenPower(false)
     }
-  }
-  Label {
-    Layout.fillWidth: true
-    text: "Protected prompts may only appear on your phone. Turn its screen on, authenticate there, then turn it off here."
-    font.pixelSize: Style.font.bodySmall
-    color: Util.alpha(Color.foreground, 0.7)
   }
   Label {
     Layout.fillWidth: true

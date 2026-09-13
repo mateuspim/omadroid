@@ -167,19 +167,24 @@ Panel {
           }
         }
       }
-      Controls.ScrollView {
-        id: scroll
-        objectName: "droidlinkScroll"
+      Item {
+        id: pageHost
         Layout.fillWidth: true
         Layout.fillHeight: true
-        implicitHeight: content.implicitHeight
-        contentWidth: availableWidth
-        clip: true
-        Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
-        ColumnLayout {
-          id: content
-          width: scroll.availableWidth
-          spacing: Style.space(12)
+        implicitHeight: root.page === "mirror" ? scrcpyPane.implicitHeight : pageContent.implicitHeight
+
+        Controls.ScrollView {
+          id: deviceScroll
+          objectName: "droidlinkScroll"
+          anchors.fill: parent
+          visible: root.page !== "mirror"
+          contentWidth: availableWidth
+          clip: true
+          Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
+          ColumnLayout {
+            id: pageContent
+            width: deviceScroll.availableWidth
+            spacing: Style.space(12)
           Label {
             Layout.fillWidth: true
             visible: root.page === "devices" && discovery.devicesError !== ""
@@ -210,12 +215,12 @@ Panel {
             delegate: Rectangle {
               required property var modelData
               Layout.fillWidth: true
-              implicitHeight: deviceContent.implicitHeight + Style.space(24)
+              implicitHeight: deviceCardContent.implicitHeight + Style.space(24)
               radius: Style.cornerRadius
               color: Util.alpha(Color.foreground, 0.04)
               border.color: Util.alpha(Color.foreground, 0.14)
               ColumnLayout {
-                id: deviceContent
+                id: deviceCardContent
                 anchors {
                   left: parent.left
                   right: parent.right
@@ -264,15 +269,19 @@ Panel {
                     }
                   }
                   ActionButton {
-                    text: modelData.pair ? "Pair…" : "Connect"
-                    visible: modelData.pair || modelData.source === "mdns" || (modelData.status === "offline" && modelData.endpoint !== "")
+                    text: "Connect"
+                    visible: !modelData.pair && (modelData.source === "mdns" || (modelData.status === "offline" && modelData.endpoint !== ""))
                     enabled: !actions.busy
+                    onClicked: actions.run("connect", modelData.endpoint, "")
+                  }
+                  ActionButton {
+                    text: "Pair…"
+                    visible: modelData.pair || (modelData.source === "mdns" && modelData.endpoint !== "")
+                    enabled: !actions.busy
+                    tooltipText: modelData.pair ? "Use this advertised pairing port" : "Reuse this host and enter Android's separate pairing port"
                     onClicked: {
-                      if (modelData.pair) {
-                        root.page = "wireless";
-                        connectionForm.beginPair(modelData.endpoint);
-                      } else
-                        actions.run("connect", modelData.endpoint, "");
+                      root.page = "wireless";
+                      connectionForm.beginPair(modelData, discovery.rows);
                     }
                   }
                   ActionButton {
@@ -305,13 +314,18 @@ Panel {
             visible: root.page === "wireless"
             actions: actions
           }
-          ScrcpyPane {
-            id: scrcpyPane
-            objectName: "droidlinkScrcpy"
-            Layout.fillWidth: true
-            visible: root.page === "mirror"
-            devices: discovery.devices
           }
+        }
+        ScrcpyPane {
+          id: scrcpyPane
+          objectName: "droidlinkScrcpy"
+          anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+          }
+          visible: root.page === "mirror"
+          devices: discovery.devices
         }
       }
     }
@@ -319,7 +333,7 @@ Panel {
   onPageChanged: {
     if (page !== "wireless")
       connectionForm.clearCode();
-    if (scroll.contentItem)
-      scroll.contentItem.contentY = 0;
+    if (deviceScroll.contentItem)
+      deviceScroll.contentItem.contentY = 0;
   }
 }

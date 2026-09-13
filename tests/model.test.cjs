@@ -31,6 +31,20 @@ test('Avahi records preserve pairing ports, scope IPv6 and deduplicate endpoints
   assert.equal(rows[2].endpoint, '[fe80::1%wlan0]:5555');
 });
 
+test('pairing prefill reuses the host but never substitutes a connection port', () => {
+  const services = model.parseMdns([
+    '=;eno1;IPv4;phone-connect;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001;',
+    '=;eno1;IPv4;phone-pair;_adb-tls-pairing._tcp;local;phone.local;192.168.1.3;42000;',
+    '=;wlan0;IPv6;ipv6-connect;_adb-tls-connect._tcp;local;phone6.local;fe80::1;37111;'
+  ].join('\n'));
+  assert.deepEqual(plain(model.pairingPrefill(services[0], services)), { host: '192.168.1.3', port: '42000' });
+  assert.deepEqual(plain(model.pairingPrefill(services[0], [services[0]])), { host: '192.168.1.3', port: '' });
+  assert.deepEqual(plain(model.pairingPrefill(services[1], services)), { host: '192.168.1.3', port: '42000' });
+  assert.deepEqual(plain(model.pairingPrefill(services[2], services)), { host: '[fe80::1%wlan0]', port: '' });
+  assert.equal(model.pairingEndpoint('[fe80::1%wlan0]', '42001'), '[fe80::1%wlan0]:42001');
+  assert.equal(model.pairingEndpoint('fe80::1%wlan0', '42001'), '[fe80::1%wlan0]:42001');
+});
+
 test('merge only matches exact wireless service or endpoint, keeps USB and pairing', () => {
   const devices = model.parseDevices('PHONE device usb:1 model:Pixel\nadb-PHONE-random._adb-tls-connect._tcp.local. device model:Pixel\n192.168.1.4:5555 offline');
   const services = model.parseMdns('=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001\n=;eno1;IPv4;adb-PHONE-pair;_adb-tls-pairing._tcp;local;phone.local;192.168.1.3;42000\n=;eno1;IPv4;other;_adb._tcp;local;other.local;192.168.1.4;5555');
