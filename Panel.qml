@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
+import Quickshell
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -16,6 +17,14 @@ Panel {
   property string page: "devices"
   property var pendingPairFallback: null
   readonly property var discovery: discoveryConsumer.discovery
+  property string missingTools: ""
+  readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
+
+  Component.onCompleted: prerequisites.start(["bash", sessionScript, "check"], 3)
+  Command {
+    id: prerequisites
+    onFinished: (code, output, error) => root.missingTools = code === 0 ? output.trim().split("\n").filter(Boolean).join(", ") : "adb, scrcpy, Omarchy default terminal"
+  }
 
   DiscoveryConsumer {
     id: discoveryConsumer
@@ -41,9 +50,11 @@ Panel {
     }
   }
   onOpenedChanged: {
-    if (opened)
+    if (opened) {
+      if (!prerequisites.busy)
+        prerequisites.start(["bash", sessionScript, "check"], 3);
       root.refreshDiscovery();
-    else
+    } else
       connectionForm.clearCode();
   }
 
@@ -51,13 +62,13 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (discovery.mdnsError ? " · wireless discovery unavailable" : "")
+    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsError ? " · wireless discovery unavailable" : "")
     iconComponent: Component {
       Item {
         Text {
           anchors.centerIn: parent
           text: "󰄜"
-          color: discovery.devicesError ? Color.urgent : root.barForeground
+          color: discovery.devicesError || root.missingTools ? Color.urgent : root.barForeground
           font.family: Style.font.family
           font.pixelSize: Style.font.icon
         }
@@ -148,6 +159,13 @@ Panel {
             text: "Scanning…"
           }
         }
+      }
+      Label {
+        Layout.fillWidth: true
+        visible: root.missingTools !== ""
+        text: "Missing tools: " + root.missingTools + ". Install them to use DroidLink mirroring."
+        color: Color.urgent
+        wrapMode: Text.WordWrap
       }
       RowLayout {
         Layout.fillWidth: true

@@ -8,16 +8,24 @@ if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
 else
   cp "$repo_dir/tests/Smoke.qml" "$test_dir/shell.qml"
 fi
-mkdir "$test_dir/bin" "$test_dir/config"
+mkdir "$test_dir/bin" "$test_dir/config" "$test_dir/runtime"
 cp "$repo_dir/tests/mock-adb.sh" "$test_dir/bin/adb"
 cp "$repo_dir/tests/mock-scrcpy.sh" "$test_dir/bin/scrcpy"
+cp "$repo_dir/tests/mock-omarchy.sh" "$test_dir/bin/omarchy"
+cp "$repo_dir/tests/mock-xdg-terminal-exec.sh" "$test_dir/bin/xdg-terminal-exec"
 cp "$repo_dir/tests/mock-avahi-browse.sh" "$test_dir/bin/avahi-browse"
-chmod +x "$test_dir/bin/adb" "$test_dir/bin/scrcpy" "$test_dir/bin/avahi-browse"
+chmod +x "$test_dir/bin/adb" "$test_dir/bin/scrcpy" "$test_dir/bin/omarchy" "$test_dir/bin/xdg-terminal-exec" "$test_dir/bin/avahi-browse"
 ln -s /usr/share/omarchy/shell/Commons "$test_dir/Commons"
 ln -s /usr/share/omarchy/shell/Ui "$test_dir/Ui"
 ln -s "$repo_dir" "$test_dir/plugin"
 test_status=0
-PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM=wayland timeout 12s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
+if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
+  platform=wayland
+else
+  unset DISPLAY WAYLAND_DISPLAY
+  platform=offscreen
+fi
+PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 12s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
 cat "$test_dir/output"
 test "$test_status" -eq 0
 if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|DROIDLINK_TEST_FAILED)' "$test_dir/output"; then exit 1; fi

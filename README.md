@@ -33,10 +33,12 @@ without scrolling.
 ## Requirements and enabling
 
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
-(`timeout`), Avahi (`avahi-browse` and a running `avahi-daemon`), and
-scrcpy 4.1+ for mirroring and idle prevention. This implementation was checked against the
-installed scrcpy 4.1 command-line options. Node is only needed for development
-tests; there are no npm packages or Python runtime helpers.
+(`timeout`), `flock`, `setsid`, an Omarchy default terminal, Avahi
+(`avahi-browse` and a running `avahi-daemon`), and scrcpy 4.1+ for mirroring and
+idle prevention. The bar and popup warn when `adb`, `scrcpy`, or a configured
+default terminal is missing. This implementation was checked against the installed
+scrcpy 4.1 command-line options. Node is only needed for development tests;
+there are no npm packages or Python runtime helpers.
 
 The existing development link is:
 
@@ -53,6 +55,14 @@ omarchy plugin enable pym.droidlink --section right
 This repository preserves plugin ID `pym.droidlink`, the `Panel.qml` entry point,
 and the existing manifest settings schema. It does not modify packaged Omarchy
 files. Omarchy watches the user plugin directory for updates.
+
+To hide DroidLink's diagnostic terminal while keeping the scrcpy video window
+visible, add this rule to `~/.config/hypr/hyprland.lua` after Omarchy's defaults,
+then run `hyprctl reload`:
+
+```lua
+o.window({ class = "org.omarchy.droidlink" }, { workspace = "special:droidlink silent", no_initial_focus = true })
+```
 
 ## Connecting a device
 
@@ -105,13 +115,15 @@ disconnect is performed.
 
 | Profile | Maximum edge | FPS | Codec | Video bitrate | Audio |
 | --- | --- | --- | --- | --- | --- |
-| Balanced | 1080 px | 60 | H.264 | 8 Mbps | On |
+| Balanced | 1920 px (1080p on a 16:9 display) | 60 | H.264 | 8 Mbps | On |
 | Low bandwidth | 720 px | 30 | H.264 | 4 Mbps | Off |
 | High quality | Native | 60 | H.265 | 20 Mbps | On |
 
 Resolution is the longest-edge limit, preserving aspect ratio; it is not a fixed
-width × height. Native resolution and unlimited FPS omit those limits. Supported
-FPS and encoders depend on the phone. Audio forwarding requires Android 11+;
+width × height. The menu includes 3840 px (4K on a 16:9 display) and 60 Mbps.
+Native resolution and unlimited FPS omit those limits. The chosen FPS and bitrate
+are passed to scrcpy with the same flags for USB and wireless ADB serials. Actual
+quality, FPS, and encoders depend on the phone and network. Audio forwarding requires Android 11+;
 Android 11 should be unlocked at launch. Unsupported audio may fall back to video
 only. See the [upstream audio guide](https://github.com/Genymobile/scrcpy/blob/master/doc/audio.md).
 
@@ -162,17 +174,23 @@ writable folder; the default is your home directory. Audio-only sessions instead
 create `.mka` files. The session displays its exact path. Audio is included only
 when forwarding is enabled and supported.
 Use **Stop mirroring** or close the scrcpy window to finalize a recording.
-Closing the popup or switching tabs leaves mirroring running. One session runs
-per widget; stop it before starting another. Stop before reloading/removing the
-plugin or restarting the shell. A vanished device selection is never silently
-replaced by another phone.
+Scrcpy runs in Omarchy's configured default terminal on a hidden
+`special:droidlink` workspace, leaving only the scrcpy video window visible.
+Run `hyprctl dispatch togglespecialworkspace droidlink` to show or hide its
+diagnostic terminal. The terminal is asked to stay open after scrcpy exits if
+the configured terminal supports that option. Closing the popup, switching
+tabs, or restarting the Omarchy shell leaves the session running. Every monitor's
+widget reads the same session state and can stop it; only one DroidLink session
+runs at a time. Closing the terminal also ends the session. A vanished device
+selection is never silently replaced by another phone.
 
-All external programs use argument arrays, not shell interpolation. Mirroring
-uses Quickshell's tracked-process termination: Stop sends `TERM` to scrcpy so
-it can close streams and finalize recordings, then force-kills only a session
-that fails to exit. Discovery
-and ADB actions have bounded timeouts; captured diagnostics are bounded and shown
-in the popup. ADB's failure messages are checked even when it exits with code 0.
+All external programs use argument arrays, not shell interpolation. Session state
+lives under `$XDG_RUNTIME_DIR/droidlink-$UID` and is checked against the process
+start time so a stale PID is ignored. Stop sends `TERM` to scrcpy so it can close
+streams and finalize recordings, then force-kills only a session that fails to exit.
+Discovery and ADB actions have bounded timeouts; their diagnostics are bounded and
+shown in the popup. Scrcpy diagnostics remain in the hidden terminal while it is
+open. ADB's failure messages are checked even when it exits with code 0.
 
 ## Development
 
@@ -184,6 +202,7 @@ node tests/model.test.cjs
 node tests/mdns.test.cjs
 node tests/screen-power.test.cjs
 node tests/screen-rotation.test.cjs
+bash tests/session.sh
 bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
 bash tests/smoke.sh
@@ -198,13 +217,15 @@ commands/timers; they do not exercise QML bindings or deliver real compositor
 shortcuts. Physical authentication, screen-power changes, and idle behavior still
 require an approved real-device test.
 
-The shared-discovery test creates two real widget consumers of one injected service and
+The session test launches a fake scrcpy through a fake terminal and verifies shared
+state, duplicate-launch rejection, argument preservation, and stop. The
+shared-discovery test creates two widget consumers of one injected service and
 uses fake ADB/Avahi executables to prove startup is singular and queued refreshes never
-overlap. The smoke test needs access to a running Wayland session. It creates an isolated
-hidden QML shell, temporary settings, and fake ADB/Avahi/scrcpy executables. It checks
+overlap. The smoke test runs headlessly with an isolated QML shell, temporary settings,
+and fake ADB/Avahi/scrcpy/Omarchy terminal executables. It checks
 discovery/merging, stdin pairing, connect/disconnect, failure reporting, timeouts,
-missing executables, profile persistence, launch options, graceful stop, and
-stale selection handling without touching real devices or the bar configuration.
+missing executables, profile persistence, launch options, cross-panel session visibility,
+graceful stop, and stale selection handling without touching real devices or the bar configuration.
 Temporary test files are removed on exit.
 
 For a visual review, create a temporary directory and run
@@ -217,10 +238,10 @@ connection controls, then scrcpy profiles. Manifest validation only checks the
 manifest and file layout; the QML and fixture tests exercise runtime behavior.
 During development on this host, live ADB reported no attached devices and
 `mdns is not supported by this version of adb`. The separate Avahi discovery
-script replaces that unsupported discovery path. Its ten model tests and four
-offline shell-helper fixtures pass, along with shell/QML syntax and manifest
-validation. Live Avahi discovery and the updated desktop integration have not
-been tested. End-to-end pairing, mirroring,
+script replaces that unsupported discovery path. Offline model, session, shared-discovery,
+and smoke fixtures pass, along with shell syntax and manifest validation. Live
+Avahi discovery and the updated desktop integration have not been tested.
+End-to-end pairing, mirroring,
 audio, recording media, and device screen control still need a physical-device
 check. Fixture tests do not establish hardware compatibility.
 

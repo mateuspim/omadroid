@@ -93,12 +93,20 @@ test('scrcpy combines every option and safely preserves serial/path as single ar
   const profile = plain(model.builtInProfiles()[0]);
   Object.assign(profile, { audio: false, screenOff: true, fullscreen: true, record: true, codec: 'av1' });
   const path = '/tmp/My recordings/$(no-shell).mkv';
-  assert.deepEqual(plain(model.scrcpyCommand('device;literal', profile, path)), ['scrcpy', '--serial=device;literal', '--video-codec=av1', '--video-bit-rate=8M', '--max-size=1080', '--max-fps=60', '--no-audio', '--turn-screen-off', '--keep-active', '--fullscreen', '--record=' + path]);
+  assert.deepEqual(plain(model.scrcpyCommand('device;literal', profile, path)), ['scrcpy', '--serial=device;literal', '--video-codec=av1', '--video-bit-rate=8M', '--max-size=1920', '--max-fps=60', '--no-audio', '--turn-screen-off', '--keep-active', '--fullscreen', '--record=' + path]);
   Object.assign(profile, { maxSize: '0', fps: '0', audio: true, record: false, fullscreen: false, screenOff: false });
   assert.deepEqual(plain(model.scrcpyCommand('USB', profile, '')), ['scrcpy', '--serial=USB', '--video-codec=av1', '--video-bit-rate=8M']);
   assert.throws(() => model.scrcpyCommand('', profile, ''));
   profile.bitrate = '8; whoami';
   assert.throws(() => model.scrcpyCommand('USB', profile, ''));
+});
+
+test('4K and 60 Mbps are passed to scrcpy unchanged, including wireless serials', () => {
+  const profile = { ...plain(model.builtInProfiles()[0]), maxSize: '3840', bitrate: '60' };
+  assert.deepEqual(plain(model.scrcpyCommand('192.168.1.3:37123', profile, '')), [
+    'scrcpy', '--serial=192.168.1.3:37123', '--video-codec=h264',
+    '--video-bit-rate=60M', '--max-size=3840', '--max-fps=60'
+  ]);
 });
 
 test('audio-only runs without a window and records audio as MKA', () => {

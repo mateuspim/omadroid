@@ -11,7 +11,7 @@ printf '%s\n' "$@" > "$DROIDLINK_TEST_ARGS"
 printf '%s\n' 'INFO: scrcpy fixture started'
 for arg in "$@"; do
   if [[ "$arg" == --max-fps=120 ]]; then
-    trap 'exit 0' INT
+    trap 'exit 0' TERM
     while true; do sleep 0.1; done
   fi
 done

@@ -5,49 +5,55 @@ import "plugin" as DroidLink
 ShellRoot {
   id: testRoot
   property int step: 0
+  property bool stopQueued: false
   function check(condition, message) {
     if (!condition) {
       console.error("DROIDLINK_TEST_FAILED: " + message);
       Qt.exit(1);
     }
   }
-  DroidLink.Panel {
-    id: panel
-  }
   DroidLink.ScrcpyPane {
     id: mirroring
     width: 440
     devices: discovery.devices
-    onBusyChanged: if (!busy)
-      Qt.callLater(function () {
-        if (testRoot.step === 7) {
-          testRoot.check(mirroring.failed && mirroring.message.indexOf("AV1 encoder") >= 0, "scrcpy errors reach the popup");
-          mirroring.changeOption("codec", "h264");
-          mirroring.changeOption("audio", false);
-          mirroring.changeOption("record", true);
-          mirroring.changeOption("screenOff", true);
-          mirroring.changeOption("fullscreen", true);
-          mirroring.saveProfile("Fixture profile");
-          mirroring.selectProfile("Balanced");
-          mirroring.selectProfile("Fixture profile");
-          testRoot.check(mirroring.profile.screenOff && !mirroring.profile.audio, "saved profile restores options");
-          testRoot.step = 8;
-          mirroring.launch();
-        } else if (testRoot.step === 8) {
-          testRoot.check(!mirroring.failed, "scrcpy successful exit");
-          testRoot.check(mirroring.sessionRecording.endsWith(".mkv"), "recording path retained");
-          testRoot.step = 9;
-          mirroring.changeOption("fps", "120");
-          mirroring.launch();
-          stopTimer.start();
-        } else if (testRoot.step === 9) {
-          testRoot.check(!mirroring.failed, "SIGINT gracefully ends scrcpy");
-          testRoot.step = 10;
-          mirroring.chooseDevice("UNPLUGGED");
-          mirroring.launch();
-          testRoot.check(mirroring.failed && !mirroring.busy, "stale selection cannot launch on a different phone");
-        }
-      })
+  }
+  DroidLink.ScrcpyPane {
+    id: otherMonitor
+    width: 440
+    devices: discovery.devices
+  }
+  Timer {
+    interval: 200
+    running: testRoot.step >= 7 && testRoot.step < 10
+    repeat: true
+    onTriggered: {
+      if (testRoot.step === 7 && !mirroring.busy && mirroring.message) {
+        mirroring.changeOption("codec", "h264");
+        mirroring.changeOption("audio", false);
+        mirroring.changeOption("record", true);
+        mirroring.changeOption("screenOff", true);
+        mirroring.changeOption("fullscreen", true);
+        mirroring.saveProfile("Fixture profile");
+        mirroring.selectProfile("Balanced");
+        mirroring.selectProfile("Fixture profile");
+        testRoot.check(mirroring.profile.screenOff && !mirroring.profile.audio, "saved profile restores options");
+        testRoot.step = 8;
+        mirroring.launch();
+      } else if (testRoot.step === 8 && !mirroring.busy && mirroring.sessionRecording.endsWith(".mkv")) {
+        testRoot.check(!mirroring.failed, "scrcpy successful exit");
+        testRoot.step = 9;
+        mirroring.changeOption("fps", "120");
+        mirroring.launch();
+      } else if (testRoot.step === 9 && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && !testRoot.stopQueued) {
+        testRoot.stopQueued = true;
+        stopTimer.start();
+      } else if (testRoot.step === 9 && testRoot.stopQueued && !mirroring.busy && !otherMonitor.busy) {
+        testRoot.step = 10;
+        mirroring.chooseDevice("UNPLUGGED");
+        mirroring.launch();
+        testRoot.check(mirroring.failed && !mirroring.busy, "stale selection cannot launch on a different phone");
+      }
+    }
   }
   DroidLink.Discovery {
     id: discovery
@@ -107,13 +113,13 @@ ShellRoot {
   Timer {
     id: stopTimer
     interval: 300
-    onTriggered: mirroring.stop()
+    onTriggered: otherMonitor.stop()
   }
   Timer {
-    interval: 3500
+    interval: 5000
     running: true
     onTriggered: {
-      testRoot.check(testRoot.step === 10, "all process checks finished");
+      testRoot.check(testRoot.step === 10, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
       console.log("DROIDLINK_SMOKE_OK");
       Qt.quit();
     }

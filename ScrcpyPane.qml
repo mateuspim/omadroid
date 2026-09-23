@@ -20,7 +20,10 @@ ColumnLayout {
   property string sessionSerial: ""
   property string sessionRecording: ""
   property bool sessionAudioOnly: false
-  readonly property bool busy: mirror.busy
+  property int sessionPid: 0
+  property string missingTools: ""
+  readonly property bool busy: sessionPid > 0 || launcher.busy
+  readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
   readonly property var readyDevices: devices.filter(row => row.status === "device")
   readonly property var customProfiles: Model.savedProfiles(saved.profilesJson)
   readonly property var profiles: Model.builtInProfiles().concat(customProfiles)
@@ -39,7 +42,13 @@ ColumnLayout {
     property string recordingFolder: Quickshell.env("HOME")
   }
 
-  Component.onCompleted: selectProfile(saved.lastProfile)
+  Component.onCompleted: {
+    selectProfile(saved.lastProfile);
+    checkTools.start(["bash", sessionScript, "check"], 3);
+    refreshSession();
+  }
+  onVisibleChanged: if (visible && !checkTools.busy)
+    checkTools.start(["bash", sessionScript, "check"], 3)
   onReadyDevicesChanged: {
     // Preserve a vanished selection so unplugging cannot silently redirect a
     // launch to another phone. Only auto-select before any explicit choice.
@@ -101,6 +110,11 @@ ColumnLayout {
     if (busy)
       return;
     failed = false;
+    if (missingTools) {
+      failed = true;
+      message = "Install " + missingTools + " before launching scrcpy.";
+      return;
+    }
     if (!selectedReady) {
       failed = true;
       message = "Select a device that is Ready before launching.";
@@ -114,7 +128,7 @@ ColumnLayout {
       sessionAudioOnly = !!audioOnly;
       stopping = false;
       message = "Starting " + (audioOnly ? "audio" : "scrcpy") + " for " + selectedSerial + "…";
-      mirror.start(args, 0);
+      launcher.start(["bash", sessionScript, "launch", selectedSerial, audioOnly ? "1" : "0", path, "--"].concat(args), 6);
     } catch (e) {
       failed = true;
       message = e.message;
@@ -125,15 +139,64 @@ ColumnLayout {
     if (!busy || stopping)
       return;
     stopping = true;
-    mirror.interrupt();
+    stopper.start(["bash", sessionScript, "stop"], 7);
   }
 
   Command {
-    id: mirror
+    id: checkTools
     onFinished: (code, output, error) => {
-      root.failed = code !== 0 && !mirror.forceStopped;
-      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy") : (mirror.forceStopped ? "Session force-stopped after scrcpy did not exit cleanly." : (root.sessionAudioOnly ? "Audio session ended." : "Mirroring ended.")) + (root.sessionRecording ? " Recording: " + root.sessionRecording : "");
+      root.missingTools = code === 0 ? output.trim().split("\n").filter(Boolean).join(", ") : "adb, scrcpy, Omarchy default terminal";
+    }
+  }
+  function refreshSession() {
+    if (!status.busy)
+      status.start(["bash", sessionScript, "status"], 3);
+  }
+  Timer {
+    interval: 1000
+    running: true
+    repeat: true
+    onTriggered: root.refreshSession()
+  }
+  Command {
+    id: status
+    onFinished: (code, output, error) => {
+      var lines = output.trim().split("\n");
+      var wasActive = root.sessionPid > 0;
+      if (code === 0 && lines[0] === "active" && lines.length >= 5) {
+        root.sessionSerial = lines[1];
+        root.sessionAudioOnly = lines[2] === "1";
+        root.sessionRecording = lines[3];
+        root.sessionPid = Number(lines[4]) || 0;
+      } else if (code === 0) {
+        root.sessionPid = 0;
+        if (wasActive && !root.stopping && root.message.indexOf("Session stopped") !== 0 && root.message.indexOf("Session force-stopped") !== 0) {
+          root.failed = false;
+          root.message = (root.sessionAudioOnly ? "Audio session ended." : "Mirroring ended.") + (root.sessionRecording ? " Recording: " + root.sessionRecording : "");
+        } else if (root.message.indexOf("Session started") === 0) {
+          root.message = "scrcpy exited. See the DroidLink terminal for output." + (root.sessionRecording ? " Recording: " + root.sessionRecording : "");
+        }
+      } else {
+        root.failed = true;
+        root.message = Model.commandError(code, output, error, "Session status");
+      }
+    }
+  }
+  Command {
+    id: launcher
+    onFinished: (code, output, error) => {
+      root.failed = code !== 0;
+      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy launch") : output.trim();
+      root.refreshSession();
+    }
+  }
+  Command {
+    id: stopper
+    onFinished: (code, output, error) => {
+      root.failed = code !== 0;
+      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy stop") : output.trim();
       root.stopping = false;
+      root.refreshSession();
     }
   }
 
@@ -151,6 +214,13 @@ ColumnLayout {
       color: Color.accent
       Accessible.name: root.stopping ? "Mirroring session stopping" : "Mirroring session active"
     }
+  }
+  Label {
+    Layout.fillWidth: true
+    visible: root.missingTools !== ""
+    text: "Missing tools: " + root.missingTools + ". Install them to mirror devices."
+    color: Color.urgent
+    wrapMode: Text.WordWrap
   }
   Label {
     Layout.fillWidth: true
@@ -200,7 +270,12 @@ ColumnLayout {
           value: "0",
           label: "Native"
         },
-        "720", "1080", "1440", "1920", "2560"]
+        { value: "720", label: "720 px edge" },
+        { value: "1080", label: "1080 px edge" },
+        { value: "1440", label: "1440 px edge" },
+        { value: "1920", label: "1080p · 1920 edge" },
+        { value: "2560", label: "1440p · 2560 edge" },
+        { value: "3840", label: "4K · 3840 edge" }]
       Accessible.name: "Resolution maximum edge"
       onChanged: value => root.changeOption("maxSize", value)
     }
@@ -245,7 +320,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       label: "Bitrate"
       value: root.profile.bitrate
-      options: ["2", "4", "8", "12", "16", "20", "32", "50"]
+      options: ["2", "4", "8", "12", "16", "20", "32", "50", "60"]
       Accessible.name: "Video bitrate in megabits per second"
       onChanged: value => root.changeOption("bitrate", value)
     }
@@ -344,13 +419,13 @@ ColumnLayout {
     ActionButton {
       text: root.busy && !root.sessionAudioOnly ? "Mirroring…" : "Launch scrcpy"
       selected: true
-      enabled: root.selectedReady && !root.busy
+      enabled: root.selectedReady && !root.busy && !root.missingTools
       tooltipText: "Start video mirroring with the selected options"
       onClicked: root.launch(false)
     }
     ActionButton {
       text: root.busy && root.sessionAudioOnly ? "Audio playing…" : "Audio only"
-      enabled: root.selectedReady && !root.busy
+      enabled: root.selectedReady && !root.busy && !root.missingTools
       tooltipText: "Start windowless audio; stop it here in DroidLink"
       onClicked: root.launch(true)
     }
@@ -377,13 +452,13 @@ ColumnLayout {
     Layout.fillWidth: true
     visible: root.busy && !root.sessionAudioOnly
     sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
-    sessionPid: mirror.childPid
+    sessionPid: root.sessionPid
   }
   ScreenRotationControls {
     Layout.fillWidth: true
     visible: root.busy && !root.sessionAudioOnly
     sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
-    sessionPid: mirror.childPid
+    sessionPid: root.sessionPid
     deviceSerial: root.sessionSerial
   }
   Label {

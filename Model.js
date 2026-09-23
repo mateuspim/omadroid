@@ -143,7 +143,7 @@ function actionSucceeded(action, code, output, error) {
 
 function builtInProfiles() {
   return [
-    { name: "Balanced", maxSize: "1080", fps: "60", codec: "h264", bitrate: "8", audio: true, record: false, screenOff: false, fullscreen: false },
+    { name: "Balanced", maxSize: "1920", fps: "60", codec: "h264", bitrate: "8", audio: true, record: false, screenOff: false, fullscreen: false },
     { name: "Low bandwidth", maxSize: "720", fps: "30", codec: "h264", bitrate: "4", audio: false, record: false, screenOff: false, fullscreen: false },
     { name: "High quality", maxSize: "0", fps: "60", codec: "h265", bitrate: "20", audio: true, record: false, screenOff: false, fullscreen: false }
   ];
@@ -151,10 +151,10 @@ function builtInProfiles() {
 
 function validProfile(p) {
   return p && typeof p.name === "string" && p.name.trim().length > 0 && p.name.length <= 48 &&
-    ["0", "720", "1080", "1440", "1920", "2560"].indexOf(String(p.maxSize)) >= 0 &&
+    ["0", "720", "1080", "1440", "1920", "2560", "3840"].indexOf(String(p.maxSize)) >= 0 &&
     ["0", "15", "24", "30", "60", "90", "120"].indexOf(String(p.fps)) >= 0 &&
     ["h264", "h265", "av1"].indexOf(p.codec) >= 0 &&
-    ["2", "4", "8", "12", "16", "20", "32", "50"].indexOf(String(p.bitrate)) >= 0 &&
+    ["2", "4", "8", "12", "16", "20", "32", "50", "60"].indexOf(String(p.bitrate)) >= 0 &&
     ["audio", "record", "screenOff", "fullscreen"].every(function(key) { return typeof p[key] === "boolean"; }) &&
     (p.keepActive === undefined || typeof p.keepActive === "boolean");
 }
