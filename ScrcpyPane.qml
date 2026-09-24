@@ -379,6 +379,13 @@ ColumnLayout {
     sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
     sessionPid: mirror.childPid
   }
+  ScreenRotationControls {
+    Layout.fillWidth: true
+    visible: root.busy && !root.sessionAudioOnly
+    sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
+    sessionPid: mirror.childPid
+    deviceSerial: root.sessionSerial
+  }
   Label {
     Layout.fillWidth: true
     visible: root.message !== "" && !root.busy

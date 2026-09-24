@@ -18,7 +18,10 @@ settings.
   audio forwarding, recording, screen-off, and fullscreen independently. Launch
   **Audio only** to listen in the background without a scrcpy window
   (`--no-video --no-window`); optional audio-only recordings are saved as `.mka`.
-  Use **Stop audio** in DroidLink to end the session.
+  Use the four orientation buttons during a video session to lock the device to
+  portrait, landscape, or either inverted orientation. **Auto rotate / reset**
+  restores Android's sensor rotation. Use **Stop audio** in DroidLink to end an
+  audio-only session.
 
 The popup follows the active Omarchy theme and uses its native buttons, inputs,
 dropdowns, typography, and keyboard focus styles. Tab moves between controls;
@@ -121,7 +124,7 @@ profiles, the last selected profile, and recording folder persist in
 does not modify Omarchy settings, saved profiles, the recording folder, or any
 device connection.
 
-### Phone screen and authentication
+### Phone screen and orientation
 
 During a video session, **Phone screen on** lights the physical display for
 passwords or fingerprint authentication; **Phone screen off** darkens it again
@@ -130,6 +133,12 @@ scrcpy's Alt+Shift+O / Alt+O shortcuts to the owned scrcpy process through
 Hyprland's Lua dispatcher. They do not target the focused window. Dispatch
 acknowledgement is reported as a request, not as verified phone display state.
 If dispatch fails, use those shortcuts directly in the scrcpy window.
+
+The four orientation buttons use `adb shell wm user-rotation lock` with Android's
+four rotation values. Each one disables auto-rotate and locks the device to the
+chosen orientation. **Auto rotate / reset** uses `adb shell wm user-rotation free`
+to release the lock and restore sensor-based rotation. These commands target the
+selected mirroring device and do not restart scrcpy.
 
 Android or an app can exclude protected content from capture. Authenticate on
 the physical phone in that case; DroidLink does not detect protected prompts
@@ -174,6 +183,7 @@ omarchy plugin validate /home/me/Projects/droidlink
 node tests/model.test.cjs
 node tests/mdns.test.cjs
 node tests/screen-power.test.cjs
+node tests/screen-rotation.test.cjs
 bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
 bash tests/smoke.sh
