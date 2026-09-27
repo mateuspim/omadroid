@@ -348,16 +348,22 @@ Panel {
           }
           }
         }
-        ScrcpyPane {
-          id: scrcpyPane
-          objectName: "droidlinkScrcpy"
-          anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-          }
+        // Session controls make this page taller than the popup's height cap,
+        // so it scrolls like the device pages instead of overflowing the card.
+        Controls.ScrollView {
+          id: mirrorScroll
+          objectName: "droidlinkMirrorScroll"
+          anchors.fill: parent
           visible: root.page === "mirror"
-          devices: discovery.devices
+          contentWidth: availableWidth
+          clip: true
+          Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
+          ScrcpyPane {
+            id: scrcpyPane
+            objectName: "droidlinkScrcpy"
+            width: mirrorScroll.availableWidth
+            devices: discovery.devices
+          }
         }
       }
     }
@@ -365,7 +371,9 @@ Panel {
   onPageChanged: {
     if (page !== "wireless")
       connectionForm.clearCode();
-    if (deviceScroll.contentItem)
-      deviceScroll.contentItem.contentY = 0;
+    for (const scroll of [deviceScroll, mirrorScroll]) {
+      if (scroll.contentItem)
+        scroll.contentItem.contentY = 0;
+    }
   }
 }
