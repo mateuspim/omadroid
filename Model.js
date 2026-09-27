@@ -30,6 +30,19 @@ function pairingPrefill(row, rows) {
   return { host: selected.host || pairingAddress.host, port: pairingAddress.port };
 }
 
+/** Find the connect endpoint Android advertises on the host that was just paired.
+ * Pairing and connection use different ports, so the pairing address cannot be reused.
+ * Example: connectEndpointAfterPairing("192.168.1.5:42000", rows) → "192.168.1.5:37002"
+ * @param {string} pairedAddress @param {Array<object>} rows @returns {string} "" when none is known */
+function connectEndpointAfterPairing(pairedAddress, rows) {
+  var host = endpointParts(pairedAddress).host;
+  if (!host) return "";
+  var match = (Array.isArray(rows) ? rows : []).find(function(row) {
+    return !row.pair && row.service === "_adb-tls-connect._tcp" && endpointParts(row.endpoint).host === host;
+  });
+  return match ? match.endpoint : "";
+}
+
 function needsPairingFallback(row, connectFailed) {
   return !!connectFailed && !!row && row.source === "mdns" && !row.pair &&
     row.transport === "Wireless" && endpoint(row.endpoint) !== "";

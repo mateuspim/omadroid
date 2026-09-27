@@ -45,6 +45,19 @@ test('pairing prefill reuses the host but never substitutes a connection port', 
   assert.equal(model.pairingEndpoint('fe80::1%wlan0', '42001'), '[fe80::1%wlan0]:42001');
 });
 
+test('after pairing, the connect port is taken from the same host, never the pairing port', () => {
+  const rows = model.parseMdns([
+    '=;eno1;IPv4;other;_adb-tls-connect._tcp;local;other.local;192.168.1.9;39000;',
+    '=;eno1;IPv4;tab-pair;_adb-tls-pairing._tcp;local;tab.local;192.168.1.5;42000;',
+    '=;eno1;IPv4;tab;_adb-tls-connect._tcp;local;tab.local;192.168.1.5;37002;'
+  ].join('\n'));
+  assert.equal(model.connectEndpointAfterPairing('192.168.1.5:42000', rows), '192.168.1.5:37002');
+  assert.equal(model.connectEndpointAfterPairing('192.168.1.7:42000', rows), '');
+  assert.equal(model.connectEndpointAfterPairing('192.168.1.5:42000', rows.filter(r => r.pair)), '');
+  assert.equal(model.connectEndpointAfterPairing('not an address', rows), '');
+  assert.equal(model.connectEndpointAfterPairing('192.168.1.5:42000', undefined), '');
+});
+
 test('only a failed discovered wireless connection enters pairing fallback', () => {
   const discovered = model.parseMdns('=;eno1;IPv4;phone;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001;')[0];
   assert.equal(model.needsPairingFallback(discovered, true), true);

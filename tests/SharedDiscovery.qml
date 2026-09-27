@@ -92,9 +92,57 @@ ShellRoot {
         testRoot.actionStep = 3;
         Qt.callLater(function () {
           testRoot.check(discoverySpy.refreshCalls === 3, "disconnect did not request shared discovery");
-          console.log("DROIDLINK_SHARED_TEST_OK");
-          Qt.quit();
+          pairActions.run("pair", "192.168.1.5:42000", "123456");
         });
+      }
+    }
+  }
+
+  // Avahi reports the tablet's connect port only on the refresh after pairing,
+  // so Actions must wait for that scan and then connect by itself.
+  QtObject {
+    id: pairingDiscovery
+    property var rows: []
+    property bool busy: false
+    property bool refreshPending: false
+    function refresh() {
+      busy = true;
+      rows = [{ pair: false, service: "_adb-tls-connect._tcp", endpoint: "192.168.1.5:37002" }];
+      Qt.callLater(() => busy = false);
+    }
+  }
+
+  DroidLink.Actions {
+    id: pairActions
+    discovery: pairingDiscovery
+    onChanged: {
+      if (action === "pair" && testRoot.actionStep < 4) {
+        testRoot.check(!failed && message.indexOf("Looking for its connection port") >= 0, "pair without a known port did not wait for discovery: " + message);
+      } else if (action === "connect" && target === "192.168.1.5:37002") {
+        testRoot.check(!failed && message === "Connected to 192.168.1.5:37002.", "paired device was not connected: " + message);
+        Qt.callLater(() => pairActions.run("pair", "192.168.1.5:42000", "123456"));
+        testRoot.actionStep = 4;
+      }
+    }
+  }
+
+  // With the port already known, the connect follows the pair immediately.
+  Connections {
+    target: pairActions
+    function onChanged() {
+      if (testRoot.actionStep !== 4 || pairActions.action !== "pair")
+        return;
+      testRoot.check(pairActions.pairedAwaitingConnect === "", "known connect port was not used immediately");
+      testRoot.actionStep = 5;
+    }
+  }
+  Connections {
+    target: pairActions
+    function onBusyChanged() {
+      if (testRoot.actionStep === 5 && !pairActions.busy && pairActions.action === "connect") {
+        testRoot.check(!pairActions.failed, "immediate connect after pairing failed: " + pairActions.message);
+        console.log("DROIDLINK_SHARED_TEST_OK");
+        Qt.quit();
       }
     }
   }

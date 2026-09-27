@@ -80,9 +80,11 @@ For Android wireless debugging, keep the phone and computer on the same network:
    locked in place. Open **Pair device with pairing code** on Android, then
    enter only its separate pairing port and six-digit code. If Android's
    pairing service is already advertised, its actual pairing port is filled in.
-4. Select **Pair**. DroidLink refreshes discovery so the connection service can
-   be used. Direct Pair on an advertised pairing service and the fully manual
-   Pair and Connect forms remain available in Wireless.
+4. Select **Pair**. DroidLink then connects to the connection port Android
+   advertises for the same host. If that service isn't known yet, it waits for
+   one discovery refresh before asking you to connect manually. Direct Pair on
+   an advertised pairing service and the fully manual Pair and Connect forms
+   remain available in Wireless.
 
 Pairing codes are passed on stdin, cleared after submission or dismissal, and
 never saved in profiles or included in command arguments. Pairing grants ADB
