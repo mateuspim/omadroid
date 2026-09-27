@@ -20,7 +20,8 @@ settings.
   (`--no-video --no-window`); optional audio-only recordings are saved as `.mka`.
   Use the four orientation buttons during a video session to lock the device to
   portrait, landscape, or either inverted orientation. **Auto rotate / reset**
-  restores Android's sensor rotation. Use **Stop audio** in DroidLink to end an
+  restores Android's sensor rotation. A lock set from DroidLink is released when
+  the session ends; a lock set on the phone is kept. Use **Stop audio** in DroidLink to end an
   audio-only session.
 
 The popup follows the active Omarchy theme and uses its native buttons, inputs,
@@ -56,13 +57,11 @@ This repository preserves plugin ID `pym.droidlink`, the `Panel.qml` entry point
 and the existing manifest settings schema. It does not modify packaged Omarchy
 files. Omarchy watches the user plugin directory for updates.
 
-To hide DroidLink's diagnostic terminal while keeping the scrcpy video window
-visible, add this rule to `~/.config/hypr/hyprland.lua` after Omarchy's defaults,
-then run `hyprctl reload`:
-
-```lua
-o.window({ class = "org.omarchy.droidlink" }, { workspace = "special:droidlink silent", no_initial_focus = true })
-```
+Before each launch, DroidLink registers a named Hyprland window rule with
+`hyprctl eval`. The rule sends its diagnostic terminal straight to the hidden
+`special:droidlink` workspace without focusing it, so the scrcpy video window is
+the only one you see. No Hyprland config edit is needed. Without `hyprctl` the
+terminal stays visible.
 
 ## Connecting a device
 
@@ -149,8 +148,16 @@ If dispatch fails, use those shortcuts directly in the scrcpy window.
 The four orientation buttons use `adb shell wm user-rotation lock` with Android's
 four rotation values. Each one disables auto-rotate and locks the device to the
 chosen orientation. **Auto rotate / reset** uses `adb shell wm user-rotation free`
-to release the lock and restore sensor-based rotation. These commands target the
-selected mirroring device and do not restart scrcpy.
+to release the lock and restore sensor-based rotation. `session.sh rotate` runs
+these commands against the active session's device and does not restart scrcpy.
+
+When the controls appear, including after an Omarchy shell restart, they read
+`settings get system accelerometer_rotation` and `user_rotation` to show the
+phone's current lock. DroidLink records a lock it set under
+`$XDG_RUNTIME_DIR/droidlink-$UID/rotation` and sends `wm user-rotation free`
+when that session ends, whether it was stopped, its window was closed, or
+scrcpy exited. **Auto rotate / reset** clears that record. A lock chosen on the
+phone is reported as such and left in place.
 
 Android or an app can exclude protected content from capture. Authenticate on
 the physical phone in that case; DroidLink does not detect protected prompts

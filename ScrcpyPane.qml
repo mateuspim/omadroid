@@ -460,6 +460,7 @@ ColumnLayout {
     sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
     sessionPid: root.sessionPid
     deviceSerial: root.sessionSerial
+    sessionScript: root.sessionScript
   }
   Label {
     Layout.fillWidth: true

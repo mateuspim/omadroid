@@ -1,26 +1,51 @@
-/** Build an Android rotation-lock command for the selected device.
+/** Build the session-helper command which locks the active device's rotation.
  * Rotation values match Android Surface rotation constants:
  * 0 portrait, 1 landscape, 2 inverted portrait and 3 inverted landscape.
- * @param {string} serial
+ * session.sh resolves the serial from the active session and records that
+ * DroidLink owns the lock, so it can release it when the session ends.
+ * Example: orientationCommand("/path/session.sh", 1)
+ * @param {string} sessionScript
  * @param {number} rotation
  * @returns {string[]}
  */
-function orientationCommand(serial, rotation) {
-  validateSerial(serial);
+function orientationCommand(sessionScript, rotation) {
+  validateScript(sessionScript);
   if (!Number.isInteger(rotation) || rotation < 0 || rotation > 3)
     throw new Error("Invalid device rotation " + rotation + "; expected a value from 0 to 3.");
-  return ["adb", "-s", serial, "shell", "wm", "user-rotation", "lock", String(rotation)];
+  return ["bash", sessionScript, "rotate", "lock", String(rotation)];
 }
 
-/** Build the command which releases Android's rotation lock. @param {string} serial @returns {string[]} */
-function autoRotateCommand(serial) {
-  validateSerial(serial);
-  return ["adb", "-s", serial, "shell", "wm", "user-rotation", "free"];
+/** Build the command which releases Android's rotation lock. Example: autoRotateCommand("/path/session.sh")
+ * @param {string} sessionScript @returns {string[]} */
+function autoRotateCommand(sessionScript) {
+  validateScript(sessionScript);
+  return ["bash", sessionScript, "rotate", "free"];
 }
 
-function validateSerial(serial) {
-  if (!serial || /[\x00-\x1f\x7f]/.test(String(serial)))
-    throw new Error("Select an authorized Android device.");
+/** Build the command which reads the device's current rotation, so the controls
+ * reflect the phone after a shell reload. Example: rotationQueryCommand("/path/session.sh")
+ * @param {string} sessionScript @returns {string[]} */
+function rotationQueryCommand(sessionScript) {
+  validateScript(sessionScript);
+  return ["bash", sessionScript, "rotate", "query"];
+}
+
+function validateScript(sessionScript) {
+  if (!sessionScript || /[\x00-\x1f\x7f]/.test(String(sessionScript)))
+    throw new Error("Invalid session helper path " + JSON.stringify(sessionScript) + "; expected a file path.");
+}
+
+/** Parse `session.sh rotate query` output ("free", or "lock N" optionally followed by "owned").
+ * Example: parseRotationState("lock 1\nowned") → { rotation: 1, owned: true }
+ * @param {string} text @returns {{rotation: number, owned: boolean}} rotation -1 means auto-rotate */
+function parseRotationState(text) {
+  var lines = String(text || "").trim().split("\n").map(line => line.trim());
+  if (lines[0] === "free")
+    return { rotation: -1, owned: false };
+  var match = /^lock ([0-3])$/.exec(lines[0]);
+  if (!match)
+    throw new Error("Unexpected rotation state " + JSON.stringify(text) + "; expected \"free\" or \"lock 0-3\".");
+  return { rotation: Number(match[1]), owned: lines[1] === "owned" };
 }
 
 function orientationLabel(rotation) {
@@ -32,11 +57,19 @@ function orientationLabel(rotation) {
   })[rotation] || "Unknown orientation";
 }
 
-/** Treat only a clean adb exit without an explicit error as success. */
+/** Describe the device's rotation state for the status line. Example: rotationStateMessage(1, true)
+ * @param {number} rotation @param {boolean} owned @returns {string} */
+function rotationStateMessage(rotation, owned) {
+  if (rotation < 0)
+    return "Auto-rotate enabled.";
+  if (owned)
+    return orientationLabel(rotation) + " locked. Released when the session stops.";
+  return orientationLabel(rotation) + " locked on the phone. Kept after the session stops.";
+}
+
+/** session.sh already inspects adb output, so a non-zero exit is the only failure signal. */
 function orientationFailure(exitCode, stdoutText, stderrText, action) {
-  var output = String(stdoutText || "");
-  var error = String(stderrText || "");
-  if (exitCode === 0 && !/(?:failed|error|unknown command|permission denied)/i.test(output + "\n" + error)) return "";
+  if (exitCode === 0) return "";
   return "Could not " + action + " (exit " + exitCode + "): " +
-    (error || output || "adb returned no diagnostic").trim().slice(-1000);
+    (String(stderrText || "") || String(stdoutText || "") || "adb returned no diagnostic").trim().slice(-1000);
 }

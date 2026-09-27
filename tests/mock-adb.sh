@@ -37,5 +37,21 @@ case "${1:-}" in
     [[ "$pair_code" == 123456 ]] || exit 8
     printf '%s\n' "Successfully paired to $2 [guid=mock]"
     ;;
+  -s)
+    # Emulates Android's rotation settings in DROIDLINK_ADB_ROTATION as the two
+    # lines `settings get` prints: accelerometer_rotation, then user_rotation.
+    [[ "${3:-}" == shell ]] || exit 7
+    shift 3
+    rotation_state="${DROIDLINK_ADB_ROTATION:?}"
+    case "$*" in
+      'wm user-rotation free') printf '1\n0\n' >"$rotation_state" ;;
+      'wm user-rotation lock '[0-3]) printf '0\n%s\n' "${*: -1}" >"$rotation_state" ;;
+      'settings get system accelerometer_rotation; settings get system user_rotation')
+        # Real adb shells end lines with CRLF.
+        sed 's/$/\r/' "$rotation_state" 2>/dev/null || printf '1\r\nnull\r\n'
+        ;;
+      *) exit 7 ;;
+    esac
+    ;;
   *) exit 7 ;;
 esac

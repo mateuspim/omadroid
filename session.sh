@@ -8,6 +8,8 @@ mkdir -p -m 700 -- "$runtime_dir"
 chmod 700 -- "$runtime_dir"
 state_file="$runtime_dir/session"
 lock_file="$runtime_dir/lock"
+# Holds the serial whose rotation lock DroidLink set during the current session.
+rotation_file="$runtime_dir/rotation"
 
 start_time() {
   [[ -r "/proc/$1/stat" ]] || return 1
@@ -34,6 +36,66 @@ with_lock() {
   flock -x 9
 }
 
+# Android keeps a user-rotation lock after scrcpy exits. Release only a lock
+# DroidLink set, never one chosen on the phone. Detached so a missing device
+# cannot stall the status poll that holds the session lock.
+release_owned_rotation() {
+  local serial
+  [[ -f "$rotation_file" ]] || return 0
+  serial="$(<"$rotation_file")"
+  rm -f -- "$rotation_file"
+  [[ "$serial" ]] || return 0
+  setsid -f timeout 5 adb -s "$serial" shell wm user-rotation free </dev/null >/dev/null 2>&1 || true
+}
+
+# Send the diagnostic terminal straight to a hidden workspace so it never
+# flashes or takes focus, without asking users to edit their Hyprland config.
+# The rule is named so each launch replaces it. Best effort: without Hyprland
+# the terminal simply stays visible.
+hide_terminal() {
+  command -v hyprctl >/dev/null 2>&1 || return 0
+  hyprctl eval 'hl.window_rule({ name = "droidlink-terminal", match = { class = "^org\\.omarchy\\.droidlink$" }, workspace = "special:droidlink silent", no_initial_focus = true })' >/dev/null 2>&1 || true
+}
+
+# Every path that discovers a finished session goes through here.
+end_session() {
+  rm -f -- "$state_file"
+  release_owned_rotation
+}
+
+# Prints "free" or "lock N", plus "owned" when DroidLink set the lock.
+# Android stores user_rotation as null until it is first set; that means 0.
+query_rotation() {
+  local reply auto="" user=""
+  reply="$(timeout 4 adb -s "$1" shell 'settings get system accelerometer_rotation; settings get system user_rotation' 2>&1)" || {
+    printf '%s\n' "$reply" >&2
+    return 1
+  }
+  reply="${reply//$'\r'/}"
+  { read -r auto; read -r user; } <<<"$reply" || true
+  [[ "$user" == null ]] && user=0
+  if [[ "$auto" == 1 ]]; then
+    echo free
+  elif [[ "$auto" == 0 && "$user" =~ ^[0-3]$ ]]; then
+    echo "lock $user"
+    [[ -f "$rotation_file" ]] && echo owned
+  else
+    printf 'Unexpected rotation settings %q; expected accelerometer_rotation 0|1 and user_rotation 0-3.\n' "$reply" >&2
+    return 1
+  fi
+  return 0
+}
+
+# adb can exit 0 while wm reports an error, so the output is checked too.
+set_rotation() {
+  local reply
+  reply="$(timeout 4 adb -s "$1" shell wm user-rotation "${@:2}" 2>&1)" &&
+    ! grep -qiE 'failed|error|unknown command|permission denied' <<<"$reply" || {
+    printf '%s\n' "${reply:-adb returned no diagnostic}" >&2
+    return 1
+  }
+}
+
 case "${1:-}" in
   check)
     missing=()
@@ -50,7 +112,7 @@ case "${1:-}" in
     if read_session; then
       printf 'active\n%s\n%s\n%s\n%s\n' "${state[2]}" "${state[3]}" "${state[4]}" "${state[0]}"
     else
-      rm -f -- "$state_file"
+      end_session
       printf 'inactive\n'
     fi
     ;;
@@ -76,7 +138,8 @@ case "${1:-}" in
       echo 'A DroidLink session is already active.' >&2
       exit 1
     fi
-    rm -f -- "$state_file"
+    end_session
+    hide_terminal
     # The terminal is detached from Quickshell. Its child execs scrcpy, so
     # terminal output and errors remain visible even after a shell restart.
     setsid -f omarchy launch terminal --app-id=org.omarchy.droidlink --hold --title=DroidLink -- bash "$0" run "$serial" "$audio" "$recording" -- "$@" </dev/null >/dev/null 2>&1
@@ -112,7 +175,7 @@ case "${1:-}" in
   stop)
     with_lock
     if ! read_session; then
-      rm -f -- "$state_file"
+      end_session
       echo 'No active DroidLink session.'
       exit 0
     fi
@@ -121,6 +184,8 @@ case "${1:-}" in
     flock -u 9
     for ((attempt=0; attempt<40; attempt++)); do
       [[ "$(start_time "$pid" 2>/dev/null || true)" == "$birth" ]] || {
+        with_lock
+        read_session || end_session
         echo 'Session stopped.'
         exit 0
       }
@@ -128,8 +193,32 @@ case "${1:-}" in
     done
     if [[ "$(start_time "$pid" 2>/dev/null || true)" == "$birth" ]]; then
       kill -KILL "$pid" 2>/dev/null || true
+      with_lock
+      read_session || end_session
       echo 'Session force-stopped after scrcpy did not exit cleanly.'
     fi
     ;;
-  *) echo 'Usage: session.sh check|status|launch|stop' >&2; exit 2 ;;
+  rotate)
+    action="${2:-}" rotation="${3:-}"
+    case "$action" in
+      lock) [[ "$rotation" =~ ^[0-3]$ ]] || { echo "Invalid rotation '$rotation'; expected 0-3." >&2; exit 2; } ;;
+      free | query) ;;
+      *) echo "Invalid rotate action '$action'; expected lock, free or query." >&2; exit 2 ;;
+    esac
+    with_lock
+    read_session || { echo 'No active DroidLink session.' >&2; exit 1; }
+    serial="${state[2]}"
+    # adb may take seconds; status polls must not wait behind it.
+    flock -u 9
+    [[ "$action" == query ]] && { query_rotation "$serial"; exit; }
+    set_rotation "$serial" $action $rotation || exit 1
+    with_lock
+    if [[ "$action" == lock ]]; then
+      printf '%s\n' "$serial" > "$rotation_file"
+      read_session || end_session
+    else
+      rm -f -- "$rotation_file"
+    fi
+    ;;
+  *) echo 'Usage: session.sh check|status|launch|stop|rotate lock 0-3|free|query' >&2; exit 2 ;;
 esac
