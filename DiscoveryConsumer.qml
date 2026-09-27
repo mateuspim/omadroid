@@ -32,6 +32,8 @@ Item {
     readonly property var services: []
     readonly property string devicesError: ""
     readonly property string mdnsError: ""
+    readonly property string mdnsLevel: ""
+    readonly property string mdnsDetails: ""
     readonly property string updatedAt: ""
     readonly property bool initialized: false
     readonly property bool refreshPending: false

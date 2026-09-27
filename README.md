@@ -198,7 +198,10 @@ lives under `$XDG_RUNTIME_DIR/droidlink-$UID` and is checked against the process
 start time so a stale PID is ignored. Stop sends `TERM` to scrcpy so it can close
 streams and finalize recordings, then force-kills only a session that fails to exit.
 Discovery and ADB actions have bounded timeouts; their diagnostics are bounded and
-shown in the popup. Scrcpy diagnostics remain in the hidden terminal while it is
+shown in the popup. A wireless device that is still advertised but doesn't answer
+(asleep, or Wireless debugging off) gets one muted hint; hard failures such as a
+stopped `avahi-daemon` are shown as errors. Hover the message for Avahi's full
+output. Scrcpy diagnostics remain in the hidden terminal while it is
 open. ADB's failure messages are checked even when it exits with code 0.
 
 ## Development

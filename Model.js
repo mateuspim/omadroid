@@ -97,7 +97,9 @@ function parseMdns(output) {
     if (seen[key]) return rows;
     seen[key] = true;
     var pair = type === "_adb-tls-pairing._tcp";
-    rows.push({ key: key, name: serviceId(name), serial: name, status: pair ? "pairing" : "discovered",
+    // TXT is the rest of the line: "api=36.1" "name=SM-X730" "v=1".
+    var model = (/"name=([^"]*)"/.exec(fields.slice(9).join(";")) || [])[1] || "";
+    rows.push({ key: key, name: serviceId(name), serial: name, model: model, status: pair ? "pairing" : "discovered",
       transport: "Wireless", endpoint: address, service: type, source: "mdns", pair: pair });
     return rows;
   }, []);
@@ -140,6 +142,43 @@ function commandError(code, output, error, name) {
   if (code === 124 || code === 137) return name + " timed out. Try again.";
   if (code === 127) return name + " is unavailable. Install the required executable and refresh.";
   return String(error || output || name + " exited with code " + code).trim().slice(-1800);
+}
+
+/** Summarize discover-mdns.sh stderr for the Devices page.
+ * A cached record whose host no longer answers yields Avahi resolve timeouts, once per
+ * IPv4/IPv6 record; those become one hint per device. Unknown lines stay in details.
+ * Example: mdnsStatus(0, "Failed to resolve service 'adb-X-a' of type '_adb-tls-connect._tcp' in domain 'local': Timeout reached", [], {})
+ *   → { level: "warning", text: "X was seen but didn't answer. Wake it and check Wireless debugging is on.", details: "…" }
+ * @param {number} code @param {string} error @param {Array<object>} services parsed rows from this scan
+ * @param {object} knownNames service name → device model, from earlier scans
+ * @returns {{level: string, text: string, details: string}} level is "", "warning" or "error" */
+function mdnsStatus(code, error, services, knownNames) {
+  var lines = String(error || "").split(/\r?\n/).map(function(line) { return line.trim(); })
+    .filter(function(line, index, all) { return line && all.indexOf(line) === index; });
+  var details = lines.join("\n");
+  if (code === 124 || code === 137 || code === 127)
+    return { level: "error", text: commandError(code, "", error, "Wireless discovery"), details: details };
+  var missing = lines.filter(function(line) { return /^DroidLink mDNS: missing /.test(line); })[0];
+  if (missing) return { level: "error", text: missing.replace(/^DroidLink mDNS: /, ""), details: details };
+  var failedTypes = lines.filter(function(line) { return /^DroidLink mDNS: \S+ discovery failed/.test(line); }).length;
+  if (failedTypes >= 3 || lines.some(function(line) { return /Daemon not running/.test(line); }))
+    return { level: "error", text: "Avahi isn't responding. Check that avahi-daemon is running.", details: details };
+
+  var answered = (Array.isArray(services) ? services : []).map(function(row) { return row.serial; });
+  var silent = [], incomplete = false;
+  lines.forEach(function(line) {
+    var resolve = /^Failed to resolve service '(.+)' of type '[^']+' in domain '[^']*': Timeout reached$/.exec(line);
+    if (resolve) {
+      var name = resolve[1];
+      if (answered.indexOf(name) < 0 && silent.indexOf(name) < 0) silent.push(name);
+    } else incomplete = true;
+  });
+  var hints = silent.map(function(name) {
+    var label = (knownNames && knownNames[name]) || (/^adb-(.+)-[^-]+$/.exec(name) || [])[1] || name;
+    return label + " was seen but didn't answer. Wake it and check Wireless debugging is on.";
+  });
+  if (incomplete) hints.push("Part of wireless discovery didn't finish, so some devices may be missing.");
+  return { level: hints.length ? "warning" : "", text: hints.join("\n"), details: details };
 }
 
 function adbCommand(action, target) {

@@ -62,7 +62,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsError ? " · wireless discovery unavailable" : "")
+    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsLevel === "error" ? " · wireless discovery unavailable" : "")
     iconComponent: Component {
       Item {
         Text {
@@ -218,11 +218,19 @@ Panel {
             text: "ADB: " + discovery.devicesError
             color: Color.urgent
           }
+          // A warning (a device didn't answer) is muted; a hard failure is urgent.
+          // The raw Avahi output stays in the tooltip.
           Label {
             Layout.fillWidth: true
             visible: root.page !== "mirror" && discovery.mdnsError !== ""
-            text: "Wireless discovery: " + discovery.mdnsError + "\nYou can still connect or pair manually in Wireless."
-            color: Color.urgent
+            text: discovery.mdnsLevel === "error" ? "Wireless discovery: " + discovery.mdnsError + "\nYou can still connect or pair manually in Wireless." : discovery.mdnsError
+            color: discovery.mdnsLevel === "error" ? Color.urgent : Util.alpha(Color.foreground, 0.7)
+            lineHeight: 1.3
+            Controls.ToolTip.text: discovery.mdnsDetails
+            Controls.ToolTip.visible: mdnsHover.hovered && discovery.mdnsDetails !== ""
+            HoverHandler {
+              id: mdnsHover
+            }
           }
           Label {
             Layout.fillWidth: true

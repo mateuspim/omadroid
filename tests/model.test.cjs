@@ -172,3 +172,28 @@ test('recording names are unique MKV files and malformed paths fail', () => {
   assert.throws(() => model.recordingPath('relative', 'USB', date, 'x'));
   assert.throws(() => model.recordingPath('/tmp\ninvalid', 'USB', date, 'x'));
 });
+
+test('mDNS resolve timeouts become one hint per unreachable device', () => {
+  const timeout = (name, type) => `Failed to resolve service '${name}' of type '${type}' in domain 'local': Timeout reached`;
+  const stderr = [timeout('adb-R5CX00TEST1-u940uM', '_adb-tls-connect._tcp'), timeout('adb-R5CX00TEST1-u940uM', '_adb-tls-connect._tcp'),
+    timeout('adb-OTHER-abc123', '_adb-tls-connect._tcp'), timeout('adb-AWAKE-x', '_adb-tls-connect._tcp')].join('\n');
+  const awake = model.parseMdns('=;eno1;IPv4;adb-AWAKE-x;_adb-tls-connect._tcp;local;a.local;192.168.1.8;37001;');
+  const status = model.mdnsStatus(0, stderr, awake, { 'adb-R5CX00TEST1-u940uM': 'SM-X730' });
+  assert.equal(status.level, 'warning');
+  assert.equal(status.text, "SM-X730 was seen but didn't answer. Wake it and check Wireless debugging is on.\n" +
+    "OTHER was seen but didn't answer. Wake it and check Wireless debugging is on.");
+  assert.equal(status.details.split('\n').length, 3, 'duplicate IPv4/IPv6 lines are collapsed');
+});
+
+test('mDNS hard failures are errors; clean and partial scans are not', () => {
+  assert.deepEqual(plain(model.mdnsStatus(0, '', [], {})), { level: '', text: '', details: '' });
+  const down = model.mdnsStatus(1, 'Failed to create client object: Daemon not running\nDroidLink mDNS: _adb._tcp discovery failed. Check that avahi-daemon is running.', [], {});
+  assert.equal(down.level, 'error');
+  assert.match(down.text, /avahi-daemon/);
+  assert.match(down.details, /Daemon not running/);
+  assert.equal(model.mdnsStatus(1, 'DroidLink mDNS: missing avahi-browse. Install Avahi and GNU coreutils.', [], {}).text, 'missing avahi-browse. Install Avahi and GNU coreutils.');
+  assert.equal(model.mdnsStatus(124, '', [], {}).level, 'error');
+  const partial = model.mdnsStatus(1, 'Pairing resolver failed\nDroidLink mDNS: _adb-tls-pairing._tcp discovery failed. Check that avahi-daemon is running.', [], {});
+  assert.equal(partial.level, 'warning');
+  assert.match(partial.text, /some devices may be missing/);
+});

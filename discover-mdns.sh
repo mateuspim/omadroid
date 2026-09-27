@@ -60,11 +60,11 @@ done
 
 # + records are announcements without an address; - records are removals.
 # Keep only currently resolved records. Decode escaped names in QML, never as
-# shell source. TXT data is not needed and is omitted from the output.
+# shell source. TXT data is kept for the device model (name=...).
 awk -F ';' '
   $1 == "=" && NF >= 9 {
     key = $2 FS $3 FS $4 FS $5 FS $6
-    row[key] = $1 FS $2 FS $3 FS $4 FS $5 FS $6 FS $7 FS $8 FS $9
+    row[key] = $0
   }
   $1 == "-" { delete row[$2 FS $3 FS $4 FS $5 FS $6] }
   END { for (key in row) print row[key] }

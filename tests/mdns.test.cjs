@@ -27,6 +27,7 @@ for (const scenario of ['', 'avahi_unavailable', 'partial', 'timeout']) {
       const rows = model.parseMdns(result.stdout);
       assert.equal(rows.length, scenario === 'avahi_unavailable' ? 0 : scenario === 'partial' ? 2 : 3);
       assert.equal(rows.some(row => row.serial === 'removed'), false);
+      if (scenario !== 'avahi_unavailable') assert.equal(rows.find(row => row.serial === 'adb-PHONE-random').model, 'SM-X730');
       if (scenario === 'avahi_unavailable') assert.match(result.stderr, /Daemon not running/);
       if (scenario === 'timeout') assert.match(result.stderr, /timed out/);
       if (scenario === 'partial') assert.match(result.stderr, /Pairing resolver failed/);

@@ -62,7 +62,7 @@ ShellRoot {
         testRoot.check(discovery.devices.length === 4, "four adb devices");
         var unavailable = Quickshell.env("DROIDLINK_TEST_CASE") === "avahi_unavailable";
         testRoot.check(discovery.rows.length === (unavailable ? 4 : 6), "merged mDNS rows");
-        testRoot.check(unavailable ? discovery.mdnsError.indexOf("Daemon not running") >= 0 : !discovery.mdnsError, "mDNS failure does not suppress USB");
+        testRoot.check(unavailable ? discovery.mdnsLevel === "error" && discovery.mdnsDetails.indexOf("Daemon not running") >= 0 : !discovery.mdnsError, "mDNS failure does not suppress USB");
         testRoot.check(discovery.readyCount === 2, "ready count");
         if (testRoot.step === 0) {
           testRoot.step = 1;

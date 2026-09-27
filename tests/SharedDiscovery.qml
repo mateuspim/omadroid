@@ -29,7 +29,7 @@ ShellRoot {
         } else if (testRoot.completedScans === 3) {
           testRoot.check(consumerA.item.discovery.readyCount === 2 && consumerB.item.discovery.readyCount === 2, "shared results did not update both consumers");
           var unavailable = Quickshell.env("DROIDLINK_TEST_CASE") === "avahi_unavailable";
-          testRoot.check(unavailable ? sharedDiscovery.mdnsError.indexOf("Daemon not running") >= 0 : sharedDiscovery.mdnsError === "", "mDNS failure was not isolated from shared USB results");
+          testRoot.check(unavailable ? sharedDiscovery.mdnsLevel === "error" && sharedDiscovery.mdnsDetails.indexOf("Daemon not running") >= 0 : sharedDiscovery.mdnsError === "", "mDNS failure was not isolated from shared USB results");
           consumerA.active = false;
           consumerB.item.refresh();
         } else if (testRoot.completedScans === 4) {

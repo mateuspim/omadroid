@@ -8,7 +8,12 @@ Item {
   property var devices: []
   property var services: []
   property string devicesError: ""
+  // mdnsError is the short text shown on the page; mdnsLevel is "", "warning" or "error".
   property string mdnsError: ""
+  property string mdnsLevel: ""
+  property string mdnsDetails: ""
+  // Service name → model from earlier scans, to name a device that stops answering.
+  property var knownNames: ({})
   property string updatedAt: ""
   property bool initialized: false
   property bool refreshPending: false
@@ -51,9 +56,19 @@ Item {
   Command {
     id: mdns
     onFinished: (code, output, error) => {
-      root.mdnsError = code === 0 ? error.trim() : Model.commandError(code, "", error, "mDNS discovery");
       // The helper can return resolved results even when another query fails.
-      root.services = Model.parseMdns(output);
+      var services = Model.parseMdns(output);
+      var names = Object.assign({}, root.knownNames);
+      services.forEach(row => {
+        if (row.model)
+          names[row.serial] = row.model;
+      });
+      root.knownNames = names;
+      var status = Model.mdnsStatus(code, error, services, names);
+      root.mdnsError = status.text;
+      root.mdnsLevel = status.level;
+      root.mdnsDetails = status.details;
+      root.services = services;
     }
   }
 }

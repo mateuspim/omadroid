@@ -8,7 +8,7 @@ case "${*: -1}" in
   _adb._tcp) ;;
   _adb-tls-connect._tcp)
     printf '%s\n' \
-      '=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.4;37001;' \
+      '=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.4;37001;"api=36" "name=SM-X730" "v=1"' \
       '=;eno1;IPv4;adb-NEW-random;_adb-tls-connect._tcp;local;new.local;192.168.1.5;37002;' \
       '=;wlan0;IPv4;adb-NEW-random;_adb-tls-connect._tcp;local;new.local;192.168.1.5;37002;' \
       '=;eno1;IPv4;removed;_adb-tls-connect._tcp;local;gone.local;192.168.1.9;1234;' \
