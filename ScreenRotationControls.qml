@@ -152,7 +152,7 @@ ColumnLayout {
   Label {
     Layout.fillWidth: true
     visible: root.controlMessage !== ""
-    text: root.controlMessage
+    text: (root.controlFailed ? "⚠ " : "") + root.controlMessage
     color: root.controlFailed ? Color.urgent : Color.accent
     wrapMode: Text.WrapAnywhere
     font.pixelSize: Style.font.bodySmall

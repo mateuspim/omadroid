@@ -164,7 +164,7 @@ Panel {
       Label {
         Layout.fillWidth: true
         visible: root.missingTools !== ""
-        text: "Missing tools: " + root.missingTools + ". Install them to use DroidLink mirroring."
+        text: "⚠ Missing tools: " + root.missingTools + ". Install them to use DroidLink mirroring."
         color: Color.urgent
         wrapMode: Text.WordWrap
       }
@@ -216,7 +216,7 @@ Panel {
           Label {
             Layout.fillWidth: true
             visible: root.page === "devices" && discovery.devicesError !== ""
-            text: "ADB: " + discovery.devicesError
+            text: "⚠ ADB: " + discovery.devicesError
             color: Color.urgent
           }
           // A warning (a device didn't answer) is muted; a hard failure is urgent.
@@ -224,7 +224,7 @@ Panel {
           Label {
             Layout.fillWidth: true
             visible: root.page !== "mirror" && discovery.mdnsError !== ""
-            text: discovery.mdnsLevel === "error" ? "Wireless discovery: " + discovery.mdnsError + "\nYou can still connect or pair manually in Wireless." : discovery.mdnsError
+            text: discovery.mdnsLevel === "error" ? "⚠ Wireless discovery: " + discovery.mdnsError + "\nYou can still connect or pair manually in Wireless." : discovery.mdnsError
             color: discovery.mdnsLevel === "error" ? Color.urgent : Util.alpha(Color.foreground, 0.7)
             lineHeight: 1.3
             Controls.ToolTip.text: discovery.mdnsDetails
@@ -242,7 +242,7 @@ Panel {
           Label {
             Layout.fillWidth: true
             visible: root.page !== "mirror" && actions.message !== ""
-            text: actions.message
+            text: (actions.failed ? "⚠ " : "") + actions.message
             color: actions.failed ? Color.urgent : Color.accent
             Accessible.role: Accessible.StaticText
           }

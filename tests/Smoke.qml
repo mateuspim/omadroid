@@ -53,6 +53,7 @@ ShellRoot {
         mirroring.changeOption("fps", "120");
         mirroring.launch();
       } else if (testRoot.step === 9 && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && !testRoot.stopQueued) {
+        testRoot.check(mirroring.message.indexOf("Session started") !== 0, "launch message cleared once active: " + mirroring.message);
         testRoot.check(child(mirroring, "droidlinkSessionCard").visible && !child(mirroring, "droidlinkNextOptions").visible, "session card first, options folded");
         mirroring.optionsExpanded = true;
         testRoot.check(child(mirroring, "droidlinkNextOptions").visible, "options expand during a session");

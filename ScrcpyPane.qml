@@ -171,6 +171,9 @@ ColumnLayout {
         root.sessionAudioOnly = lines[2] === "1";
         root.sessionRecording = lines[3];
         root.sessionPid = Number(lines[4]) || 0;
+        // The card header already says the session is running.
+        if (root.message.indexOf("Session started") === 0)
+          root.message = "";
       } else if (code === 0) {
         root.sessionPid = 0;
         if (wasActive && !root.stopping && root.message.indexOf("Session stopped") !== 0 && root.message.indexOf("Session force-stopped") !== 0) {
@@ -270,7 +273,7 @@ ColumnLayout {
       Label {
         Layout.fillWidth: true
         visible: root.message !== ""
-        text: root.message
+        text: (root.failed ? "⚠ " : "") + root.message
         color: root.failed ? Color.urgent : Color.accent
         wrapMode: Text.WrapAnywhere
         maximumLineCount: 3
@@ -523,7 +526,7 @@ ColumnLayout {
   Label {
     Layout.fillWidth: true
     visible: root.message !== "" && !root.busy
-    text: root.message
+    text: (root.failed ? "⚠ " : "") + root.message
     color: root.failed ? Color.urgent : Color.accent
     wrapMode: Text.WrapAnywhere
     maximumLineCount: 3
