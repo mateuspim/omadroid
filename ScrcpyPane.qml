@@ -22,6 +22,7 @@ ColumnLayout {
   property bool sessionAudioOnly: false
   property int sessionPid: 0
   property string missingTools: ""
+  property bool optionsExpanded: false
   readonly property bool busy: sessionPid > 0 || launcher.busy
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
   readonly property var readyDevices: devices.filter(row => row.status === "device")
@@ -49,6 +50,9 @@ ColumnLayout {
   }
   onVisibleChanged: if (visible && !checkTools.busy)
     checkTools.start(["bash", sessionScript, "check"], 3)
+  // Each session starts with its options folded so the session controls fit.
+  onBusyChanged: if (busy)
+    optionsExpanded = false
   onReadyDevicesChanged: {
     // Preserve a vanished selection so unplugging cannot silently redirect a
     // launch to another phone. Only auto-select before any explicit choice.
@@ -215,252 +219,307 @@ ColumnLayout {
       Accessible.name: root.stopping ? "Mirroring session stopping" : "Mirroring session active"
     }
   }
-  Label {
+  // While a session runs, its controls come first; the options below only
+  // affect the next launch, so they fold away until asked for.
+  Rectangle {
+    objectName: "droidlinkSessionCard"
     Layout.fillWidth: true
-    visible: root.missingTools !== ""
-    text: "Missing tools: " + root.missingTools + ". Install them to mirror devices."
-    color: Color.urgent
-    wrapMode: Text.WordWrap
-  }
-  Label {
-    Layout.fillWidth: true
-    visible: readyDevices.length === 0 || (!!selectedSerial && !selectedReady)
-    text: readyDevices.length === 0 ? "Connect and authorize a device to start mirroring." : "The selected device is no longer ready. Choose another device or reconnect it."
-    color: Util.alpha(Color.foreground, 0.7)
-  }
-  GridLayout {
-    Layout.fillWidth: true
-    columns: 2
-    columnSpacing: Style.space(8)
-    Dropdown {
-      Layout.fillWidth: true
-      Layout.preferredWidth: 1
-      label: "Device"
-      value: root.selectedSerial
-      options: root.deviceOptions
-      enabled: !root.busy && root.readyDevices.length > 0
-      Accessible.name: "Mirror device"
-      onChanged: value => root.chooseDevice(value)
-    }
-    Dropdown {
-      Layout.fillWidth: true
-      Layout.preferredWidth: 1
-      label: "Profile"
-      value: root.profileName
-      options: root.profiles.map(p => p.name).concat(root.profileName === "Custom" ? ["Custom"] : [])
-      Accessible.name: "Launch profile"
-      onChanged: value => {
-        if (value !== "Custom")
-          root.selectProfile(value);
+    visible: root.busy
+    implicitHeight: sessionCardContent.implicitHeight + Style.space(24)
+    radius: Style.cornerRadius
+    color: Util.alpha(Color.accent, 0.06)
+    border.color: Util.alpha(Color.accent, 0.4)
+    ColumnLayout {
+      id: sessionCardContent
+      anchors {
+        left: parent.left
+        right: parent.right
+        top: parent.top
+        margins: Style.space(12)
+      }
+      spacing: Style.space(6)
+      RowLayout {
+        Layout.fillWidth: true
+        Label {
+          Layout.fillWidth: true
+          text: (root.sessionPid > 0 ? (root.sessionAudioOnly ? "Audio only" : "Mirroring") : "Starting") + (root.sessionSerial ? " · " + root.sessionSerial : "")
+          font.bold: true
+          wrapMode: Text.WrapAnywhere
+          maximumLineCount: 2
+          elide: Text.ElideRight
+          Accessible.name: text
+        }
+        ActionButton {
+          text: root.stopping ? "Stopping…" : root.sessionAudioOnly ? "Stop audio" : "Stop mirroring"
+          selected: true
+          enabled: root.sessionPid > 0 && !root.stopping
+          tooltipText: "Request a clean scrcpy shutdown so recordings can finalize"
+          onClicked: root.stop()
+        }
+      }
+      Label {
+        Layout.fillWidth: true
+        visible: root.sessionRecording !== ""
+        text: "Recording: " + root.sessionRecording
+        wrapMode: Text.WrapAnywhere
+        maximumLineCount: 2
+        elide: Text.ElideRight
+        color: Util.alpha(Color.foreground, 0.7)
+        font.pixelSize: Style.font.bodySmall
+        Accessible.name: text
+      }
+      Label {
+        Layout.fillWidth: true
+        visible: root.message !== ""
+        text: root.message
+        color: root.failed ? Color.urgent : Color.accent
+        wrapMode: Text.WrapAnywhere
+        maximumLineCount: 3
+        elide: Text.ElideRight
+        font.pixelSize: Style.font.bodySmall
+        Accessible.name: text
+      }
+      ScreenPowerControls {
+        Layout.fillWidth: true
+        visible: !root.sessionAudioOnly
+        sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
+        sessionPid: root.sessionPid
+      }
+      ScreenRotationControls {
+        Layout.fillWidth: true
+        visible: !root.sessionAudioOnly
+        sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
+        sessionPid: root.sessionPid
+        deviceSerial: root.sessionSerial
+        sessionScript: root.sessionScript
       }
     }
   }
-  GridLayout {
+  ActionButton {
     Layout.fillWidth: true
-    columns: 2
-    columnSpacing: Style.space(6)
-    rowSpacing: Style.space(4)
-    Dropdown {
-      Layout.fillWidth: true
-      Layout.preferredWidth: 1
-      label: "Resolution"
-      value: root.profile.maxSize
-      options: [
-        {
-          value: "0",
-          label: "Native"
-        },
-        { value: "720", label: "720 px edge" },
-        { value: "1080", label: "1080 px edge" },
-        { value: "1440", label: "1440 px edge" },
-        { value: "1920", label: "1080p · 1920 edge" },
-        { value: "2560", label: "1440p · 2560 edge" },
-        { value: "3840", label: "4K · 3840 edge" }]
-      Accessible.name: "Resolution maximum edge"
-      onChanged: value => root.changeOption("maxSize", value)
-    }
-    Dropdown {
-      Layout.fillWidth: true
-      Layout.preferredWidth: 1
-      label: "FPS limit"
-      value: root.profile.fps
-      options: [
-        {
-          value: "0",
-          label: "Unlimited"
-        },
-        "15", "24", "30", "60", "90", "120"]
-      Accessible.name: "FPS limit"
-      onChanged: value => root.changeOption("fps", value)
-    }
-    Dropdown {
-      Layout.fillWidth: true
-      Layout.preferredWidth: 1
-      label: "Codec"
-      value: root.profile.codec
-      options: [
-        {
-          value: "h264",
-          label: "H.264"
-        },
-        {
-          value: "h265",
-          label: "H.265"
-        },
-        {
-          value: "av1",
-          label: "AV1"
-        }
-      ]
-      Accessible.name: "Video codec"
-      onChanged: value => root.changeOption("codec", value)
-    }
-    Dropdown {
-      Layout.fillWidth: true
-      Layout.preferredWidth: 1
-      label: "Bitrate"
-      value: root.profile.bitrate
-      options: ["2", "4", "8", "12", "16", "20", "32", "50", "60"]
-      Accessible.name: "Video bitrate in megabits per second"
-      onChanged: value => root.changeOption("bitrate", value)
-    }
+    visible: root.busy
+    text: (root.optionsExpanded ? "▾ " : "▸ ") + "Next session options"
+    tooltipText: "Options apply to the next launch, not the running session"
+    Accessible.role: Accessible.Button
+    Accessible.checkable: true
+    Accessible.checked: root.optionsExpanded
+    Accessible.name: "Next session options"
+    onClicked: root.optionsExpanded = !root.optionsExpanded
   }
-  GridLayout {
+  ColumnLayout {
+    objectName: "droidlinkNextOptions"
     Layout.fillWidth: true
-    columns: 2
-    columnSpacing: Style.space(6)
-    rowSpacing: Style.space(4)
-    Repeater {
-      model: [
-        {
-          key: "audio",
-          label: "Audio",
-          tip: "Forward Android audio; support depends on the Android version"
-        },
-        {
-          key: "record",
-          label: "Recording",
-          tip: "Record video as MKV or an audio-only session as MKA"
-        },
-        {
-          key: "screenOff",
-          label: "Device screen off",
-          tip: "Turn the phone display off when the next video session starts"
-        },
-        {
-          key: "keepActive",
-          label: "Prevent idle sleep",
-          tip: "Prevent Android inactivity sleep during the next video session"
-        },
-        {
-          key: "fullscreen",
-          label: "Fullscreen",
-          tip: "Start the next scrcpy video window in fullscreen"
-        }
-      ]
-      delegate: ActionButton {
-        required property var modelData
+    visible: !root.busy || root.optionsExpanded
+    spacing: root.spacing
+    Label {
+      Layout.fillWidth: true
+      visible: readyDevices.length === 0 || (!!selectedSerial && !selectedReady)
+      text: readyDevices.length === 0 ? "Connect and authorize a device to start mirroring." : "The selected device is no longer ready. Choose another device or reconnect it."
+      color: Util.alpha(Color.foreground, 0.7)
+    }
+    GridLayout {
+      Layout.fillWidth: true
+      columns: 2
+      columnSpacing: Style.space(8)
+      Dropdown {
         Layout.fillWidth: true
         Layout.preferredWidth: 1
-        readonly property bool optionSelected: modelData.key === "keepActive" ? Model.preventsIdleSleep(root.profile) : root.profile[modelData.key]
-        text: (optionSelected ? "✓ " : "○ ") + modelData.label
-        selected: optionSelected
-        tooltipText: modelData.tip
-        Accessible.role: Accessible.CheckBox
-        Accessible.checkable: true
-        Accessible.checked: optionSelected
-        Accessible.name: modelData.label
-        onClicked: root.changeOption(modelData.key, !optionSelected)
+        label: "Device"
+        value: root.selectedSerial
+        options: root.deviceOptions
+        enabled: !root.busy && root.readyDevices.length > 0
+        Accessible.name: "Mirror device"
+        onChanged: value => root.chooseDevice(value)
+      }
+      Dropdown {
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        label: "Profile"
+        value: root.profileName
+        options: root.profiles.map(p => p.name).concat(root.profileName === "Custom" ? ["Custom"] : [])
+        Accessible.name: "Launch profile"
+        onChanged: value => {
+          if (value !== "Custom")
+            root.selectProfile(value);
+        }
+      }
+    }
+    GridLayout {
+      Layout.fillWidth: true
+      columns: 2
+      columnSpacing: Style.space(6)
+      rowSpacing: Style.space(4)
+      Dropdown {
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        label: "Resolution"
+        value: root.profile.maxSize
+        options: [
+          {
+            value: "0",
+            label: "Native"
+          },
+          { value: "720", label: "720 px edge" },
+          { value: "1080", label: "1080 px edge" },
+          { value: "1440", label: "1440 px edge" },
+          { value: "1920", label: "1080p · 1920 edge" },
+          { value: "2560", label: "1440p · 2560 edge" },
+          { value: "3840", label: "4K · 3840 edge" }]
+        Accessible.name: "Resolution maximum edge"
+        onChanged: value => root.changeOption("maxSize", value)
+      }
+      Dropdown {
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        label: "FPS limit"
+        value: root.profile.fps
+        options: [
+          {
+            value: "0",
+            label: "Unlimited"
+          },
+          "15", "24", "30", "60", "90", "120"]
+        Accessible.name: "FPS limit"
+        onChanged: value => root.changeOption("fps", value)
+      }
+      Dropdown {
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        label: "Codec"
+        value: root.profile.codec
+        options: [
+          {
+            value: "h264",
+            label: "H.264"
+          },
+          {
+            value: "h265",
+            label: "H.265"
+          },
+          {
+            value: "av1",
+            label: "AV1"
+          }
+        ]
+        Accessible.name: "Video codec"
+        onChanged: value => root.changeOption("codec", value)
+      }
+      Dropdown {
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        label: "Bitrate"
+        value: root.profile.bitrate
+        options: ["2", "4", "8", "12", "16", "20", "32", "50", "60"]
+        Accessible.name: "Video bitrate in megabits per second"
+        onChanged: value => root.changeOption("bitrate", value)
+      }
+    }
+    GridLayout {
+      Layout.fillWidth: true
+      columns: 2
+      columnSpacing: Style.space(6)
+      rowSpacing: Style.space(4)
+      Repeater {
+        model: [
+          {
+            key: "audio",
+            label: "Audio",
+            tip: "Forward Android audio; support depends on the Android version"
+          },
+          {
+            key: "record",
+            label: "Recording",
+            tip: "Record video as MKV or an audio-only session as MKA"
+          },
+          {
+            key: "screenOff",
+            label: "Device screen off",
+            tip: "Turn the phone display off when the next video session starts"
+          },
+          {
+            key: "keepActive",
+            label: "Prevent idle sleep",
+            tip: "Prevent Android inactivity sleep during the next video session"
+          },
+          {
+            key: "fullscreen",
+            label: "Fullscreen",
+            tip: "Start the next scrcpy video window in fullscreen"
+          }
+        ]
+        delegate: ActionButton {
+          required property var modelData
+          Layout.fillWidth: true
+          Layout.preferredWidth: 1
+          readonly property bool optionSelected: modelData.key === "keepActive" ? Model.preventsIdleSleep(root.profile) : root.profile[modelData.key]
+          text: (optionSelected ? "✓ " : "○ ") + modelData.label
+          selected: optionSelected
+          tooltipText: modelData.tip
+          Accessible.role: Accessible.CheckBox
+          Accessible.checkable: true
+          Accessible.checked: optionSelected
+          Accessible.name: modelData.label
+          onClicked: root.changeOption(modelData.key, !optionSelected)
+        }
+      }
+    }
+    TextField {
+      id: folderField
+      Layout.fillWidth: true
+      visible: root.profile.record
+      text: saved.recordingFolder
+      placeholderText: "Existing recording folder · absolute path"
+      Accessible.name: "Recording folder"
+      Controls.ToolTip.text: "A unique MKV is created for video; audio-only creates MKA. Stop the session to finalize it."
+      Controls.ToolTip.visible: hovered
+      onEditingFinished: saved.recordingFolder = text.trim()
+    }
+    RowLayout {
+      Layout.fillWidth: true
+      TextField {
+        id: nameField
+        Layout.fillWidth: true
+        maximumLength: 48
+        placeholderText: "Save options as…"
+        Accessible.name: "Profile name"
+        onAccepted: root.saveProfile()
+      }
+      ActionButton {
+        text: "Save"
+        enabled: nameField.text.trim() !== ""
+        tooltipText: "Save the current options as a reusable profile"
+        onClicked: root.saveProfile()
+      }
+      ActionButton {
+        text: "Remove"
+        visible: root.customProfiles.some(p => p.name === root.profileName)
+        tooltipText: "Remove this saved profile"
+        onClicked: root.removeProfile()
+      }
+      ActionButton {
+        text: "Reset"
+        enabled: root.profileName === "Custom"
+        tooltipText: "Restore options from “" + root.baseProfileName + "” without changing saved profiles or connections"
+        onClicked: root.resetOptions()
       }
     }
   }
-  TextField {
-    id: folderField
-    Layout.fillWidth: true
-    visible: root.profile.record
-    text: saved.recordingFolder
-    placeholderText: "Existing recording folder · absolute path"
-    Accessible.name: "Recording folder"
-    Controls.ToolTip.text: "A unique MKV is created for video; audio-only creates MKA. Stop the session to finalize it."
-    Controls.ToolTip.visible: hovered
-    onEditingFinished: saved.recordingFolder = text.trim()
-  }
   RowLayout {
     Layout.fillWidth: true
-    TextField {
-      id: nameField
-      Layout.fillWidth: true
-      maximumLength: 48
-      placeholderText: "Save options as…"
-      Accessible.name: "Profile name"
-      onAccepted: root.saveProfile()
-    }
+    visible: !root.busy
     ActionButton {
-      text: "Save"
-      enabled: nameField.text.trim() !== ""
-      tooltipText: "Save the current options as a reusable profile"
-      onClicked: root.saveProfile()
-    }
-    ActionButton {
-      text: "Remove"
-      visible: root.customProfiles.some(p => p.name === root.profileName)
-      tooltipText: "Remove this saved profile"
-      onClicked: root.removeProfile()
-    }
-    ActionButton {
-      text: "Reset"
-      enabled: root.profileName === "Custom"
-      tooltipText: "Restore options from “" + root.baseProfileName + "” without changing saved profiles or connections"
-      onClicked: root.resetOptions()
-    }
-  }
-  RowLayout {
-    Layout.fillWidth: true
-    ActionButton {
-      text: root.busy && !root.sessionAudioOnly ? "Mirroring…" : "Launch scrcpy"
+      text: "Launch scrcpy"
       selected: true
-      enabled: root.selectedReady && !root.busy && !root.missingTools
+      enabled: root.selectedReady && !root.missingTools
       tooltipText: "Start video mirroring with the selected options"
       onClicked: root.launch(false)
     }
     ActionButton {
-      text: root.busy && root.sessionAudioOnly ? "Audio playing…" : "Audio only"
-      enabled: root.selectedReady && !root.busy && !root.missingTools
+      text: "Audio only"
+      enabled: root.selectedReady && !root.missingTools
       tooltipText: "Start windowless audio; stop it here in DroidLink"
       onClicked: root.launch(true)
     }
-    ActionButton {
-      text: root.stopping ? "Stopping…" : root.sessionAudioOnly ? "Stop audio" : "Stop mirroring"
-      visible: root.busy
-      enabled: !root.stopping
-      tooltipText: "Request a clean scrcpy shutdown so recordings can finalize"
-      onClicked: root.stop()
-    }
-  }
-  Label {
-    Layout.fillWidth: true
-    visible: root.busy
-    text: "Session: " + root.sessionSerial + (root.sessionAudioOnly ? " · Audio only" : "") + (root.sessionRecording ? "\nRecording: " + root.sessionRecording : "")
-    wrapMode: Text.WrapAnywhere
-    maximumLineCount: 2
-    elide: Text.ElideRight
-    color: Color.accent
-    font.pixelSize: Style.font.bodySmall
-    Accessible.name: text
-  }
-  ScreenPowerControls {
-    Layout.fillWidth: true
-    visible: root.busy && !root.sessionAudioOnly
-    sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
-    sessionPid: root.sessionPid
-  }
-  ScreenRotationControls {
-    Layout.fillWidth: true
-    visible: root.busy && !root.sessionAudioOnly
-    sessionActive: root.busy && !root.stopping && !root.sessionAudioOnly
-    sessionPid: root.sessionPid
-    deviceSerial: root.sessionSerial
-    sessionScript: root.sessionScript
   }
   Label {
     Layout.fillWidth: true

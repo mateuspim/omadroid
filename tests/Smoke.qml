@@ -12,6 +12,14 @@ ShellRoot {
       Qt.exit(1);
     }
   }
+  function child(item, name) {
+    for (var i = 0; i < item.children.length; i++) {
+      var found = item.children[i].objectName === name ? item.children[i] : child(item.children[i], name);
+      if (found)
+        return found;
+    }
+    return null;
+  }
   DroidLink.ScrcpyPane {
     id: mirroring
     width: 440
@@ -45,9 +53,13 @@ ShellRoot {
         mirroring.changeOption("fps", "120");
         mirroring.launch();
       } else if (testRoot.step === 9 && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && !testRoot.stopQueued) {
+        testRoot.check(child(mirroring, "droidlinkSessionCard").visible && !child(mirroring, "droidlinkNextOptions").visible, "session card first, options folded");
+        mirroring.optionsExpanded = true;
+        testRoot.check(child(mirroring, "droidlinkNextOptions").visible, "options expand during a session");
         testRoot.stopQueued = true;
         stopTimer.start();
       } else if (testRoot.step === 9 && testRoot.stopQueued && !mirroring.busy && !otherMonitor.busy) {
+        testRoot.check(!child(mirroring, "droidlinkSessionCard").visible && child(mirroring, "droidlinkNextOptions").visible, "options shown when idle");
         testRoot.step = 10;
         mirroring.chooseDevice("UNPLUGGED");
         mirroring.launch();
