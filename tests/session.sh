@@ -63,7 +63,7 @@ done
 [[ "$(session rotate query)" == free ]]
 session rotate lock 1
 [[ "$(session rotate query)" == $'lock 1\nowned' ]]
-session stop
+[[ "$(session stop)" == 'Session stopped.' ]]
 wait_for_inactive
 wait_for_rotation $'1\n0'
 
@@ -92,4 +92,26 @@ pid="$(session status | sed -n 5p)"
 kill -KILL "$pid"
 wait_for_inactive
 wait_for_rotation $'1\n0'
+# A scrcpy that ignores SIGTERM is killed, and the session is already gone
+# when stop returns, so the next status agrees without another poll.
+DROIDLINK_SCRCPY_IGNORE_TERM=1 launch_long_session
+[[ "$(session stop)" == 'Session force-stopped after scrcpy did not exit cleanly.' ]]
+[[ "$(session status)" == inactive ]]
+
+# A missing recording folder fails the launch with a reason instead of
+# letting scrcpy die in the hidden terminal.
+if error="$(session launch USB123 0 "$test_dir/missing/DroidLink.mkv" -- scrcpy --serial=USB123 2>&1)"; then
+  echo 'Launch into a missing recording folder unexpectedly succeeded.' >&2
+  exit 1
+fi
+[[ "$error" == "Recording folder $test_dir/missing does not exist."* ]]
+[[ "$(session status)" == inactive ]]
+if [[ $EUID -ne 0 ]]; then
+  mkdir -m 500 "$test_dir/readonly"
+  if error="$(session launch USB123 0 "$test_dir/readonly/DroidLink.mkv" -- scrcpy --serial=USB123 2>&1)"; then
+    echo 'Launch into a read-only recording folder unexpectedly succeeded.' >&2
+    exit 1
+  fi
+  [[ "$error" == *"is not writable"* ]]
+fi
 echo 'DROIDLINK_SESSION_OK'

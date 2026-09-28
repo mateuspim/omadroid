@@ -144,7 +144,8 @@ ColumnLayout {
     if (!busy || stopping)
       return;
     stopping = true;
-    stopper.start(["bash", sessionScript, "stop"], 7);
+    // Up to 4 s for a clean exit plus 2 s after SIGKILL.
+    stopper.start(["bash", sessionScript, "stop"], 10);
   }
 
   function refreshSession() {

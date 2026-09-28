@@ -11,7 +11,8 @@ printf '%s\n' "$@" > "$DROIDLINK_TEST_ARGS"
 printf '%s\n' 'INFO: scrcpy fixture started'
 for arg in "$@"; do
   if [[ "$arg" == --max-fps=120 ]]; then
-    trap 'exit 0' TERM
+    # DROIDLINK_SCRCPY_IGNORE_TERM models a scrcpy that hangs on shutdown.
+    if [[ -n "${DROIDLINK_SCRCPY_IGNORE_TERM:-}" ]]; then trap '' TERM; else trap 'exit 0' TERM; fi
     while true; do sleep 0.1; done
   fi
 done

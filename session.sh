@@ -129,6 +129,12 @@ case "${1:-}" in
     for program in adb scrcpy; do
       command -v "$program" >/dev/null 2>&1 || { echo "Missing $program. Install it before launching." >&2; exit 127; }
     done
+    # scrcpy would otherwise die in the hidden terminal with no visible reason.
+    if [[ "$recording" ]]; then
+      folder="$(dirname -- "$recording")"
+      [[ -d "$folder" ]] || { echo "Recording folder $folder does not exist. Create it or choose another folder." >&2; exit 1; }
+      [[ -w "$folder" ]] || { echo "Recording folder $folder is not writable. Choose another folder." >&2; exit 1; }
+    fi
     if ! command -v omarchy >/dev/null 2>&1 || ! command -v xdg-terminal-exec >/dev/null 2>&1 || ! xdg-terminal-exec --print-id >/dev/null 2>&1; then
       echo 'No Omarchy default terminal is available.' >&2
       exit 127
@@ -180,23 +186,29 @@ case "${1:-}" in
       exit 0
     fi
     pid="${state[0]}" birth="${state[1]}"
-    kill -TERM "$pid"
+    # scrcpy may exit on its own between read_session and here.
+    kill -TERM "$pid" 2>/dev/null || true
     flock -u 9
-    for ((attempt=0; attempt<40; attempt++)); do
-      [[ "$(start_time "$pid" 2>/dev/null || true)" == "$birth" ]] || {
-        with_lock
-        read_session || end_session
-        echo 'Session stopped.'
-        exit 0
-      }
-      sleep 0.1
-    done
-    if [[ "$(start_time "$pid" 2>/dev/null || true)" == "$birth" ]]; then
+    alive() { [[ "$(start_time "$pid" 2>/dev/null || true)" == "$birth" ]]; }
+    wait_gone() {
+      local attempt
+      for ((attempt=0; attempt<$1; attempt++)); do
+        alive || return 0
+        sleep 0.1
+      done
+      ! alive
+    }
+    if wait_gone 40; then
+      message='Session stopped.'
+    else
       kill -KILL "$pid" 2>/dev/null || true
-      with_lock
-      read_session || end_session
-      echo 'Session force-stopped after scrcpy did not exit cleanly.'
+      # Clean up only once the process is gone, so read_session agrees.
+      wait_gone 20 || true
+      message='Session force-stopped after scrcpy did not exit cleanly.'
     fi
+    with_lock
+    read_session || end_session
+    echo "$message"
     ;;
   rotate)
     action="${2:-}" rotation="${3:-}"
