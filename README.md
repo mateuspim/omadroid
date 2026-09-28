@@ -6,7 +6,8 @@ settings.
 
 ## Features
 
-- **Devices:** one process-wide discovery service runs parallel `adb devices -l` and Avahi-based mDNS discovery for every monitor;
+- **Devices:** one process-wide discovery service runs `adb devices -l` for every monitor,
+  plus Avahi-based mDNS discovery in parallel while the popup is open; it shows
   device model/name, serial or service identity, status, and transport. The bar
   badge counts authorized, ready transports. Refresh on open and every 15 seconds
   by default; the existing widget setting accepts 5–3600 seconds.
@@ -22,7 +23,9 @@ settings.
   portrait, landscape, or either inverted orientation. **Auto rotate / reset**
   restores Android's sensor rotation. A lock set from DroidLink is released when
   the session ends; a lock set on the phone is kept. Use **Stop audio** in DroidLink to end an
-  audio-only session.
+  audio-only session. While a session runs, its controls (Stop, phone screen,
+  rotation) come first and the options for the next launch fold under
+  **Next session options**.
 
 The popup follows the active Omarchy theme and uses its native buttons, inputs,
 dropdowns, typography, and keyboard focus styles. Tab moves between controls;
@@ -180,7 +183,8 @@ See [scrcpy's device controls](https://github.com/Genymobile/scrcpy/blob/v4.1/do
 
 Recording creates a unique timestamped `.mkv` file in the selected existing,
 writable folder; the default is your home directory. Audio-only sessions instead
-create `.mka` files. The session displays its exact path. Audio is included only
+create `.mka` files. A missing or read-only folder stops the launch with a
+message saying so. The session displays its exact path. Audio is included only
 when forwarding is enabled and supported.
 Use **Stop mirroring** or close the scrcpy window to finalize a recording.
 Scrcpy runs in Omarchy's configured default terminal on a hidden
