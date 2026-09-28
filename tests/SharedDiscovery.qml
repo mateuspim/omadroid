@@ -25,15 +25,21 @@ ShellRoot {
         if (testRoot.completedScans === 1) {
           testRoot.check(consumerA.item.discovery === sharedDiscovery && consumerB.item.discovery === sharedDiscovery, "consumers do not share the discovery owner");
           testRoot.check(consumerA.item.discovery.rows === consumerB.item.discovery.rows, "consumers do not observe the same rows");
+          testRoot.check(sharedDiscovery.services.length === 0 && sharedDiscovery.mdnsDetails === "", "mDNS ran with no popup open");
+          consumerA.item.holdMdns(true);
+          consumerB.item.holdMdns(true);
+          consumerB.item.holdMdns(false);
+          testRoot.check(sharedDiscovery.mdnsHolders.length === 1 && sharedDiscovery.mdnsWanted, "an open popup did not hold mDNS");
           refreshMarker.running = true;
         } else if (testRoot.completedScans === 3) {
           testRoot.check(consumerA.item.discovery.readyCount === 2 && consumerB.item.discovery.readyCount === 2, "shared results did not update both consumers");
           var unavailable = Quickshell.env("DROIDLINK_TEST_CASE") === "avahi_unavailable";
-          testRoot.check(unavailable ? sharedDiscovery.mdnsLevel === "error" && sharedDiscovery.mdnsDetails.indexOf("Daemon not running") >= 0 : sharedDiscovery.mdnsError === "", "mDNS failure was not isolated from shared USB results");
+          testRoot.check(unavailable ? sharedDiscovery.mdnsLevel === "error" && sharedDiscovery.mdnsDetails.indexOf("Daemon not running") >= 0 : sharedDiscovery.mdnsError === "" && sharedDiscovery.services.length > 0, "mDNS failure was not isolated from shared USB results");
           consumerA.active = false;
           consumerB.item.refresh();
         } else if (testRoot.completedScans === 4) {
           testRoot.check(!consumerA.item && consumerB.item.discovery.readyCount === 2, "removing one consumer stopped shared discovery");
+          testRoot.check(!sharedDiscovery.mdnsWanted, "a destroyed consumer kept holding mDNS");
           actions.run("connect", "phone.local:37001", "");
         }
       });

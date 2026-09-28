@@ -50,6 +50,7 @@ Panel {
     }
   }
   onOpenedChanged: {
+    discoveryConsumer.holdMdns(opened);
     if (opened) {
       if (!prerequisites.busy)
         prerequisites.start(["bash", sessionScript, "check"], 3);
@@ -371,6 +372,8 @@ Panel {
             objectName: "droidlinkScrcpy"
             width: mirrorScroll.availableWidth
             devices: discovery.devices
+            missingTools: root.missingTools
+            panelOpen: root.opened
           }
         }
       }

@@ -69,6 +69,7 @@ ShellRoot {
   }
   DroidLink.Discovery {
     id: discovery
+    mdnsInBackground: true
     onBusyChanged: if (!busy && initialized) {
       Qt.callLater(function () {
         testRoot.check(discovery.devices.length === 4, "four adb devices");

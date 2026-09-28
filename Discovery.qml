@@ -17,6 +17,11 @@ Item {
   property string updatedAt: ""
   property bool initialized: false
   property bool refreshPending: false
+  // mDNS results are only shown in the popup, so Avahi runs while a consumer
+  // holds it (an open popup). Standalone hosts can opt into background scans.
+  property bool mdnsInBackground: false
+  property var mdnsHolders: []
+  readonly property bool mdnsWanted: mdnsInBackground || mdnsHolders.length > 0
   readonly property string mdnsScript: decodeURIComponent(Qt.resolvedUrl("discover-mdns.sh").toString().replace(/^file:\/\//, ""))
   readonly property bool busy: usb.busy || mdns.busy
   readonly property var rows: Model.deviceRows(devices, services)
@@ -29,7 +34,15 @@ Item {
     }
     refreshPending = false;
     usb.start(["adb", "devices", "-l"], 12);
-    mdns.start(["bash", mdnsScript], 12);
+    if (mdnsWanted)
+      mdns.start(["bash", mdnsScript], 12);
+  }
+
+  function holdMdns(owner, wanted) {
+    var holders = mdnsHolders.filter(holder => holder !== owner);
+    if (wanted)
+      holders.push(owner);
+    mdnsHolders = holders;
   }
 
   onBusyChanged: if (!busy) {

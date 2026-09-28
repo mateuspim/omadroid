@@ -8,6 +8,7 @@ Item {
   property var shell: null
   property string pluginId: "pym.droidlink"
   property int intervalSec: 15
+  property bool mdnsWanted: false
   readonly property var sharedDiscovery: shell && typeof shell.serviceFor === "function" ? shell.serviceFor(pluginId) : null
   readonly property var discovery: sharedDiscovery || unavailableDiscovery
 
@@ -16,14 +17,25 @@ Item {
       sharedDiscovery.refresh();
   }
 
-  function configure() {
+  // Call before refresh() so the scan that follows includes mDNS.
+  function holdMdns(wanted) {
+    mdnsWanted = wanted;
     if (sharedDiscovery)
+      sharedDiscovery.holdMdns(root, wanted);
+  }
+
+  function configure() {
+    if (sharedDiscovery) {
       sharedDiscovery.intervalSec = intervalSec;
+      sharedDiscovery.holdMdns(root, mdnsWanted);
+    }
   }
 
   onSharedDiscoveryChanged: configure()
   onIntervalSecChanged: configure()
   Component.onCompleted: configure()
+  Component.onDestruction: if (sharedDiscovery)
+    sharedDiscovery.holdMdns(root, false)
 
   QtObject {
     id: unavailableDiscovery

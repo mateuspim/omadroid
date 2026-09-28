@@ -21,7 +21,9 @@ ColumnLayout {
   property string sessionRecording: ""
   property bool sessionAudioOnly: false
   property int sessionPid: 0
+  // Supplied by the panel, which runs `session.sh check` on open.
   property string missingTools: ""
+  property bool panelOpen: true
   property bool optionsExpanded: false
   readonly property bool busy: sessionPid > 0 || launcher.busy
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
@@ -45,11 +47,10 @@ ColumnLayout {
 
   Component.onCompleted: {
     selectProfile(saved.lastProfile);
-    checkTools.start(["bash", sessionScript, "check"], 3);
     refreshSession();
   }
-  onVisibleChanged: if (visible && !checkTools.busy)
-    checkTools.start(["bash", sessionScript, "check"], 3)
+  onPanelOpenChanged: if (panelOpen)
+    refreshSession()
   // Each session starts with its options folded so the session controls fit.
   onBusyChanged: if (busy)
     optionsExpanded = false
@@ -146,19 +147,16 @@ ColumnLayout {
     stopper.start(["bash", sessionScript, "stop"], 7);
   }
 
-  Command {
-    id: checkTools
-    onFinished: (code, output, error) => {
-      root.missingTools = code === 0 ? output.trim().split("\n").filter(Boolean).join(", ") : "adb, scrcpy, Omarchy default terminal";
-    }
-  }
   function refreshSession() {
     if (!status.busy)
       status.start(["bash", sessionScript, "status"], 3);
   }
+  // A status poll also ends a finished session and releases its owned
+  // rotation lock, so keep a slow poll while a session runs behind a closed
+  // popup. Closed and idle, nothing polls; opening the popup re-reads state.
   Timer {
-    interval: 1000
-    running: true
+    interval: root.panelOpen ? 1000 : 5000
+    running: root.panelOpen || root.busy
     repeat: true
     onTriggered: root.refreshSession()
   }
