@@ -35,6 +35,11 @@ ColumnLayout {
   readonly property var readyDevices: devices.filter(row => row.status === "device")
   readonly property var customProfiles: Model.savedProfiles(saved.profilesJson)
   readonly property var profiles: Model.builtInProfiles().concat(customProfiles)
+  readonly property var sessionDevice: devices.find(row => row.serial === sessionSerial) || null
+  // Model name when discovery knows the device; the serial (IP:port for
+  // wireless) otherwise, and always in the tooltip.
+  readonly property string sessionName: sessionDevice ? sessionDevice.name : sessionSerial
+  readonly property string sessionAddress: sessionDevice ? sessionDevice.transport + " · " + sessionSerial : sessionSerial
   readonly property bool selectedReady: readyDevices.some(row => row.serial === selectedSerial)
   readonly property var deviceOptions: readyDevices.map(row => ({
         value: row.serial,
@@ -299,12 +304,17 @@ ColumnLayout {
         Layout.fillWidth: true
         Label {
           Layout.fillWidth: true
-          text: (root.sessionPid > 0 ? (root.sessionAudioOnly ? "Audio only" : "Mirroring") : "Starting") + (root.sessionSerial ? " · " + root.sessionSerial : "")
+          text: (root.sessionPid > 0 ? (root.sessionAudioOnly ? "Audio only" : "Mirroring") : "Starting") + (root.sessionName ? " · " + root.sessionName : "")
           font.bold: true
           wrapMode: Text.WrapAnywhere
           maximumLineCount: 2
           elide: Text.ElideRight
-          Accessible.name: text
+          Accessible.name: text + (root.sessionAddress !== root.sessionName ? ", " + root.sessionAddress : "")
+          Controls.ToolTip.text: root.sessionAddress
+          Controls.ToolTip.visible: sessionNameHover.hovered && root.sessionAddress !== ""
+          HoverHandler {
+            id: sessionNameHover
+          }
         }
         ActionButton {
           text: "Show log"
