@@ -8,6 +8,10 @@ Item {
   property bool busy: false
   property string output: ""
   property string errorOutput: ""
+  // Lines are collected as chunks and joined on exit; rebuilding the string
+  // per line made long outputs quadratic.
+  property var outputChunks: []
+  property var errorChunks: []
   property string input: ""
   property bool stopRequested: false
   property bool forceStopped: false
@@ -20,6 +24,8 @@ Item {
       return false;
     output = "";
     errorOutput = "";
+    outputChunks = [];
+    errorChunks = [];
     input = stdinText || "";
     stopRequested = false;
     forceStopped = false;
@@ -37,8 +43,29 @@ Item {
     startupCheck.stop();
     forceStop.stop();
     input = "";
+    output = joined(outputChunks, 262144);
+    errorOutput = joined(errorChunks, 8192);
+    outputChunks = [];
+    errorChunks = [];
     busy = false;
     finished(code, output, errorOutput);
+  }
+
+  function joined(chunks, limit) {
+    return chunks.join("").slice(-limit);
+  }
+
+  // Keeps the tail within limit, compacting only past twice the limit so
+  // appends stay amortized O(1).
+  function append(chunks, line, limit) {
+    chunks.push(line + "\n");
+    chunks.size = (chunks.size || 0) + line.length + 1;
+    if (chunks.size <= limit * 2)
+      return;
+    var tail = joined(chunks, limit);
+    chunks.length = 0;
+    chunks.push(tail);
+    chunks.size = tail.length;
   }
 
   function interrupt() {
@@ -60,10 +87,10 @@ Item {
       stdinEnabled = false;
     }
     stdout: SplitParser {
-      onRead: data => root.output = (root.output + data + "\n").slice(-262144)
+      onRead: data => root.append(root.outputChunks, data, 262144)
     }
     stderr: SplitParser {
-      onRead: data => root.errorOutput = (root.errorOutput + data + "\n").slice(-8192)
+      onRead: data => root.append(root.errorChunks, data, 8192)
     }
     onExited: (exitCode, exitStatus) => root.complete(exitStatus === 0 ? exitCode : (exitCode || 1))
   }
