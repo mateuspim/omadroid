@@ -5,7 +5,13 @@ Item {
   id: root
   property int intervalSec: 15
   property bool active: true
-  property var devices: []
+  // Raw `adb devices -l` rows; `devices` adds the Android device names.
+  property var adbDevices: []
+  // Serial → Android device name, "" when unset or unreadable. Asked once per
+  // connection, not on every scan.
+  property var deviceNames: ({})
+  property var namesRequested: []
+  readonly property var devices: Model.withDeviceNames(adbDevices, deviceNames)
   property var services: []
   property string devicesError: ""
   // mdnsError is the short text shown on the page; mdnsLevel is "", "warning" or "error".
@@ -22,6 +28,7 @@ Item {
   property bool mdnsInBackground: false
   property var mdnsHolders: []
   readonly property bool mdnsWanted: mdnsInBackground || mdnsHolders.length > 0
+  readonly property string namesScript: decodeURIComponent(Qt.resolvedUrl("device-names.sh").toString().replace(/^file:\/\//, ""))
   readonly property string mdnsScript: decodeURIComponent(Qt.resolvedUrl("discover-mdns.sh").toString().replace(/^file:\/\//, ""))
   readonly property bool busy: usb.busy || mdns.busy
   readonly property var rows: Model.deviceRows(devices, services)
@@ -36,6 +43,21 @@ Item {
     usb.start(["adb", "devices", "-l"], 12);
     if (mdnsWanted)
       mdns.start(["bash", mdnsScript], 12);
+  }
+
+  function refreshNames() {
+    var ready = adbDevices.filter(row => row.status === "device").map(row => row.serial);
+    var kept = {};
+    ready.forEach(serial => {
+      if (serial in deviceNames)
+        kept[serial] = deviceNames[serial];
+    });
+    deviceNames = kept;
+    var pending = ready.filter(serial => !(serial in kept));
+    if (!pending.length || names.busy)
+      return;
+    namesRequested = pending;
+    names.start(["bash", namesScript].concat(pending), 8);
   }
 
   function holdMdns(owner, wanted) {
@@ -63,7 +85,20 @@ Item {
     id: usb
     onFinished: (code, output, error) => {
       root.devicesError = code === 0 ? "" : Model.commandError(code, output, error, "ADB discovery");
-      root.devices = code === 0 ? Model.parseDevices(output) : [];
+      root.adbDevices = code === 0 ? Model.parseDevices(output) : [];
+      root.refreshNames();
+    }
+  }
+  Command {
+    id: names
+    onFinished: (code, output, error) => {
+      var found = Model.parseDeviceNames(output);
+      var merged = Object.assign({}, root.deviceNames);
+      root.namesRequested.forEach(serial => {
+        if (root.adbDevices.some(row => row.serial === serial))
+          merged[serial] = found[serial] || "";
+      });
+      root.deviceNames = merged;
     }
   }
   Command {

@@ -36,10 +36,10 @@ ColumnLayout {
   readonly property var customProfiles: Model.savedProfiles(saved.profilesJson)
   readonly property var profiles: Model.builtInProfiles().concat(customProfiles)
   readonly property var sessionDevice: devices.find(row => row.serial === sessionSerial) || null
-  // Model name when discovery knows the device; the serial (IP:port for
-  // wireless) otherwise, and always in the tooltip.
+  // The Android device name (or model) when discovery knows the device; the
+  // serial (IP:port for wireless) otherwise, and always in the tooltip.
   readonly property string sessionName: sessionDevice ? sessionDevice.name : sessionSerial
-  readonly property string sessionAddress: sessionDevice ? sessionDevice.transport + " · " + sessionSerial : sessionSerial
+  readonly property string sessionAddress: sessionDevice ? [sessionDevice.model !== sessionDevice.name ? sessionDevice.model : "", sessionDevice.transport, sessionSerial].filter(Boolean).join(" · ") : sessionSerial
   readonly property bool selectedReady: readyDevices.some(row => row.serial === selectedSerial)
   readonly property var deviceOptions: readyDevices.map(row => ({
         value: row.serial,

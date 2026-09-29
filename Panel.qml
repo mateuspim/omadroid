@@ -277,7 +277,7 @@ Panel {
                 }
                 Label {
                   Layout.fillWidth: true
-                  text: modelData.transport + " · " + Model.statusLabel(modelData.status)
+                  text: (modelData.model && modelData.model !== modelData.name ? modelData.model + " · " : "") + modelData.transport + " · " + Model.statusLabel(modelData.status)
                   color: modelData.status === "device" ? Color.accent : Util.alpha(Color.foreground, 0.7)
                 }
                 Label {

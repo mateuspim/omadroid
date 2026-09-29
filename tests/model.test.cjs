@@ -6,6 +6,13 @@ const model = vm.createContext({});
 vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), model);
 const plain = value => JSON.parse(JSON.stringify(value));
 
+test('Android device names replace model codes and keep the model', () => {
+  const names = model.parseDeviceNames('USB123\tDesk phone\r\nbad line\n192.168.1.3:5555\t  \n');
+  assert.deepEqual(plain(names), { USB123: 'Desk phone' });
+  const rows = model.withDeviceNames([{ serial: 'USB123', name: 'Pixel 6' }, { serial: 'OTHER', name: 'SM X730' }], names);
+  assert.deepEqual(plain(rows), [{ serial: 'USB123', name: 'Desk phone', model: 'Pixel 6' }, { serial: 'OTHER', name: 'SM X730', model: 'SM X730' }]);
+});
+
 test('ADB parses states, model names, transports and ignores daemon chatter', () => {
   const rows = model.parseDevices(`* daemon started successfully\nList of devices attached\nUSB123 device usb:1-2 product:oriole model:Pixel_6 device:oriole transport_id:1\nLOCKED unauthorized usb:1-3\nNOACCESS no permissions (user in plugdev group; are your udev rules wrong?)\n192.168.1.3:5555 offline transport_id:3\nemulator-5554 device product:sdk model:SDK\nadb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9\nUSB123 device\n`);
   assert.equal(rows.length, 6);

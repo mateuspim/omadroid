@@ -8,7 +8,9 @@ settings.
 
 - **Devices:** one process-wide discovery service runs `adb devices -l` for every monitor,
   plus Avahi-based mDNS discovery in parallel while the popup is open; it shows
-  device model/name, serial or service identity, status, and transport. The bar
+  device name, model, serial or service identity, status, and transport. The name
+  is the one set on Android (Settings › About › Device name), read once per
+  connection; devices without one show their model. The bar
   badge counts authorized, ready transports. Refresh on open and every 15 seconds
   by default; the existing widget setting accepts 5–3600 seconds.
 - **Wireless:** explicit connect, targeted disconnect, six-digit wireless

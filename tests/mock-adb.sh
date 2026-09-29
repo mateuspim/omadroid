@@ -41,7 +41,13 @@ case "${1:-}" in
     # Emulates Android's rotation settings in DROIDLINK_ADB_ROTATION as the two
     # lines `settings get` prints: accelerometer_rotation, then user_rotation.
     [[ "${3:-}" == shell ]] || exit 7
+    serial="$2"
     shift 3
+    if [[ "$*" == 'settings get global device_name' ]]; then
+      # USB123 has a name set on the phone; other devices report none.
+      [[ "$serial" == USB123 ]] && printf 'Desk phone\r\n' || printf 'null\r\n'
+      exit 0
+    fi
     rotation_state="${DROIDLINK_ADB_ROTATION:?}"
     case "$*" in
       'wm user-rotation free') printf '1\n0\n' >"$rotation_state" ;;

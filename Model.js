@@ -105,6 +105,28 @@ function parseMdns(output) {
   }, []);
 }
 
+/** Parse device-names.sh output ("serial<TAB>name" lines) into a map.
+ * Example: parseDeviceNames("USB123\tDesk phone\n") → { USB123: "Desk phone" }
+ */
+function parseDeviceNames(output) {
+  var names = {};
+  String(output).split(/\r?\n/).forEach(function(line) {
+    var i = line.indexOf("\t");
+    if (i > 0 && line.slice(i + 1).trim()) names[line.slice(0, i)] = line.slice(i + 1).trim();
+  });
+  return names;
+}
+
+/** Prefer the Android device name over the model code, keeping the model.
+ * Example: withDeviceNames([{ serial: "A", name: "SM X730" }], { A: "Desk tablet" })
+ *   → [{ serial: "A", name: "Desk tablet", model: "SM X730" }]
+ */
+function withDeviceNames(rows, names) {
+  return rows.map(function(row) {
+    return Object.assign({}, row, { model: row.name, name: names[row.serial] || row.name });
+  });
+}
+
 function deviceRows(devices, services) {
   var rows = devices.map(function(row) { return Object.assign({}, row); });
   services.forEach(function(service) {

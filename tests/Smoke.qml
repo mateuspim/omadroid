@@ -133,6 +133,9 @@ ShellRoot {
     interval: 5000
     running: true
     onTriggered: {
+      var named = discovery.devices.find(row => row.serial === "USB123");
+      testRoot.check(named && named.name === "Desk phone" && named.model === "Pixel 6", "Android device name replaces the model: " + JSON.stringify(named));
+      testRoot.check(discovery.devices.find(row => row.serial === "adb-PHONE-random._adb-tls-connect._tcp").name === "Pixel 9", "a device without a name keeps its model");
       testRoot.check(testRoot.step === 10, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
       console.log("DROIDLINK_SMOKE_OK");
       Qt.quit();
