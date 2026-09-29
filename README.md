@@ -222,6 +222,7 @@ node tests/model.test.cjs
 node tests/mdns.test.cjs
 node tests/screen-power.test.cjs
 node tests/screen-rotation.test.cjs
+node tests/profiles.test.cjs
 bash tests/session.sh
 bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
@@ -256,14 +257,13 @@ and exits. Preview requires the QtTest QML module.
 The original implementation milestones were validated in order: read-only USB/mDNS popup,
 connection controls, then scrcpy profiles. Manifest validation only checks the
 manifest and file layout; the QML and fixture tests exercise runtime behavior.
-During development on this host, live ADB reported no attached devices and
-`mdns is not supported by this version of adb`. The separate Avahi discovery
-script replaces that unsupported discovery path. Offline model, session, shared-discovery,
-and smoke fixtures pass, along with shell syntax and manifest validation. Live
-Avahi discovery and the updated desktop integration have not been tested.
-End-to-end pairing, mirroring,
-audio, recording media, and device screen control still need a physical-device
-check. Fixture tests do not establish hardware compatibility.
+The host's ADB reports `mdns is not supported by this version of adb`, so the
+separate Avahi discovery script replaces that discovery path. On the desktop,
+with a Galaxy Tab S11 (Android 16) over wireless ADB, the following were checked
+by hand: live Avahi discovery, device names, the session card, rotation-lock
+release after the scrcpy window closes, and the recording-folder check. Other
+devices, pairing flows, and recording media have not been checked on hardware.
+Fixture tests do not establish hardware compatibility.
 
 Discovery output: [Avahi browser implementation](https://github.com/avahi/avahi/blob/master/avahi-utils/avahi-browse.c).
 Protocol references: [ADB Wi-Fi architecture](https://android.googlesource.com/platform/packages/modules/adb/+/HEAD/docs/dev/adb_wifi.md)
