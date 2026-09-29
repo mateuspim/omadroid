@@ -170,6 +170,8 @@ Panel {
       }
       RowLayout {
         Layout.fillWidth: true
+        Accessible.role: Accessible.PageTabList
+        Accessible.name: "DroidLink pages"
         Repeater {
           model: [
             {
@@ -191,6 +193,10 @@ Panel {
             Layout.preferredWidth: 1
             text: modelData.label
             selected: root.page === modelData.key
+            Accessible.role: Accessible.PageTab
+            Accessible.name: modelData.label
+            Accessible.selectable: true
+            Accessible.selected: selected
             onClicked: root.page = modelData.key
           }
         }
@@ -332,15 +338,15 @@ Panel {
                     onClicked: actions.run("disconnect", modelData.serial, "")
                   }
                 }
-                Label {
-                  Layout.fillWidth: true
-                  visible: modelData.transport === "USB"
-                  text: "Unplug USB to disconnect."
-                  color: Util.alpha(Color.foreground, 0.7)
-                  font.pixelSize: Style.font.bodySmall
-                }
               }
             }
+          }
+          Label {
+            Layout.fillWidth: true
+            visible: root.page === "devices" && discovery.rows.some(row => row.transport === "USB")
+            text: "To disconnect a USB device, unplug its cable."
+            color: Util.alpha(Color.foreground, 0.7)
+            font.pixelSize: Style.font.bodySmall
           }
           Label {
             Layout.fillWidth: true
