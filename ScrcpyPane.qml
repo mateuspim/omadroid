@@ -25,6 +25,11 @@ ColumnLayout {
   property string missingTools: ""
   property bool panelOpen: true
   property bool optionsExpanded: false
+  // A saved profile name awaiting a second Save, and a pending Remove.
+  property string confirmOverwrite: ""
+  property bool confirmRemove: false
+  // True once a session ran, so its terminal (kept by --hold) has output.
+  property bool terminalLaunched: false
   readonly property bool busy: sessionPid > 0 || launcher.busy
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
   readonly property var readyDevices: devices.filter(row => row.status === "device")
@@ -94,6 +99,15 @@ ColumnLayout {
       message = "Choose a name of 1–48 characters, different from Custom and the built-in profiles.";
       return;
     }
+    if (customProfiles.some(p => p.name === name) && confirmOverwrite !== name) {
+      confirmRemove = false;
+      confirmOverwrite = name;
+      failed = false;
+      message = "“" + name + "” already exists. Press Replace to overwrite it.";
+      confirmExpiry.restart();
+      return;
+    }
+    confirmOverwrite = "";
     var list = customProfiles.filter(p => p.name !== name);
     if (list.length >= 30) {
       failed = true;
@@ -108,8 +122,30 @@ ColumnLayout {
     message = "Saved profile “" + name + "”.";
   }
   function removeProfile() {
-    saved.profilesJson = JSON.stringify(customProfiles.filter(p => p.name !== profileName));
+    var name = profileName;
+    if (!confirmRemove) {
+      confirmOverwrite = "";
+      confirmRemove = true;
+      failed = false;
+      message = "Press Confirm to remove “" + name + "”.";
+      confirmExpiry.restart();
+      return;
+    }
+    confirmRemove = false;
+    saved.profilesJson = JSON.stringify(customProfiles.filter(p => p.name !== name));
     selectProfile("Balanced");
+    failed = false;
+    message = "Removed profile “" + name + "”.";
+  }
+  function cancelConfirmations() {
+    if (confirmRemove || confirmOverwrite)
+      message = "";
+    confirmRemove = false;
+    confirmOverwrite = "";
+  }
+  function toggleLog() {
+    if (!logToggle.busy)
+      logToggle.start(["hyprctl", "dispatch", "hl.dsp.workspace.toggle_special(\"droidlink\")"], 3);
   }
   function launch(audioOnly) {
     if (busy)
@@ -171,6 +207,7 @@ ColumnLayout {
         root.sessionAudioOnly = lines[2] === "1";
         root.sessionRecording = lines[3];
         root.sessionPid = Number(lines[4]) || 0;
+        root.terminalLaunched = true;
         // The card header already says the session is running.
         if (root.message.indexOf("Session started") === 0)
           root.message = "";
@@ -180,7 +217,7 @@ ColumnLayout {
           root.failed = false;
           root.message = (root.sessionAudioOnly ? "Audio session ended." : "Mirroring ended.") + (root.sessionRecording ? " Recording: " + root.sessionRecording : "");
         } else if (root.message.indexOf("Session started") === 0) {
-          root.message = "scrcpy exited. See the DroidLink terminal for output." + (root.sessionRecording ? " Recording: " + root.sessionRecording : "");
+          root.message = "scrcpy exited. Press Show log for its output." + (root.sessionRecording ? " Recording: " + root.sessionRecording : "");
         }
       } else {
         root.failed = true;
@@ -188,10 +225,28 @@ ColumnLayout {
       }
     }
   }
+  Timer {
+    id: confirmExpiry
+    interval: 5000
+    onTriggered: root.cancelConfirmations()
+  }
+  onProfileNameChanged: if (confirmRemove)
+    cancelConfirmations()
+  Command {
+    id: logToggle
+    onFinished: (code, output, error) => {
+      if (code === 0 && output.trim() === "ok")
+        return;
+      root.failed = true;
+      root.message = "Could not show the DroidLink terminal: " + Model.commandError(code, output, error, "hyprctl");
+    }
+  }
   Command {
     id: launcher
     onFinished: (code, output, error) => {
       root.failed = code !== 0;
+      if (code === 0)
+        root.terminalLaunched = true;
       root.message = root.failed ? Model.commandError(code, output, error, "scrcpy launch") : output.trim();
       root.refreshSession();
     }
@@ -250,6 +305,11 @@ ColumnLayout {
           maximumLineCount: 2
           elide: Text.ElideRight
           Accessible.name: text
+        }
+        ActionButton {
+          text: "Show log"
+          tooltipText: "Show or hide the hidden terminal running scrcpy"
+          onClicked: root.toggleLog()
         }
         ActionButton {
           text: root.stopping ? "Stopping…" : root.sessionAudioOnly ? "Stop audio" : "Stop mirroring"
@@ -485,17 +545,22 @@ ColumnLayout {
         placeholderText: "Save options as…"
         Accessible.name: "Profile name"
         onAccepted: root.saveProfile()
+        onTextChanged: if (root.confirmOverwrite && text.trim() !== root.confirmOverwrite)
+          root.cancelConfirmations()
       }
       ActionButton {
-        text: "Save"
+        readonly property bool replacing: root.confirmOverwrite !== "" && root.confirmOverwrite === nameField.text.trim()
+        text: replacing ? "Replace" : "Save"
+        selected: replacing
         enabled: nameField.text.trim() !== ""
-        tooltipText: "Save the current options as a reusable profile"
+        tooltipText: replacing ? "Overwrite the saved profile with the current options" : "Save the current options as a reusable profile"
         onClicked: root.saveProfile()
       }
       ActionButton {
-        text: "Remove"
+        text: root.confirmRemove ? "Confirm" : "Remove"
+        selected: root.confirmRemove
         visible: root.customProfiles.some(p => p.name === root.profileName)
-        tooltipText: "Remove this saved profile"
+        tooltipText: root.confirmRemove ? "Remove “" + root.profileName + "” permanently" : "Remove this saved profile"
         onClicked: root.removeProfile()
       }
       ActionButton {
@@ -521,6 +586,15 @@ ColumnLayout {
       enabled: root.selectedReady && !root.missingTools
       tooltipText: "Start windowless audio; stop it here in DroidLink"
       onClicked: root.launch(true)
+    }
+    Item {
+      Layout.fillWidth: true
+    }
+    ActionButton {
+      text: "Show log"
+      visible: root.terminalLaunched
+      tooltipText: "Show or hide the terminal of the last session, with scrcpy's output"
+      onClicked: root.toggleLog()
     }
   }
   Label {

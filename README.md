@@ -131,8 +131,9 @@ quality, FPS, and encoders depend on the phone and network. Audio forwarding req
 Android 11 should be unlocked at launch. Unsupported audio may fall back to video
 only. See the [upstream audio guide](https://github.com/Genymobile/scrcpy/blob/master/doc/audio.md).
 
-Edit the options and save them with a custom name (up to 30 profiles). Saving an
-existing custom name updates it. Built-in profiles cannot be overwritten. Saved
+Edit the options and save them with a custom name (up to 30 profiles). Saving under an
+existing custom name asks you to press **Replace**, and **Remove** asks you to
+**Confirm**; either request lapses after 5 seconds. Built-in profiles cannot be overwritten. Saved
 profiles, the last selected profile, and recording folder persist in
 `$XDG_CONFIG_HOME/omarchy/droidlink.ini` (normally
 `~/.config/omarchy/droidlink.ini`). Unsaved changes last until the widget reloads.
@@ -189,7 +190,8 @@ when forwarding is enabled and supported.
 Use **Stop mirroring** or close the scrcpy window to finalize a recording.
 Scrcpy runs in Omarchy's configured default terminal on a hidden
 `special:droidlink` workspace, leaving only the scrcpy video window visible.
-Run `hyprctl dispatch togglespecialworkspace droidlink` to show or hide its
+Press **Show log** on the Mirror page (or run
+`hyprctl dispatch 'hl.dsp.workspace.toggle_special("droidlink")'`) to show or hide its
 diagnostic terminal. The terminal is asked to stay open after scrcpy exits if
 the configured terminal supports that option. Closing the popup, switching
 tabs, or restarting the Omarchy shell leaves the session running. Every monitor's
