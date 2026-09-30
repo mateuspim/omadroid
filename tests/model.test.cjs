@@ -13,6 +13,49 @@ test('Android device names replace model codes and keep the model', () => {
   assert.deepEqual(plain(rows), [{ serial: 'USB123', name: 'Desk phone', model: 'Pixel 6' }, { serial: 'OTHER', name: 'SM X730', model: 'SM X730' }]);
 });
 
+test('device-info.sh reads only the current battery state and finds external volumes (fake adb)', () => {
+  const { spawnSync } = require('node:child_process');
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'droidlink info fixture-'));
+  try {
+    fs.copyFileSync(`${__dirname}/mock-adb.sh`, path.join(dir, 'adb'));
+    fs.chmodSync(path.join(dir, 'adb'), 0o700);
+    const result = spawnSync('bash', [`${__dirname}/../device-info.sh`, 'USB123', 'SILENT'], {
+      encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: dir + path.delimiter + process.env.PATH } });
+    assert.equal(result.status, 0, result.stderr);
+    const info = model.parseDeviceInfo(result.stdout);
+    assert.deepEqual(Object.keys(info), ['USB123'], 'a silent device prints nothing');
+    assert.deepEqual(plain(info.USB123), {
+      external: [{ id: '7934-B54D', kind: 'sd', usedKb: 122373248, totalKb: 999842816 }],
+      battery: { status: 2, level: 64, temp: 301, plugged: ['usb'] }, android: '16', sdk: 36, memKb: 11788072,
+      screen: { width: 1600, height: 2560 }, internal: { usedKb: 133125120, totalKb: 233775104 } });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('device details format battery, storage, memory and aspect ratio', () => {
+  const info = model.parseDeviceInfo([
+    'T\tbattery_level\t71', 'T\tbattery_status\t3', 'T\tbattery_temp\t301', 'T\tandroid\t16', 'T\tsdk\t36',
+    'T\tmem_kb\t11788072', 'T\tscreen\t1600x2560', 'T\tinternal\t133125120:233775104',
+    'T\texternal_A\tA:usb:1048576:31457280', 'T\texternal_B\tB:usb:0:1048576', 'T\tbogus', ''].join('\n')).T;
+  assert.equal(model.deviceSummary(info), 'Battery 71 % · Android 16 · 127/223 GB used');
+  assert.deepEqual(plain(model.deviceDetails(info)), [
+    { label: 'Battery', value: '71 % · on battery · 30.1 °C' },
+    { label: 'Android', value: '16 (SDK 36)' },
+    { label: 'Internal storage', value: '127 GB of 223 GB used (57 %)' },
+    { label: 'USB drive A', value: '1 GB of 30 GB used (3 %)' },
+    { label: 'USB drive B', value: '0 MB of 1 GB used (0 %)' },
+    { label: 'Memory', value: '11.2 GB' },
+    { label: 'Screen', value: '1600 × 2560 · 16:10' }]);
+  assert.equal(model.batteryLabel({ level: 100, status: 5 }), '100 % · full');
+  assert.deepEqual([[1080, 2400], [1440, 3120], [1920, 1080], [1536, 2048], [1000, 999]].map(([w, h]) => model.aspectRatio(w, h)),
+    ['20:9', '19.5:9', '16:9', '4:3', '1.00:1']);
+  assert.equal(model.deviceSummary(null), '');
+  assert.deepEqual(plain(model.withDeviceInfo([{ serial: 'T' }, { serial: 'X' }], { T: { android: '16' } })),
+    [{ serial: 'T', info: { android: '16' } }, { serial: 'X', info: null }]);
+});
+
 test('ADB parses states, model names, transports and ignores daemon chatter', () => {
   const rows = model.parseDevices(`* daemon started successfully\nList of devices attached\nUSB123 device usb:1-2 product:oriole model:Pixel_6 device:oriole transport_id:1\nLOCKED unauthorized usb:1-3\nNOACCESS no permissions (user in plugdev group; are your udev rules wrong?)\n192.168.1.3:5555 offline transport_id:3\nemulator-5554 device product:sdk model:SDK\nadb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9\nUSB123 device\n`);
   assert.equal(rows.length, 6);

@@ -10,7 +10,12 @@ settings.
   plus Avahi-based mDNS discovery in parallel while the popup is open; it shows
   device name, model, serial or service identity, status, and transport. The name
   is the one set on Android (Settings › About › Device name), read once per
-  connection; devices without one show their model. The bar
+  connection; devices without one show their model. Ready devices also show
+  battery, Android version and storage used; **Details** adds temperature,
+  SD card or USB drive storage, memory, and screen size with its aspect ratio.
+  These are read with one `adb shell` per device while the popup is open and
+  refreshed once they are a minute old; nothing is read while it is closed. The
+  session card shows the mirrored device's battery. The bar
   badge counts authorized, ready transports. Refresh on open and every 15 seconds
   by default; the existing widget setting accepts 5–3600 seconds.
 - **Wireless:** explicit connect, targeted disconnect, six-digit wireless

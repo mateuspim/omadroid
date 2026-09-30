@@ -16,6 +16,8 @@ Panel {
   implicitHeight: button.implicitHeight
   property string page: "devices"
   property var pendingPairFallback: null
+  // The device card whose details are expanded; kept here because scans rebuild the cards.
+  property string detailsSerial: ""
   readonly property var discovery: discoveryConsumer.discovery
   property string missingTools: ""
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
@@ -282,6 +284,31 @@ Panel {
                 }
                 Label {
                   Layout.fillWidth: true
+                  visible: text !== "" && root.detailsSerial !== modelData.serial
+                  text: Model.deviceSummary(modelData.info)
+                  wrapMode: Text.WordWrap
+                }
+                GridLayout {
+                  Layout.fillWidth: true
+                  visible: root.detailsSerial === modelData.serial
+                  columns: 2
+                  columnSpacing: Style.space(12)
+                  rowSpacing: Style.space(3)
+                  Repeater {
+                    model: root.detailsSerial === modelData.serial ? Model.deviceDetails(modelData.info).reduce((cells, row) => cells.concat([row.label, row.value]), []) : []
+                    delegate: Label {
+                      required property var modelData
+                      required property int index
+                      Layout.fillWidth: index % 2 === 1
+                      Layout.alignment: Qt.AlignTop
+                      text: modelData
+                      wrapMode: index % 2 === 1 ? Text.WordWrap : Text.NoWrap
+                      color: index % 2 === 0 ? Util.alpha(Color.foreground, 0.7) : Color.foreground
+                    }
+                  }
+                }
+                Label {
+                  Layout.fillWidth: true
                   text: (modelData.source === "mdns" ? "Service: " : "Serial: ") + modelData.serial
                   font.pixelSize: Style.font.bodySmall
                   wrapMode: Text.WrapAnywhere
@@ -309,6 +336,13 @@ Panel {
                       scrcpyPane.chooseDevice(modelData.serial);
                       root.page = "mirror";
                     }
+                  }
+                  ActionButton {
+                    text: root.detailsSerial === modelData.serial ? "Hide details" : "Details"
+                    visible: Model.deviceDetails(modelData.info).length > 0
+                    selected: root.detailsSerial === modelData.serial
+                    tooltipText: "Battery, storage, memory and screen, read every minute while this popup is open"
+                    onClicked: root.detailsSerial = root.detailsSerial === modelData.serial ? "" : modelData.serial
                   }
                   ActionButton {
                     text: "Connect"

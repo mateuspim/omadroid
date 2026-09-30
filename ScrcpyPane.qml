@@ -331,6 +331,13 @@ ColumnLayout {
       }
       Label {
         Layout.fillWidth: true
+        readonly property var battery: root.sessionDevice && root.sessionDevice.info ? root.sessionDevice.info.battery : null
+        visible: text !== ""
+        text: battery ? "Battery " + Model.batteryLabel(battery) : ""
+        color: Util.alpha(Color.foreground, 0.7)
+      }
+      Label {
+        Layout.fillWidth: true
         visible: root.sessionRecording !== ""
         text: "Recording: " + root.sessionRecording
         wrapMode: Text.WrapAnywhere

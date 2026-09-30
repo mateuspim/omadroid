@@ -48,6 +48,22 @@ case "${1:-}" in
       [[ "$serial" == USB123 ]] && printf 'Desk phone\r\n' || printf 'null\r\n'
       exit 0
     fi
+    if [[ "$*" == 'echo @battery;'* ]]; then
+      # device-info.sh: USB123 answers like a Samsung tablet (battery history
+      # after the current state, an SD card); other devices don't answer.
+      [[ "$serial" == USB123 ]] || exit 1
+      printf '%s\r\n' '@battery' 'Current Battery Service state:' '  AC powered: false' '  USB powered: true' \
+        '  Wireless powered: false' '  status: 2' '  health: 2' '  level: 64' '  temperature: 301' '  Capacity level: -1' \
+        '09-28 21:34:19.289  Sending ACTION_BATTERY_CHANGED: level:90, status:3, temperature:282' \
+        '@version' '16' '36' '@mem' 'MemTotal:       11788072 kB' '@size' 'Physical size: 1600x2560' \
+        '@volumes' 'private mounted null' 'public:179,1 mounted 7934-B54D' 'emulated;0 mounted null' \
+        '@df' 'Filesystem       1K-blocks      Used Available Use% Mounted on' \
+        '/dev/block/dm-75 233775104 133125120 100518912  57% /data/user/0' \
+        '/dev/fuse        999842816 122373248 877469568  13% /storage/7934-B54D' \
+        '/dev/fuse        233775104 133125120 100518912  57% /storage/emulated' \
+        'tmpfs              5491156         0   5491156   0% /storage'
+      exit 0
+    fi
     rotation_state="${DROIDLINK_ADB_ROTATION:?}"
     case "$*" in
       'wm user-rotation free') printf '1\n0\n' >"$rotation_state" ;;

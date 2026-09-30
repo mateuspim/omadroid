@@ -11,7 +11,14 @@ Item {
   // connection, not on every scan.
   property var deviceNames: ({})
   property var namesRequested: []
-  readonly property var devices: Model.withDeviceNames(adbDevices, deviceNames)
+  // Serial → parsed device-info.sh result (battery, storage, …) and when it was
+  // read. Details are only shown in the popup, so they are read while a
+  // consumer holds mDNS (an open popup) and refreshed once they are a minute old.
+  property var deviceInfo: ({})
+  property var infoReadAt: ({})
+  property var infoRequested: []
+  property int infoMaxAgeSec: 60
+  readonly property var devices: Model.withDeviceInfo(Model.withDeviceNames(adbDevices, deviceNames), deviceInfo)
   property var services: []
   property string devicesError: ""
   // mdnsError is the short text shown on the page; mdnsLevel is "", "warning" or "error".
@@ -29,6 +36,7 @@ Item {
   property var mdnsHolders: []
   readonly property bool mdnsWanted: mdnsInBackground || mdnsHolders.length > 0
   readonly property string namesScript: decodeURIComponent(Qt.resolvedUrl("device-names.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string infoScript: decodeURIComponent(Qt.resolvedUrl("device-info.sh").toString().replace(/^file:\/\//, ""))
   readonly property string mdnsScript: decodeURIComponent(Qt.resolvedUrl("discover-mdns.sh").toString().replace(/^file:\/\//, ""))
   readonly property bool busy: usb.busy || mdns.busy
   readonly property var rows: Model.deviceRows(devices, services)
@@ -60,6 +68,27 @@ Item {
     names.start(["bash", namesScript].concat(pending), 8);
   }
 
+  function refreshInfo() {
+    var ready = adbDevices.filter(row => row.status === "device").map(row => row.serial);
+    var kept = {}, keptAt = {};
+    ready.forEach(serial => {
+      if (serial in infoReadAt) {
+        kept[serial] = deviceInfo[serial];
+        keptAt[serial] = infoReadAt[serial];
+      }
+    });
+    deviceInfo = kept;
+    infoReadAt = keptAt;
+    if (!mdnsWanted || info.busy)
+      return;
+    var now = Date.now();
+    var pending = ready.filter(serial => !(serial in keptAt) || now - keptAt[serial] >= infoMaxAgeSec * 1000);
+    if (!pending.length)
+      return;
+    infoRequested = pending;
+    info.start(["bash", infoScript].concat(pending), 8);
+  }
+
   function holdMdns(owner, wanted) {
     var holders = mdnsHolders.filter(holder => holder !== owner);
     if (wanted)
@@ -87,6 +116,7 @@ Item {
       root.devicesError = code === 0 ? "" : Model.commandError(code, output, error, "ADB discovery");
       root.adbDevices = code === 0 ? Model.parseDevices(output) : [];
       root.refreshNames();
+      root.refreshInfo();
     }
   }
   Command {
@@ -99,6 +129,24 @@ Item {
           merged[serial] = found[serial] || "";
       });
       root.deviceNames = merged;
+    }
+  }
+  Command {
+    id: info
+    onFinished: (code, output, error) => {
+      var found = Model.parseDeviceInfo(output);
+      var merged = Object.assign({}, root.deviceInfo), readAt = Object.assign({}, root.infoReadAt);
+      var now = Date.now();
+      root.infoRequested.forEach(serial => {
+        if (!root.adbDevices.some(row => row.serial === serial))
+          return;
+        // A device that didn't answer keeps its last reading until the next attempt.
+        if (found[serial] || !(serial in merged))
+          merged[serial] = found[serial] || null;
+        readAt[serial] = now;
+      });
+      root.deviceInfo = merged;
+      root.infoReadAt = readAt;
     }
   }
   Command {
