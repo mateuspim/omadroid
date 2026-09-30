@@ -315,7 +315,7 @@ Panel {
                 }
                 Label {
                   Layout.fillWidth: true
-                  visible: modelData.endpoint !== ""
+                  visible: modelData.endpoint !== "" && modelData.endpoint !== modelData.serial
                   text: modelData.endpoint
                   color: Util.alpha(Color.foreground, 0.7)
                 }

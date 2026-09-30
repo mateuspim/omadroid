@@ -39,16 +39,19 @@ test('device details format battery, storage, memory and aspect ratio', () => {
     'T\tbattery_level\t71', 'T\tbattery_status\t3', 'T\tbattery_temp\t301', 'T\tandroid\t16', 'T\tsdk\t36',
     'T\tmem_kb\t11788072', 'T\tscreen\t1600x2560', 'T\tinternal\t133125120:233775104',
     'T\texternal_A\tA:usb:1048576:31457280', 'T\texternal_B\tB:usb:0:1048576', 'T\tbogus', ''].join('\n')).T;
-  assert.equal(model.deviceSummary(info), 'Battery 71 % · Android 16 · 127/223 GB used');
+  assert.equal(model.deviceSummary(info), 'Battery 71 % · Android 16 · 136/239 GB used');
   assert.deepEqual(plain(model.deviceDetails(info)), [
     { label: 'Battery', value: '71 % · on battery · 30.1 °C' },
     { label: 'Android', value: '16 (SDK 36)' },
-    { label: 'Internal storage', value: '127 GB of 223 GB used (57 %)' },
-    { label: 'USB drive A', value: '1 GB of 30 GB used (3 %)' },
-    { label: 'USB drive B', value: '0 MB of 1 GB used (0 %)' },
-    { label: 'Memory', value: '11.2 GB' },
+    { label: 'Internal storage', value: '136 GB of 239 GB used (57 %)' },
+    { label: 'USB drive A', value: '1.1 GB of 32.2 GB used (3 %)' },
+    { label: 'USB drive B', value: '0 MB of 1.1 GB used (0 %)' },
+    { label: 'Memory', value: '12.1 GB' },
     { label: 'Screen', value: '1600 × 2560 · 16:10' }]);
   assert.equal(model.batteryLabel({ level: 100, status: 5 }), '100 % · full');
+  assert.equal(model.deviceDetails({ battery: { level: 95, status: 2, plugged: ['ac'] } })[0].value, '95 % · charging (AC)');
+  assert.deepEqual([999842816, 122373248, 500].map(model.formatSize), ['1.02 TB', '125 GB', '1 MB']);
+  assert.equal(model.deviceSummary({ internal: { usedKb: 122373248, totalKb: 999842816 } }), '125 GB/1.02 TB used');
   assert.deepEqual([[1080, 2400], [1440, 3120], [1920, 1080], [1536, 2048], [1000, 999]].map(([w, h]) => model.aspectRatio(w, h)),
     ['20:9', '19.5:9', '16:9', '4:3', '1.00:1']);
   assert.equal(model.deviceSummary(null), '');

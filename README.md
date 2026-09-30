@@ -13,6 +13,7 @@ settings.
   connection; devices without one show their model. Ready devices also show
   battery, Android version and storage used; **Details** adds temperature,
   SD card or USB drive storage, memory, and screen size with its aspect ratio.
+  Sizes use 1000-based units (GB, TB), as Android's Settings does.
   These are read with one `adb shell` per device while the popup is open and
   refreshed once they are a minute old; nothing is read while it is closed. The
   session card shows the mirrored device's battery. The bar

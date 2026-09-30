@@ -169,12 +169,13 @@ function withDeviceInfo(rows, info) {
   });
 }
 
-/** Example: formatSize(233775104) → "223 GB"; formatSize(11788072) → "11.2 GB" (1024-based, like df -h). */
+/** Example: formatSize(233775104) → "239 GB"; formatSize(999842816) → "1.02 TB" (1000-based, like Android's Settings). */
 function formatSize(kb) {
-  var gb = kb / 1048576;
+  var bytes = kb * 1024, gb = bytes / 1e9;
+  if (gb >= 1000) return String(Math.round(gb / 10) / 100) + " TB";
   if (gb >= 100) return Math.round(gb) + " GB";
   if (gb >= 1) return String(Math.round(gb * 10) / 10) + " GB";
-  return Math.round(kb / 1024) + " MB";
+  return Math.round(bytes / 1e6) + " MB";
 }
 
 /** Long-edge-first aspect ratio, snapped to the common names within 1 %.
@@ -203,14 +204,17 @@ function storageLabel(storage) {
   return formatSize(storage.usedKb) + " of " + formatSize(storage.totalKb) + " used (" + Math.round(100 * storage.usedKb / storage.totalKb) + " %)";
 }
 
-/** One-line card summary. Example: "Battery 71 % · Android 16 · 127/223 GB used" */
+/** One-line card summary. Example: "Battery 71 % · Android 16 · 136/239 GB used" */
 function deviceSummary(info) {
   if (!info) return "";
   var parts = [];
   if (info.battery && info.battery.level !== undefined)
     parts.push("Battery " + info.battery.level + " %" + (info.battery.status === 2 ? " (charging)" : ""));
   if (info.android) parts.push("Android " + info.android);
-  if (info.internal) parts.push(formatSize(info.internal.usedKb).replace(/ GB$/, "") + "/" + formatSize(info.internal.totalKb) + " used");
+  if (info.internal) {
+    var used = formatSize(info.internal.usedKb), total = formatSize(info.internal.totalKb);
+    parts.push((used.split(" ")[1] === total.split(" ")[1] ? used.split(" ")[0] : used) + "/" + total + " used");
+  }
   return parts.join(" · ");
 }
 
@@ -219,7 +223,7 @@ function deviceDetails(info) {
   if (!info) return [];
   var rows = [];
   if (info.battery && info.battery.level !== undefined) {
-    var sources = { ac: "charger", usb: "USB", wireless: "wireless" };
+    var sources = { ac: "AC", usb: "USB", wireless: "wireless" };
     var plugged = (info.battery.plugged || []).map(function(source) { return sources[source] || source; }).join(", ");
     rows.push({ label: "Battery", value: batteryLabel(info.battery) + (plugged ? " (" + plugged + ")" : "") +
       (info.battery.temp !== undefined ? " · " + (info.battery.temp / 10).toFixed(1) + " °C" : "") });
