@@ -71,6 +71,63 @@ function parseDevices(output) {
   }, []);
 }
 
+/** Split `adb track-devices -l` output into device lists. Each frame is a
+ * 4-hex-digit byte length followed by that many bytes of `adb devices -l`
+ * rows; "0000" is an empty list. An incomplete frame stays in `rest`.
+ * Example: takeTrackFrames("0004a b\n00") → { payloads: ["a b\n"], rest: "00" }
+ * @param {string} buffer @returns {{payloads: string[], rest: string}} */
+function takeTrackFrames(buffer) {
+  var payloads = [], text = String(buffer);
+  while (text.length >= 4) {
+    if (!/^[0-9a-fA-F]{4}/.test(text))
+      throw new Error("Unexpected adb track-devices output " + JSON.stringify(text.slice(0, 32)) + "; expected a 4-digit hex length.");
+    var end = utf8End(text, 4, parseInt(text.slice(0, 4), 16));
+    if (end < 0) break;
+    payloads.push(text.slice(4, end));
+    text = text.slice(end);
+  }
+  return { payloads: payloads, rest: text };
+}
+
+// The frame length counts bytes; the decoded text counts UTF-16 units.
+function utf8End(text, start, bytes) {
+  var i = start;
+  while (bytes > 0) {
+    if (i >= text.length) return -1;
+    var code = text.codePointAt(i);
+    bytes -= code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+    i += code >= 0x10000 ? 2 : 1;
+  }
+  return i;
+}
+
+/** Apply one streamed `avahi-browse --parsable` line to the resolved records,
+ * keyed by interface;protocol;name;type;domain. "=" adds or updates, "-"
+ * removes, anything else ("+" is unresolved) is ignored.
+ * Example: applyMdnsLine(records, "-;eno1;IPv4;adb-X;_adb-tls-connect._tcp;local") → true if it was known
+ * @param {Object<string, string>} records mutated in place @param {string} line
+ * @returns {boolean} whether the records changed */
+function applyMdnsLine(records, line) {
+  var fields = String(line).split(";");
+  if (fields.length < 6) return false;
+  var key = fields.slice(1, 6).join(";");
+  if (fields[0] === "=" && fields.length >= 9) {
+    if (records[key] === line) return false;
+    records[key] = line;
+    return true;
+  }
+  if (fields[0] !== "-" || !(key in records)) return false;
+  delete records[key];
+  return true;
+}
+
+/** True when two plain values (parsed rows, maps) hold the same data, so a
+ * rescan that found nothing new doesn't rebuild every bound view.
+ * Example: sameData([{ a: 1 }], [{ a: 1 }]) → true */
+function sameData(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function parseMdns(output) {
   var seen = {};
   return String(output).split(/\r?\n/).reduce(function(rows, line) {
@@ -93,14 +150,19 @@ function parseMdns(output) {
     }
     var address = endpoint(host + ":" + fields[8]);
     if (!address || !name) return rows;
-    var key = "mdns:" + type + ":" + address;
-    if (seen[key]) return rows;
-    seen[key] = true;
+    // One row per service: a device announced over IPv4 and IPv6 (or on two
+    // interfaces) is one device. IPv4 wins; link-local IPv6 needs a scope.
+    var ipv6 = fields[2] === "IPv6";
+    var id = type + ";" + name;
+    if (id in seen && (ipv6 || !seen[id].ipv6)) return rows;
     var pair = type === "_adb-tls-pairing._tcp";
     // TXT is the rest of the line: "api=36.1" "name=SM-X730" "v=1".
     var model = (/"name=([^"]*)"/.exec(fields.slice(9).join(";")) || [])[1] || "";
-    rows.push({ key: key, name: serviceId(name), serial: name, model: model, status: pair ? "pairing" : "discovered",
-      transport: "Wireless", endpoint: address, service: type, source: "mdns", pair: pair });
+    var row = { key: "mdns:" + type + ":" + address, name: serviceId(name), serial: name, model: model, status: pair ? "pairing" : "discovered",
+      transport: "Wireless", endpoint: address, service: type, source: "mdns", pair: pair };
+    if (id in seen) rows[seen[id].index] = row;
+    else seen[id] = { index: rows.push(row) - 1 };
+    seen[id].ipv6 = ipv6;
     return rows;
   }, []);
 }
@@ -240,15 +302,28 @@ function deviceDetails(info) {
   return rows;
 }
 
+/** Merge adb devices with mDNS services into the Devices page rows.
+ * Android runs one wireless adbd per host, so a connect service on the host of
+ * a wireless device is that device even when the ports differ: a ready device
+ * keeps adb's live endpoint (Avahi may hold a stale cached port), an offline
+ * one takes the advertised port so Connect reaches it. adb keeps endpoints it
+ * lost as "offline"; once their host is ready on another port they are hidden.
+ * Example: deviceRows(parseDevices("10.0.0.2:40001 device"), parseMdns("=;eno1;IPv4;adb-X-y;_adb-tls-connect._tcp;local;a.local;10.0.0.2;39999;"))
+ *   → one row, endpoint "10.0.0.2:40001" */
 function deviceRows(devices, services) {
-  var rows = devices.map(function(row) { return Object.assign({}, row); });
+  var host = function(row) { return endpointParts(row.endpoint).host; };
+  var wireless = function(row) { return row.source === "adb" && row.transport === "Wireless"; };
+  var readyHosts = devices.filter(function(row) { return wireless(row) && row.status === "device" && host(row); }).map(host);
+  var rows = devices.filter(function(row) {
+    return !(wireless(row) && row.status !== "device" && readyHosts.indexOf(host(row)) >= 0);
+  }).map(function(row) { return Object.assign({}, row); });
   services.forEach(function(service) {
-    var existing = !service.pair && rows.find(function(row) {
-      return row.source === "adb" && row.transport === "Wireless" &&
-        ((row.endpoint && row.endpoint === service.endpoint) || serviceId(row.serial) === serviceId(service.serial));
-    });
+    var candidates = service.pair ? [] : rows.filter(wireless);
+    var existing = candidates.find(function(row) {
+      return (row.endpoint && row.endpoint === service.endpoint) || serviceId(row.serial) === serviceId(service.serial);
+    }) || candidates.find(function(row) { return host(row) && host(row) === host(service); });
     if (existing) {
-      existing.endpoint = service.endpoint;
+      if (existing.status !== "device" || !existing.endpoint) existing.endpoint = service.endpoint;
       existing.service = service.service;
     } else rows.push(service);
   });
@@ -288,15 +363,16 @@ function commandError(code, output, error, name) {
  * @param {object} knownNames service name → device model, from earlier scans
  * @returns {{level: string, text: string, details: string}} level is "", "warning" or "error" */
 function mdnsStatus(code, error, services, knownNames) {
+  // "Got SIGTERM, quitting." is Avahi's note when DroidLink stops a browser.
   var lines = String(error || "").split(/\r?\n/).map(function(line) { return line.trim(); })
-    .filter(function(line, index, all) { return line && all.indexOf(line) === index; });
+    .filter(function(line, index, all) { return line && all.indexOf(line) === index && !/^Got SIG[A-Z]+, quitting\.$/.test(line); });
   var details = lines.join("\n");
   if (code === 124 || code === 137 || code === 127)
     return { level: "error", text: commandError(code, "", error, "Wireless discovery"), details: details };
   var missing = lines.filter(function(line) { return /^DroidLink mDNS: missing /.test(line); })[0];
   if (missing) return { level: "error", text: missing.replace(/^DroidLink mDNS: /, ""), details: details };
-  var failedTypes = lines.filter(function(line) { return /^DroidLink mDNS: \S+ discovery failed/.test(line); }).length;
-  if (failedTypes >= 3 || lines.some(function(line) { return /Daemon not running/.test(line); }))
+  // The streaming helper stops as a whole when any browser exits.
+  if (lines.some(function(line) { return /^DroidLink mDNS: discovery stopped/.test(line) || /Daemon not running/.test(line); }))
     return { level: "error", text: "Avahi isn't responding. Check that avahi-daemon is running.", details: details };
 
   var answered = (Array.isArray(services) ? services : []).map(function(row) { return row.serial; });

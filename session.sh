@@ -10,6 +10,10 @@ state_file="$runtime_dir/session"
 lock_file="$runtime_dir/lock"
 # Holds the serial whose rotation lock DroidLink set during the current session.
 rotation_file="$runtime_dir/rotation"
+# Written by `run` once the terminal reached it. `launch` waits for this, not
+# for the state file, which a watching widget removes as soon as a scrcpy that
+# failed immediately has exited.
+started_file="$runtime_dir/started"
 
 start_time() {
   [[ -r "/proc/$1/stat" ]] || return 1
@@ -145,13 +149,15 @@ case "${1:-}" in
       exit 1
     fi
     end_session
+    rm -f -- "$started_file"
     hide_terminal
     # The terminal is detached from Quickshell. Its child execs scrcpy, so
     # terminal output and errors remain visible even after a shell restart.
     setsid -f omarchy launch terminal --app-id=org.omarchy.droidlink --hold --title=DroidLink -- bash "$0" run "$serial" "$audio" "$recording" -- "$@" </dev/null >/dev/null 2>&1
     flock -u 9
     for ((attempt=0; attempt<30; attempt++)); do
-      if [[ -f "$state_file" ]]; then
+      if [[ -f "$started_file" ]]; then
+        rm -f -- "$started_file"
         echo 'Session started in the hidden DroidLink terminal.'
         exit 0
       fi
@@ -172,6 +178,7 @@ case "${1:-}" in
       exit 1
     fi
     printf '%s\n%s\n%s\n%s\n%s\n' "$$" "$(start_time "$$")" "$serial" "$audio" "$recording" > "$state_file"
+    : > "$started_file"
     flock -u 9
     exec 9>&-
     printf 'DroidLink: running %q ' "$@"
@@ -210,6 +217,33 @@ case "${1:-}" in
     read_session || end_session
     echo "$message"
     ;;
+  path)
+    # Widgets watch this file instead of polling `status`: it appears when a
+    # session starts and disappears when one ends.
+    printf '%s\n' "$state_file"
+    ;;
+  wait)
+    # Block until the running session ends, then clean it up (rotation lock
+    # included) the same way status would. One idle process per session
+    # replaces a status poll.
+    with_lock
+    if ! read_session; then
+      end_session
+      echo inactive
+      exit 0
+    fi
+    pid="${state[0]}" birth="${state[1]}"
+    flock -u 9
+    # util-linux waitpid sleeps on a pidfd; the loop covers its absence and a
+    # PID that is already gone.
+    command -v waitpid >/dev/null 2>&1 && waitpid "$pid" >/dev/null 2>&1 || true
+    while [[ "$(start_time "$pid" 2>/dev/null || true)" == "$birth" ]]; do
+      sleep 1
+    done
+    with_lock
+    read_session || end_session
+    echo inactive
+    ;;
   rotate)
     action="${2:-}" rotation="${3:-}"
     case "$action" in
@@ -232,5 +266,5 @@ case "${1:-}" in
       rm -f -- "$rotation_file"
     fi
     ;;
-  *) echo 'Usage: session.sh check|status|launch|stop|rotate lock 0-3|free|query' >&2; exit 2 ;;
+  *) echo 'Usage: session.sh check|status|path|wait|launch|stop|rotate lock 0-3|free|query' >&2; exit 2 ;;
 esac

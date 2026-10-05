@@ -48,7 +48,7 @@ ShellRoot {
         testRoot.step = 8;
         mirroring.launch();
       } else if (testRoot.step === 8 && !mirroring.busy && mirroring.sessionRecording.endsWith(".mkv")) {
-        testRoot.check(!mirroring.failed, "scrcpy successful exit");
+        testRoot.check(!mirroring.failed, "scrcpy successful exit: " + mirroring.message);
         testRoot.step = 9;
         mirroring.changeOption("fps", "120");
         mirroring.launch();
@@ -129,8 +129,9 @@ ShellRoot {
     interval: 300
     onTriggered: otherMonitor.stop()
   }
+  // Mirrors stop at step 10; mDNS settles for 1.5 s before the first step.
   Timer {
-    interval: 5000
+    interval: 9000
     running: true
     onTriggered: {
       var named = discovery.devices.find(row => row.serial === "USB123");

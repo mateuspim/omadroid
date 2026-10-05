@@ -119,7 +119,7 @@ test('only a failed discovered wireless connection enters pairing fallback', () 
   assert.equal(model.needsPairingFallback({ ...discovered, source: 'adb', status: 'offline' }, true), false);
 });
 
-test('merge only matches exact wireless service or endpoint, keeps USB and pairing', () => {
+test('merge matches wireless service or endpoint, keeps USB and pairing', () => {
   const devices = model.parseDevices('PHONE device usb:1 model:Pixel\nadb-PHONE-random._adb-tls-connect._tcp.local. device model:Pixel\n192.168.1.4:5555 offline');
   const services = model.parseMdns('=;eno1;IPv4;adb-PHONE-random;_adb-tls-connect._tcp;local;phone.local;192.168.1.3;37001\n=;eno1;IPv4;adb-PHONE-pair;_adb-tls-pairing._tcp;local;phone.local;192.168.1.3;42000\n=;eno1;IPv4;other;_adb._tcp;local;other.local;192.168.1.4;5555');
   const rows = model.deviceRows(devices, services);
@@ -127,6 +127,22 @@ test('merge only matches exact wireless service or endpoint, keeps USB and pairi
   assert.equal(rows.filter(r => r.source === 'mdns').length, 1);
   assert.equal(rows.find(r => r.serial.includes('.local.')).endpoint, '192.168.1.3:37001');
   assert.equal(devices[1].endpoint, '');
+});
+
+test('a service on the host of a wireless device is that device, whatever the port', () => {
+  const tablet = '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.156;34801;"name=SM-X730"';
+  // Ready: adb's endpoint is live; the cached advertised port is stale.
+  const ready = model.deviceRows(model.parseDevices('192.168.1.156:39357 device model:SM_X730'), model.parseMdns(tablet));
+  assert.deepEqual(plain(ready.map(r => [r.source, r.endpoint])), [['adb', '192.168.1.156:39357']]);
+  // Offline after a port change: Connect goes to the advertised port.
+  const offline = model.deviceRows(model.parseDevices('192.168.1.156:45099 offline'), model.parseMdns(tablet));
+  assert.deepEqual(plain(offline.map(r => [r.serial, r.status, r.endpoint])), [['192.168.1.156:45099', 'offline', '192.168.1.156:34801']]);
+  // Back on a new port: adb's dead entries for that host are hidden.
+  const back = model.deviceRows(model.parseDevices('192.168.1.156:45099 offline\n192.168.1.156:38083 offline\n192.168.1.156:46593 device\n192.168.1.9:5555 offline'), []);
+  assert.deepEqual(plain(back.map(r => r.serial)), ['192.168.1.156:46593', '192.168.1.9:5555']);
+  // Another host is still its own row.
+  const other = model.deviceRows(model.parseDevices('192.168.1.156:39357 device'), model.parseMdns(tablet.replace('192.168.1.156', '192.168.1.20')));
+  assert.equal(other.length, 2);
 });
 
 test('Avahi decimal escaping preserves service names without treating them as shell code', () => {
@@ -238,15 +254,60 @@ test('mDNS resolve timeouts become one hint per unreachable device', () => {
   assert.equal(status.details.split('\n').length, 3, 'duplicate IPv4/IPv6 lines are collapsed');
 });
 
+test('A service announced over IPv4 and IPv6 is one row, preferring IPv4', () => {
+  const rows = model.parseMdns([
+    '=;eno1;IPv6;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;fe80::6dd7:2d81:7c95:c24d;46593;"name=SM-X730"',
+    '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.156;46593;"name=SM-X730"',
+    '=;eno1;IPv6;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;fe80::6dd7:2d81:7c95:c24d;46593;"name=SM-X730"',
+    '=;eno1;IPv6;adb-SIX-y;_adb._tcp;local;six.local;fe80::2;5555;'
+  ].join('\n'));
+  assert.deepEqual(plain(rows.map(row => row.endpoint)), ['192.168.1.156:46593', '[fe80::2%eno1]:5555']);
+});
+
+test("Avahi's note on being stopped is not a discovery failure", () => {
+  assert.deepEqual(plain(model.mdnsStatus(0, 'Got SIGTERM, quitting.\nGot SIGTERM, quitting.', [], {})), { level: '', text: '', details: '' });
+});
+
 test('mDNS hard failures are errors; clean and partial scans are not', () => {
   assert.deepEqual(plain(model.mdnsStatus(0, '', [], {})), { level: '', text: '', details: '' });
-  const down = model.mdnsStatus(1, 'Failed to create client object: Daemon not running\nDroidLink mDNS: _adb._tcp discovery failed. Check that avahi-daemon is running.', [], {});
+  const down = model.mdnsStatus(1, 'Failed to create client object: Daemon not running\nDroidLink mDNS: discovery stopped (_adb._tcp exited with 1). Check that avahi-daemon is running.', [], {});
   assert.equal(down.level, 'error');
   assert.match(down.text, /avahi-daemon/);
   assert.match(down.details, /Daemon not running/);
   assert.equal(model.mdnsStatus(1, 'DroidLink mDNS: missing avahi-browse. Install Avahi and GNU coreutils.', [], {}).text, 'missing avahi-browse. Install Avahi and GNU coreutils.');
   assert.equal(model.mdnsStatus(124, '', [], {}).level, 'error');
-  const partial = model.mdnsStatus(1, 'Pairing resolver failed\nDroidLink mDNS: _adb-tls-pairing._tcp discovery failed. Check that avahi-daemon is running.', [], {});
+  const stopped = model.mdnsStatus(1, 'DroidLink mDNS: discovery stopped (_adb-tls-pairing._tcp exited with 1). Check that avahi-daemon is running.', [], {});
+  assert.equal(stopped.level, 'error', 'one browser exiting stops the whole stream');
+  const partial = model.mdnsStatus(0, 'Pairing resolver failed', [], {});
   assert.equal(partial.level, 'warning');
   assert.match(partial.text, /some devices may be missing/);
+});
+
+test('adb track-devices frames split by byte length, across chunks', () => {
+  const row = '192.168.1.3:5555\tdevice product:x model:Ünïcode transport_id:1\n';
+  const bytes = Buffer.byteLength(row).toString(16).padStart(4, '0');
+  const stream = '0000' + bytes + row;
+  const first = model.takeTrackFrames(stream.slice(0, 10));
+  assert.deepEqual(plain(first.payloads), ['']);
+  const second = model.takeTrackFrames(first.rest + stream.slice(10));
+  assert.deepEqual(plain(second), { payloads: [row], rest: '' });
+  assert.equal(model.parseDevices(second.payloads[0])[0].serial, '192.168.1.3:5555');
+  assert.throws(() => model.takeTrackFrames('List of devices'), /4-digit hex length/);
+});
+
+test('streamed Avahi lines add, update and remove resolved records', () => {
+  const records = {};
+  const resolved = '=;eno1;IPv4;adb-X-a;_adb-tls-connect._tcp;local;x.local;192.168.1.4;37001;"name=SM-X730"';
+  assert.equal(model.applyMdnsLine(records, '+;eno1;IPv4;adb-X-a;_adb-tls-connect._tcp;local'), false, 'unresolved announcements are ignored');
+  assert.equal(model.applyMdnsLine(records, resolved), true);
+  assert.equal(model.applyMdnsLine(records, resolved), false, 'a repeat is not a change');
+  assert.equal(model.parseMdns(Object.values(records).join('\n'))[0].endpoint, '192.168.1.4:37001');
+  assert.equal(model.applyMdnsLine(records, '-;eno1;IPv6;adb-X-a;_adb-tls-connect._tcp;local'), false, 'another protocol is a different record');
+  assert.equal(model.applyMdnsLine(records, '-;eno1;IPv4;adb-X-a;_adb-tls-connect._tcp;local'), true);
+  assert.deepEqual(plain(records), {});
+});
+
+test('sameData compares plain rows by content', () => {
+  assert.equal(model.sameData([{ serial: 'A', info: null }], [{ serial: 'A', info: null }]), true);
+  assert.equal(model.sameData([{ serial: 'A' }], [{ serial: 'B' }]), false);
 });

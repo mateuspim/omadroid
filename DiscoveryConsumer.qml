@@ -50,6 +50,7 @@ Item {
     readonly property bool initialized: false
     readonly property bool refreshPending: false
     readonly property bool busy: false
+    readonly property bool tracking: false
     readonly property var rows: []
     readonly property int readyCount: 0
   }

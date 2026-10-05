@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
 set -eu
+export LC_ALL=C
+device_rows() {
+  printf '%s\n' 'USB123 device usb:1-2 product:oriole model:Pixel_6 device:oriole transport_id:1' \
+    'LOCKED unauthorized usb:1-3' \
+    '192.168.1.3:5555 offline' \
+    'adb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9'
+}
 case "${1:-}" in
+  track-devices)
+    # no_track models an adb whose tracker fails, so discovery falls back to polling.
+    [[ "${DROIDLINK_TEST_CASE:-}" != no_track ]] || { echo 'adb: unknown command track-devices' >&2; exit 1; }
+    [[ -z "${DROIDLINK_ADB_LOG:-}" ]] || printf 'track %s\n' "$$" >>"$DROIDLINK_ADB_LOG"
+    # Real framing: an empty list, then 4 hex digits of byte length and the rows.
+    rows="$(device_rows)"$'\n'
+    printf '0000%04x%s' "${#rows}" "$rows"
+    exec sleep 30
+    ;;
   devices)
     if [[ -n "${DROIDLINK_ADB_LOG:-}" ]]; then
       if ! mkdir "${DROIDLINK_ADB_LOG}.lock" 2>/dev/null; then
@@ -15,11 +31,8 @@ case "${1:-}" in
       printf 'start %s %s\n' "$discovery_phase" "$$" >>"$DROIDLINK_ADB_LOG"
       sleep 0.15
     fi
-    printf '%s\n' 'List of devices attached' \
-      'USB123 device usb:1-2 product:oriole model:Pixel_6 device:oriole transport_id:1' \
-      'LOCKED unauthorized usb:1-3' \
-      '192.168.1.3:5555 offline' \
-      'adb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9'
+    printf '%s\n' 'List of devices attached'
+    device_rows
     if [[ -n "${DROIDLINK_ADB_LOG:-}" ]]; then
       printf 'end %s %s\n' "$discovery_phase" "$$" >>"$DROIDLINK_ADB_LOG"
     fi

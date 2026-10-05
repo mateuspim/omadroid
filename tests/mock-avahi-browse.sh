@@ -20,7 +20,9 @@ case "${*: -1}" in
       exit 1
     fi
     printf '%s\n' '=;eno1;IPv4;adb-NEW-pair;_adb-tls-pairing._tcp;local;new.local;192.168.1.5;42000;'
-    if [[ "${DROIDLINK_TEST_CASE:-}" == timeout ]]; then exit 124; fi
     ;;
   *) exit 7 ;;
 esac
+# Without --terminate a real browser keeps following until it is signalled.
+# Keeping the fixture path in argv lets tests find leftover browsers.
+[[ " $* " == *' --terminate '* ]] || exec -a "$0" sleep 30

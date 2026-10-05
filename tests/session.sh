@@ -92,11 +92,35 @@ pid="$(session status | sed -n 5p)"
 kill -KILL "$pid"
 wait_for_inactive
 wait_for_rotation $'1\n0'
+
+# `wait` blocks while the session runs, then ends it and releases the lock
+# itself, so widgets need no status poll.
+[[ "$(session path)" == "$XDG_RUNTIME_DIR/droidlink-$UID/session" ]]
+[[ "$(session wait)" == inactive ]]
+launch_long_session
+session rotate lock 1
+session wait >"$test_dir/wait.out" &
+waiter=$!
+sleep 0.3
+kill -0 "$waiter"
+kill -KILL "$(session status | sed -n 5p)"
+wait "$waiter"
+[[ "$(cat "$test_dir/wait.out")" == inactive ]]
+[[ ! -e "$(session path)" ]]
+wait_for_rotation $'1\n0'
 # A scrcpy that ignores SIGTERM is killed, and the session is already gone
 # when stop returns, so the next status agrees without another poll.
 DROIDLINK_SCRCPY_IGNORE_TERM=1 launch_long_session
 [[ "$(session stop)" == 'Session force-stopped after scrcpy did not exit cleanly.' ]]
 [[ "$(session status)" == inactive ]]
+
+# A scrcpy that exits at once still counts as started, even when a watching
+# widget's status removes its session file before launch looks for it.
+( for ((attempt=0; attempt<40; attempt++)); do session status >/dev/null; sleep 0.02; done ) &
+watcher=$!
+[[ "$(session launch USB123 0 '' -- scrcpy --serial=USB123)" == 'Session started in the hidden DroidLink terminal.' ]]
+wait "$watcher"
+wait_for_inactive
 
 # A missing recording folder fails the launch with a reason instead of
 # letting scrcpy die in the hidden terminal.

@@ -23,6 +23,8 @@ Panel {
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
 
   Component.onCompleted: prerequisites.start(["bash", sessionScript, "check"], 3)
+  // Rechecked on open only while something is missing, so installing a tool
+  // is noticed without spawning the check on every open.
   Command {
     id: prerequisites
     onFinished: (code, output, error) => root.missingTools = code === 0 ? output.trim().split("\n").filter(Boolean).join(", ") : "adb, scrcpy, Omarchy default terminal"
@@ -54,7 +56,7 @@ Panel {
   onOpenedChanged: {
     discoveryConsumer.holdMdns(opened);
     if (opened) {
-      if (!prerequisites.busy)
+      if (root.missingTools && !prerequisites.busy)
         prerequisites.start(["bash", sessionScript, "check"], 3);
       root.refreshDiscovery();
     } else
@@ -258,6 +260,7 @@ Panel {
             model: root.page === "devices" ? discovery.rows : []
             delegate: Rectangle {
               required property var modelData
+              readonly property var details: Model.deviceDetails(modelData.info)
               Layout.fillWidth: true
               implicitHeight: deviceCardContent.implicitHeight + Style.space(24)
               radius: Style.cornerRadius
@@ -295,7 +298,7 @@ Panel {
                   columnSpacing: Style.space(12)
                   rowSpacing: Style.space(3)
                   Repeater {
-                    model: root.detailsSerial === modelData.serial ? Model.deviceDetails(modelData.info).reduce((cells, row) => cells.concat([row.label, row.value]), []) : []
+                    model: root.detailsSerial === modelData.serial ? details.reduce((cells, row) => cells.concat([row.label, row.value]), []) : []
                     delegate: Label {
                       required property var modelData
                       required property int index
@@ -339,7 +342,7 @@ Panel {
                   }
                   ActionButton {
                     text: root.detailsSerial === modelData.serial ? "Hide details" : "Details"
-                    visible: Model.deviceDetails(modelData.info).length > 0
+                    visible: details.length > 0
                     selected: root.detailsSerial === modelData.serial
                     tooltipText: "Battery, storage, memory and screen, read every minute while this popup is open"
                     onClicked: root.detailsSerial = root.detailsSerial === modelData.serial ? "" : modelData.serial
@@ -385,7 +388,7 @@ Panel {
           Label {
             Layout.fillWidth: true
             visible: root.page === "devices"
-            text: discovery.busy ? "Discovering devices…" : "Last scan " + (discovery.updatedAt || "pending") + " · every " + discovery.intervalSec + "s"
+            text: discovery.busy || !discovery.initialized ? "Discovering devices…" : discovery.tracking ? "Following devices live · updated " + discovery.updatedAt : "Last scan " + (discovery.updatedAt || "pending") + " · every " + discovery.intervalSec + "s"
             font.pixelSize: Style.font.bodySmall
             color: Util.alpha(Color.foreground, 0.7)
           }

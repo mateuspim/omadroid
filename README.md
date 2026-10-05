@@ -6,8 +6,10 @@ settings.
 
 ## Features
 
-- **Devices:** one process-wide discovery service runs `adb devices -l` for every monitor,
-  plus Avahi-based mDNS discovery in parallel while the popup is open; it shows
+- **Devices:** one process-wide discovery service follows `adb track-devices -l`
+  for every monitor, so plugging in, authorizing or losing a device shows at
+  once without polling, plus Avahi-based mDNS discovery that follows the network
+  while the popup is open; it shows
   device name, model, serial or service identity, status, and transport. The name
   is the one set on Android (Settings › About › Device name), read once per
   connection; devices without one show their model. Ready devices also show
@@ -17,8 +19,11 @@ settings.
   These are read with one `adb shell` per device while the popup is open and
   refreshed once they are a minute old; nothing is read while it is closed. The
   session card shows the mirrored device's battery. The bar
-  badge counts authorized, ready transports. Refresh on open and every 15 seconds
-  by default; the existing widget setting accepts 5–3600 seconds.
+  badge counts authorized, ready transports. **Refresh** (F5) re-reads ADB and
+  restarts the Avahi browsers. If the ADB tracker stops (adb missing, its server
+  restarting), DroidLink polls `adb devices -l` every 15 seconds by default (the
+  widget setting accepts 5–3600 seconds) and retries the tracker with a growing
+  delay of up to a minute.
 - **Wireless:** explicit connect, targeted disconnect, six-digit wireless
   pairing, pairing prefill from discovered services, and manual
   `IP:port` / `hostname:port` / `[IPv6]:port` entry.
@@ -45,7 +50,7 @@ without scrolling.
 ## Requirements and enabling
 
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
-(`timeout`), `flock`, `setsid`, an Omarchy default terminal, Avahi
+(`timeout`), util-linux (`flock`, `setsid`, `waitpid`), an Omarchy default terminal, Avahi
 (`avahi-browse` and a running `avahi-daemon`), and scrcpy 4.1+ for mirroring and
 idle prevention. The bar and popup warn when `adb`, `scrcpy`, or a configured
 default terminal is missing. This implementation was checked against the installed
@@ -104,17 +109,24 @@ revoke it. The plugin issues connection commands only on explicit clicks;
 ADB itself may automatically connect to previously trusted mDNS services.
 
 Discovery recognizes `_adb._tcp`, `_adb-tls-connect._tcp`, and
-`_adb-tls-pairing._tcp`. Exact service/endpoint matches are merged with connected
-wireless transports; USB and Wi-Fi remain separate transports, and pairing ports
-remain distinct. mDNS does not supply a reliable hardware serial or model name,
+`_adb-tls-pairing._tcp`. Android runs one wireless ADB endpoint per host, so a
+connection service on the host of a wireless device is merged into that device even
+when the ports differ: a ready device keeps the port ADB is using (Avahi can briefly
+hold a stale one), and an offline device takes the newly advertised port, so its
+Connect button reconnects after Wireless debugging is toggled. Offline entries ADB
+keeps for a host that is ready again on another port are hidden. USB and Wi-Fi
+remain separate transports, and pairing ports remain distinct. mDNS does not supply a reliable hardware serial or model name,
 so unconnected entries explicitly show a service identity instead.
 
 The plugin invokes `bash discover-mdns.sh` using its resolved plugin path. The
-script queries only those three Android service types through `avahi-browse`,
-resolves them in parallel, and bounds each query to eight seconds. It emits
-resolved Avahi records; the plugin decodes names, deduplicates endpoints, and
-adds interface scopes to link-local IPv6 addresses. Pairing and connection ports
-remain distinct. Results from successful queries survive a partial scan failure.
+script keeps one `avahi-browse` open per Android service type while the popup is
+open, and stops them when it closes. Resolved records and removals stream to the
+plugin as Avahi sees them, so devices appear and leave without a rescan; the
+plugin decodes names, shows one row per service (IPv4 preferred), and adds interface scopes to
+link-local IPv6 addresses. Pairing and connection ports remain distinct. On
+opening, the previous results stay shown for 1.5 seconds while the browsers
+catch up, so the list doesn't flicker. If any browser stops, the error is shown
+and the browsers are restarted after 10 seconds.
 
 This path does not invoke `adb mdns services` and works independently of ADB's
 mDNS build support. If Avahi is missing or its daemon is unavailable, the popup
@@ -204,7 +216,10 @@ diagnostic terminal. The terminal is asked to stay open after scrcpy exits if
 the configured terminal supports that option. Closing the popup, switching
 tabs, or restarting the Omarchy shell leaves the session running. Every monitor's
 widget reads the same session state and can stop it; only one DroidLink session
-runs at a time. Closing the terminal also ends the session. A vanished device
+runs at a time. Nothing polls the session: widgets watch its state file, and
+while a session runs `session.sh wait` sleeps on the scrcpy process (util-linux
+`waitpid`) and ends the session, releasing a rotation lock DroidLink set, as soon
+as scrcpy exits, even with the popup closed. Closing the terminal also ends the session. A vanished device
 selection is never silently replaced by another phone.
 
 All external programs use argument arrays, not shell interpolation. Session state
@@ -232,12 +247,13 @@ node tests/profiles.test.cjs
 bash tests/session.sh
 bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
+DROIDLINK_TEST_CASE=no_track bash tests/shared-discovery.sh
 bash tests/smoke.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/smoke.sh
 ```
 
 All Node suites run offline (`node --test tests/*.test.cjs`); the shell-helper suite uses a fake Avahi command
-and covers partial failures, timeouts, removals, and temporary-file cleanup.
+and covers streamed removals, a browser that stops, and that no browser outlives the helper.
 Ask before running live discovery or desktop tests in an active user session.
 Screen-power tests execute the command builder and QML method bodies with fake
 commands/timers; they do not exercise QML bindings or deliver real compositor
@@ -247,8 +263,9 @@ require an approved real-device test.
 The session test launches a fake scrcpy through a fake terminal and verifies shared
 state, duplicate-launch rejection, argument preservation, and stop. The
 shared-discovery test creates two widget consumers of one injected service and
-uses fake ADB/Avahi executables to prove startup is singular and queued refreshes never
-overlap. The smoke test runs headlessly with an isolated QML shell, temporary settings,
+uses fake ADB/Avahi executables to prove one tracker serves every consumer, queued
+refreshes never overlap, a refresh that finds nothing new keeps the same rows, and a
+failing tracker (`no_track`) falls back to polling. The smoke test runs headlessly with an isolated QML shell, temporary settings,
 and fake ADB/Avahi/scrcpy/Omarchy terminal executables. It checks
 discovery/merging, stdin pairing, connect/disconnect, failure reporting, timeouts,
 missing executables, profile persistence, launch options, cross-panel session visibility,

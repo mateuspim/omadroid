@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import QtCore as Core
 import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -30,6 +31,7 @@ ColumnLayout {
   property bool confirmRemove: false
   // True once a session ran, so its terminal (kept by --hold) has output.
   property bool terminalLaunched: false
+  property bool statusPending: false
   readonly property bool busy: sessionPid > 0 || launcher.busy
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
   readonly property var readyDevices: devices.filter(row => row.status === "device")
@@ -57,6 +59,7 @@ ColumnLayout {
 
   Component.onCompleted: {
     selectProfile(saved.lastProfile);
+    statePath.start(["bash", sessionScript, "path"], 3);
     refreshSession();
   }
   onPanelOpenChanged: if (panelOpen)
@@ -189,18 +192,33 @@ ColumnLayout {
     stopper.start(["bash", sessionScript, "stop"], 10);
   }
 
+  // A change arriving mid-read is re-read once that read finishes.
   function refreshSession() {
-    if (!status.busy)
-      status.start(["bash", sessionScript, "status"], 3);
+    if (status.busy)
+      return statusPending = true;
+    statusPending = false;
+    status.start(["bash", sessionScript, "status"], 3);
   }
-  // A status poll also ends a finished session and releases its owned
-  // rotation lock, so keep a slow poll while a session runs behind a closed
-  // popup. Closed and idle, nothing polls; opening the popup re-reads state.
-  Timer {
-    interval: root.panelOpen ? 1000 : 5000
-    running: root.panelOpen || root.busy
-    repeat: true
-    onTriggered: root.refreshSession()
+  // Nothing polls. Every widget watches the session file, which appears on
+  // launch and disappears when a session ends, and while a session runs one
+  // `session.sh wait` sleeps until scrcpy exits, then ends the session and
+  // releases its owned rotation lock, even with the popup closed.
+  Command {
+    id: statePath
+    onFinished: (code, output, error) => {
+      if (code === 0)
+        stateFile.path = output.trim();
+    }
+  }
+  FileView {
+    id: stateFile
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.refreshSession()
+  }
+  Command {
+    id: sessionWaiter
+    onFinished: (code, output, error) => root.refreshSession()
   }
   Command {
     id: status
@@ -213,6 +231,8 @@ ColumnLayout {
         root.sessionRecording = lines[3];
         root.sessionPid = Number(lines[4]) || 0;
         root.terminalLaunched = true;
+        if (!sessionWaiter.busy)
+          sessionWaiter.start(["bash", root.sessionScript, "wait"], 0);
         // The card header already says the session is running.
         if (root.message.indexOf("Session started") === 0)
           root.message = "";
@@ -228,6 +248,8 @@ ColumnLayout {
         root.failed = true;
         root.message = Model.commandError(code, output, error, "Session status");
       }
+      if (root.statusPending)
+        Qt.callLater(root.refreshSession);
     }
   }
   Timer {

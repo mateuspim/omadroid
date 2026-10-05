@@ -25,14 +25,21 @@ PATH="$test_dir/bin:$PATH" \
   QT_QPA_PLATFORM=offscreen \
   QT_QPA_PLATFORMTHEME=xdgdesktopportal \
   QT_STYLE_OVERRIDE=Fusion \
-  timeout 8s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
+  timeout 14s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
 
 sed -n '1,240p' "$test_dir/output"
 test "$test_status" -eq 0
 if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|DROIDLINK_SHARED_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
 rg -q DROIDLINK_SHARED_TEST_OK "$test_dir/output"
-test "$(rg -c '^start ' "$test_dir/adb.log")" -eq 4
-test "$(rg -c '^end ' "$test_dir/adb.log")" -eq 4
-test "$(rg -c '^start initial ' "$test_dir/adb.log")" -eq 1
-test "$(rg -c '^start refresh ' "$test_dir/adb.log")" -eq 3
-! rg -q '^overlap$' "$test_dir/adb.log"
+# Two explicit refreshes (the second coalesced into a follow-up) poll adb;
+# with track-devices running nothing else does.
+if [[ "${DROIDLINK_TEST_CASE:-}" == no_track ]]; then
+  test "$(rg -c '^track ' "$test_dir/adb.log" || echo 0)" -eq 0
+  test "$(rg -c '^start initial ' "$test_dir/adb.log")" -ge 1
+else
+  test "$(rg -c '^track ' "$test_dir/adb.log")" -eq 1
+  test "$(rg -c '^start initial ' "$test_dir/adb.log" || echo 0)" -eq 0
+  test "$(rg -c '^start ' "$test_dir/adb.log")" -eq 2
+fi
+test "$(rg -c '^start ' "$test_dir/adb.log")" -eq "$(rg -c '^end ' "$test_dir/adb.log")"
+! rg -q "^overlap$" "$test_dir/adb.log"
