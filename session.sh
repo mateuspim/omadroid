@@ -3,9 +3,7 @@
 # instances inspect the same session, including instances created after reload.
 set -euo pipefail
 
-runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/droidlink-${UID}"
-mkdir -p -m 700 -- "$runtime_dir"
-chmod 700 -- "$runtime_dir"
+source "$(dirname -- "${BASH_SOURCE[0]}")/proc-lib.sh"
 state_file="$runtime_dir/session"
 lock_file="$runtime_dir/lock"
 # Holds the serial whose rotation lock DroidLink set during the current session.
@@ -14,17 +12,6 @@ rotation_file="$runtime_dir/rotation"
 # for the state file, which a watching widget removes as soon as a scrcpy that
 # failed immediately has exited.
 started_file="$runtime_dir/started"
-
-start_time() {
-  [[ -r "/proc/$1/stat" ]] || return 1
-  # /proc/PID/stat has a parenthesized command, possibly containing spaces.
-  local rest
-  rest="$(<"/proc/$1/stat")"
-  rest="${rest##*) }"
-  set -- $rest
-  [[ "$1" != Z ]] || return 1
-  printf '%s' "${20}"
-}
 
 read_session() {
   local actual

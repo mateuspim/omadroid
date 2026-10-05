@@ -25,6 +25,11 @@ ColumnLayout {
   // Supplied by the panel, which runs `session.sh check` on open.
   property string missingTools: ""
   property bool panelOpen: true
+  // Plugin settings: wake or unlock the device before scrcpy starts.
+  property bool wakeOnLaunch: true
+  property bool unlockOnLaunch: false
+  property var pendingLaunch: []
+  property string powerWarning: ""
   property bool optionsExpanded: false
   // A saved profile name awaiting a second Save, and a pending Remove.
   property string confirmOverwrite: ""
@@ -32,8 +37,9 @@ ColumnLayout {
   // True once a session ran, so its terminal (kept by --hold) has output.
   property bool terminalLaunched: false
   property bool statusPending: false
-  readonly property bool busy: sessionPid > 0 || launcher.busy
+  readonly property bool busy: sessionPid > 0 || launcher.busy || preparer.busy
   readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string powerScript: decodeURIComponent(Qt.resolvedUrl("device-power.sh").toString().replace(/^file:\/\//, ""))
   readonly property var readyDevices: devices.filter(row => row.status === "device")
   readonly property var customProfiles: Model.savedProfiles(saved.profilesJson)
   readonly property var profiles: Model.builtInProfiles().concat(customProfiles)
@@ -177,11 +183,22 @@ ColumnLayout {
       sessionAudioOnly = !!audioOnly;
       stopping = false;
       message = "Starting " + (audioOnly ? "audio" : "scrcpy") + " for " + selectedSerial + "…";
-      launcher.start(["bash", sessionScript, "launch", selectedSerial, audioOnly ? "1" : "0", path, "--"].concat(args), 6);
+      startWithPower(["bash", sessionScript, "launch", selectedSerial, audioOnly ? "1" : "0", path, "--"].concat(args));
     } catch (e) {
       failed = true;
       message = e.message;
     }
+  }
+
+  // A failed wake or unlock is reported but never blocks the session: the
+  // device can still be unlocked from the mirror window.
+  function startWithPower(launchArgs) {
+    powerWarning = "";
+    if (!wakeOnLaunch && !unlockOnLaunch)
+      return launcher.start(launchArgs, 6);
+    pendingLaunch = launchArgs;
+    // Unlock: up to 8 s for the bouncer, 10 s typing, 4 s checking.
+    preparer.start(["bash", powerScript, "connected", wakeOnLaunch ? "1" : "0", unlockOnLaunch ? "1" : "0", selectedSerial], 30);
   }
 
   function stop() {
@@ -274,8 +291,17 @@ ColumnLayout {
       root.failed = code !== 0;
       if (code === 0)
         root.terminalLaunched = true;
-      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy launch") : output.trim();
+      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy launch") : root.powerWarning || output.trim();
       root.refreshSession();
+    }
+  }
+  Command {
+    id: preparer
+    onFinished: (code, output, error) => {
+      if (code !== 0)
+        root.powerWarning = "Device power: " + Model.commandError(code, output, error, "Wake/unlock");
+      launcher.start(root.pendingLaunch, 6);
+      root.pendingLaunch = [];
     }
   }
   Command {

@@ -8,6 +8,9 @@ Item {
   property var shell: null
   property string pluginId: "pym.droidlink"
   property int intervalSec: 15
+  // Plugin settings; the service acts on connects once, for every widget.
+  property bool wakeOnConnect: false
+  property bool unlockOnConnect: false
   property bool mdnsWanted: false
   readonly property var sharedDiscovery: shell && typeof shell.serviceFor === "function" ? shell.serviceFor(pluginId) : null
   readonly property var discovery: sharedDiscovery || unavailableDiscovery
@@ -27,12 +30,16 @@ Item {
   function configure() {
     if (sharedDiscovery) {
       sharedDiscovery.intervalSec = intervalSec;
+      sharedDiscovery.wakeOnConnect = wakeOnConnect;
+      sharedDiscovery.unlockOnConnect = unlockOnConnect;
       sharedDiscovery.holdMdns(root, mdnsWanted);
     }
   }
 
   onSharedDiscoveryChanged: configure()
   onIntervalSecChanged: configure()
+  onWakeOnConnectChanged: configure()
+  onUnlockOnConnectChanged: configure()
   Component.onCompleted: configure()
   Component.onDestruction: if (sharedDiscovery)
     sharedDiscovery.holdMdns(root, false)

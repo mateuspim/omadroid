@@ -7,6 +7,41 @@ device_rows() {
     '192.168.1.3:5555 offline' \
     'adb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9'
 }
+# device-power.sh fixture: DROIDLINK_POWER_DIR holds `awake` and `locked`
+# flags and the `password` that unlocks. Typed scripts are evaluated like the
+# device shell would, so quoting mistakes change what gets typed.
+mock_power() {
+  local serial="$1" dir="$DROIDLINK_POWER_DIR" line typed=""
+  shift
+  printf '%s\n' "$*" >>"$dir/argv"
+  case "$*" in
+    'getprop ro.serialno') [[ "$serial" == USB123 ]] && printf 'R5CR123ABC\r\n' || printf 'OTHERDEVICE\r\n' ;;
+    'input keyevent KEYCODE_WAKEUP') touch "$dir/awake" ;;
+    'dumpsys power'*)
+      [[ -e "$dir/awake" ]] && printf '  mWakefulness=Awake\r\n' || printf '  mWakefulness=Dozing\r\n'
+      [[ -e "$dir/locked" ]] && printf '    isKeyguardShowing=true\r\n' || printf '    isKeyguardShowing=false\r\n'
+      ;;
+    'input keyevent KEYCODE_WAKEUP; sleep 0.3; wm dismiss-keyguard'*)
+      touch "$dir/awake"
+      [[ "${DROIDLINK_TEST_CASE:-}" == pattern ]] && printf '<node resource-id="com.android.systemui:id/lockPatternView"/>\r\n' ||
+        printf '<node resource-id="com.android.systemui:id/passwordEntry"/>\r\n'
+      ;;
+    '')
+      cat >"$dir/script"
+      while IFS= read -r line; do
+        case "$line" in
+          'input text '*) eval "set -- ${line#input text }"; typed+="$1" ;;
+          'input keyevent KEYCODE_SPACE') typed+=" " ;;
+          'input keyevent KEYCODE_ENTER')
+            printf '%s' "$typed" >"$dir/typed"
+            [[ "$typed" == "$(cat "$dir/password")" ]] && rm -f "$dir/locked"
+            ;;
+        esac
+      done <"$dir/script"
+      ;;
+    *) return 7 ;;
+  esac
+}
 case "${1:-}" in
   track-devices)
     # no_track models an adb whose tracker fails, so discovery falls back to polling.
@@ -76,6 +111,10 @@ case "${1:-}" in
         '/dev/fuse        233775104 133125120 100518912  57% /storage/emulated' \
         'tmpfs              5491156         0   5491156   0% /storage'
       exit 0
+    fi
+    if [[ -n "${DROIDLINK_POWER_DIR:-}" ]]; then
+      mock_power "$serial" "$@"
+      exit $?
     fi
     rotation_state="${DROIDLINK_ADB_ROTATION:?}"
     case "$*" in

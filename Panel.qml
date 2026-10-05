@@ -35,6 +35,8 @@ Panel {
     shell: root.bar ? root.bar.shell : null
     pluginId: root.moduleName
     intervalSec: Number(root.setting("refreshIntervalSec", 15)) || 15
+    wakeOnConnect: root.setting("wakeOnConnect", false) === true
+    unlockOnConnect: root.setting("unlockOnConnect", false) === true
   }
 
   function refreshDiscovery() {
@@ -375,6 +377,13 @@ Panel {
                     onClicked: actions.run("disconnect", modelData.serial, "")
                   }
                 }
+                DevicePowerControls {
+                  Layout.fillWidth: true
+                  visible: ready
+                  serial: modelData.serial
+                  ready: modelData.status === "device"
+                  panelOpen: root.opened
+                }
               }
             }
           }
@@ -417,6 +426,8 @@ Panel {
             devices: discovery.devices
             missingTools: root.missingTools
             panelOpen: root.opened
+            wakeOnLaunch: root.setting("wakeOnLaunch", true) === true
+            unlockOnLaunch: root.setting("unlockOnLaunch", false) === true
           }
         }
       }

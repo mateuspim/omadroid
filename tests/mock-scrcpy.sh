@@ -7,6 +7,11 @@ for arg in "$@"; do
   fi
 done
 [[ "$1" == --serial=USB123 ]] || exit 5
+# device-power.sh's keeper runs until stopped, like the real one.
+if [[ " $* " == *' --no-window --keep-active '* ]]; then
+  trap 'exit 0' TERM
+  while true; do sleep 0.1; done
+fi
 printf '%s\n' "$@" > "$DROIDLINK_TEST_ARGS"
 printf '%s\n' 'INFO: scrcpy fixture started'
 for arg in "$@"; do

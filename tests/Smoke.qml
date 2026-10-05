@@ -25,6 +25,12 @@ ShellRoot {
     width: 440
     devices: discovery.devices
   }
+  DroidLink.DevicePowerControls {
+    id: powerControls
+    width: 440
+    serial: "USB123"
+    ready: true
+  }
   DroidLink.ScrcpyPane {
     id: otherMonitor
     width: 440
@@ -140,6 +146,7 @@ ShellRoot {
       testRoot.check(named.info && named.info.battery.level === 64 && named.info.external.length === 1, "device details are read: " + JSON.stringify(named.info));
       testRoot.check(discovery.devices.find(row => row.serial === "adb-PHONE-random._adb-tls-connect._tcp").info === null, "a device that doesn't answer has no details");
       testRoot.check(discovery.devices.find(row => row.serial === "LOCKED").info === null, "unauthorized devices aren't queried");
+      testRoot.check(powerControls.power && !powerControls.power.keepAwake && powerControls.power.secret === "none" && powerControls.canUnlock === false, "device power status is read: " + JSON.stringify(powerControls.power));
       testRoot.check(testRoot.step === 10, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
       console.log("DROIDLINK_SMOKE_OK");
       Qt.quit();

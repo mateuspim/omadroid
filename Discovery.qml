@@ -7,6 +7,9 @@ Item {
   // isn't running (adb missing, server restarting).
   property int intervalSec: 15
   property bool active: true
+  // Plugin settings forwarded by DiscoveryConsumer.
+  property bool wakeOnConnect: false
+  property bool unlockOnConnect: false
   // Raw `adb devices -l` rows; `devices` adds the Android device names.
   property var adbDevices: []
   // Serial → Android device name, "" when unset or unreadable. Asked once per
@@ -273,6 +276,12 @@ Item {
     interval: 10000
     onTriggered: if (root.mdnsWanted)
       root.startMdns()
+  }
+  PowerOnConnect {
+    readySerials: root.adbDevices.filter(row => row.status === "device").map(row => row.serial)
+    started: root.initialized
+    wake: root.wakeOnConnect
+    unlock: root.unlockOnConnect
   }
   CommandStream {
     id: tracker

@@ -39,6 +39,9 @@ settings.
   audio-only session. While a session runs, its controls (Stop, phone screen,
   rotation) come first and the options for the next launch fold under
   **Next session options**.
+- **Keep awake, wake and unlock:** each ready device card has **Keep awake**,
+  **Wake** (**Wake & unlock** once a PIN is saved) and **Unlock PIN…**. See
+  [Keep awake and unlock](#keep-awake-and-unlock).
 
 The popup follows the active Omarchy theme and uses its native buttons, inputs,
 dropdowns, typography, and keyboard focus styles. Tab moves between controls;
@@ -50,7 +53,7 @@ without scrolling.
 ## Requirements and enabling
 
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
-(`timeout`), util-linux (`flock`, `setsid`, `waitpid`), an Omarchy default terminal, Avahi
+(`timeout`), util-linux (`flock`, `setsid`, `waitpid`), `secret-tool` (libsecret, only to save an unlock PIN), an Omarchy default terminal, Avahi
 (`avahi-browse` and a running `avahi-daemon`), and scrcpy 4.1+ for mirroring and
 idle prevention. The bar and popup warn when `adb`, `scrcpy`, or a configured
 default terminal is missing. This implementation was checked against the installed
@@ -233,6 +236,45 @@ stopped `avahi-daemon` are shown as errors. Hover the message for Avahi's full
 output. Scrcpy diagnostics remain in the hidden terminal while it is
 open. ADB's failure messages are checked even when it exits with code 0.
 
+## Keep awake and unlock
+
+**Keep awake** keeps the screen on without mirroring, also on battery (scrcpy's
+`--stay-awake` only works while charging). It wakes the device, then runs a
+window-less `scrcpy --no-video --no-audio --no-window --keep-active` in its own
+session. scrcpy changes no Android setting, so nothing is left behind if
+DroidLink or the shell stops; turning it off stops that process. The choice is
+remembered per device and the keeper restarts when the device reconnects,
+including on a new wireless port.
+
+**Unlock PIN…** stores the device's PIN or password in the desktop keyring with
+`secret-tool` (libsecret: gnome-keyring, KWallet, …), never in DroidLink's
+settings, logs or command arguments. It is keyed by the device's hardware serial
+(`ro.serialno`) as reported live, never by its adb address, so a different
+device on a reused address can't receive it. Unlocking:
+
+1. wakes the device and does nothing more if no lock screen is showing;
+2. opens the bouncer (`wm dismiss-keyguard`) and types only once a PIN or
+   password field is on screen (`uiautomator`), so a pattern lock or a missing
+   bouncer costs no attempt;
+3. types the secret through `adb shell` stdin and presses Enter, **once**. If the
+   lock screen is still showing, unlocking is paused for that device until the
+   secret is saved again, so a wrong or outdated PIN never runs into Android's
+   lockout or wipe limits.
+
+Passwords may use printable ASCII (4–64 characters, inner spaces allowed);
+`input text` can't type accents or emoji, so those are refused when saving.
+Pattern locks aren't supported. While it is typed, the secret is briefly visible
+to processes on the device itself, which anything with adb access controls
+anyway.
+
+Widget settings choose when this happens: **Wake on mirror launch** (on by
+default), **Unlock on mirror launch**, **Wake on connect** and **Unlock on
+connect** (off). A device without a saved PIN is only woken. Devices already
+connected when the shell starts are not woken or unlocked; only their keepers
+return. A failed wake or unlock is reported and never blocks the mirror launch.
+Preferences live under `$XDG_STATE_HOME/droidlink/devices` (marker files, no
+secrets); keepers are tracked under `$XDG_RUNTIME_DIR/droidlink-$UID/keepers`.
+
 ## Development
 
 Validate the plugin:
@@ -244,7 +286,9 @@ node tests/mdns.test.cjs
 node tests/screen-power.test.cjs
 node tests/screen-rotation.test.cjs
 node tests/profiles.test.cjs
+node tests/device-power.test.cjs
 bash tests/session.sh
+bash tests/device-power.sh
 bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=no_track bash tests/shared-discovery.sh
@@ -259,6 +303,12 @@ Screen-power tests execute the command builder and QML method bodies with fake
 commands/timers; they do not exercise QML bindings or deliver real compositor
 shortcuts. Physical authentication, screen-power changes, and idle behavior still
 require an approved real-device test.
+
+The device-power test runs `device-power.sh` against a fake keyring and a
+simulated lock screen: odd passwords (quotes, spaces, `%s`, `$`, backticks) are
+typed exactly, the secret never appears in any argv, another device never gets
+it, a pattern lock costs no attempt, a wrong secret is tried once then paused,
+and one keeper runs per device and returns on connect.
 
 The session test launches a fake scrcpy through a fake terminal and verifies shared
 state, duplicate-launch rejection, argument preservation, and stop. The

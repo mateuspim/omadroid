@@ -20,6 +20,7 @@ unset DISPLAY WAYLAND_DISPLAY
 PATH="$test_dir/bin:$PATH" \
   XDG_CONFIG_HOME="$test_dir/config" \
   XDG_RUNTIME_DIR="$test_dir/runtime" \
+  XDG_STATE_HOME="$test_dir/state" \
   DROIDLINK_ADB_LOG="$test_dir/adb.log" \
   DROIDLINK_REFRESH_MARKER="$test_dir/refresh.started" \
   QT_QPA_PLATFORM=offscreen \
