@@ -40,6 +40,7 @@ expect_code 1 status 'bad serial;'
 lock_device
 expect_code 3 unlock USB123
 [[ -e "$DROIDLINK_POWER_DIR/locked" && ! -e "$DROIDLINK_POWER_DIR/typed" ]] || fail "unlock without a secret typed something"
+[[ -e "$DROIDLINK_POWER_DIR/awake" ]] || fail "unlock without a secret still wakes"
 
 # Values `input text` can't type are refused at save time.
 for invalid in 'abc' $'caf\xc3\xa9 1' ' lead' 'trail ' "$(printf 'x%.0s' {1..65})"; do
@@ -71,13 +72,15 @@ DROIDLINK_TEST_CASE=pattern expect_code 1 unlock USB123
 printf 'wrong' >"$DROIDLINK_POWER_DIR/password"
 expect_code 4 unlock USB123
 [[ "$(power status USB123)" == *secret=blocked ]] || fail "failed try not blocked"
-rm -f "$DROIDLINK_POWER_DIR/typed"
+lock_device
 expect_code 4 unlock USB123
 [[ ! -e "$DROIDLINK_POWER_DIR/typed" ]] || fail "retried after a failed attempt"
+[[ -e "$DROIDLINK_POWER_DIR/awake" ]] || fail "a paused unlock still wakes the device"
 # On connect a paused device is still woken, never retried.
 lock_device
 power connected 0 1 USB123 >/dev/null 2>&1 || true
 [[ ! -e "$DROIDLINK_POWER_DIR/typed" ]] || fail "on-connect retried a paused unlock"
+[[ -e "$DROIDLINK_POWER_DIR/awake" ]] || fail "on-connect wakes a paused device"
 printf 'wrong' | power secret-set USB123 >/dev/null
 [[ "$(power status USB123)" == *secret=saved ]] || fail "saving again clears the pause"
 lock_device

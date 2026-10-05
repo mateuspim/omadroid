@@ -143,10 +143,11 @@ unlock_device() {
   local serial="$1" id state secret dir
   id="$(device_id "$serial")"
   dir="$state_root/$id"
+  # Wake first: a paused or missing PIN must still leave the screen on.
+  wake_device "$serial"
   [[ ! -e "$dir/blocked" ]] || die 4 "Unlock is paused after a failed try. Unlock the device by hand, then save its PIN again."
   [[ -e "$dir/secret" ]] || die 3 "No unlock PIN saved for this device."
   secret="$(secret-tool lookup app droidlink device "$id" 2>/dev/null)" || { rm -f -- "$dir/secret"; die 3 "The keyring has no unlock PIN for this device. Save it again."; }
-  wake_device "$serial"
   state="$(power_state "$serial")" || die 1 "Couldn't read the lock state of $serial."
   [[ "$state" == *' locked' ]] || { echo 'Device is awake and unlocked.'; return 0; }
   show_bouncer "$serial"
