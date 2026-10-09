@@ -138,27 +138,36 @@ case "${1:-}" in
     end_session
     rm -f -- "$started_file"
     hide_terminal
+    # Terminals may drop or re-split arguments on their way to the command
+    # (Ghostty's hold mode drops the empty recording path), so the request
+    # travels in a NUL-separated file and only its path goes through argv.
+    request="$(mktemp -- "$runtime_dir/request.XXXXXX")"
+    printf '%s\0' "$serial" "$audio" "$recording" "$@" > "$request"
     # The terminal is detached from Quickshell. Its child execs scrcpy, so
     # terminal output and errors remain visible even after a shell restart.
-    setsid -f omarchy launch terminal --app-id=org.omarchy.droidlink --hold --title=DroidLink -- bash "$0" run "$serial" "$audio" "$recording" -- "$@" </dev/null >/dev/null 2>&1
+    # fd 9 is closed so the terminal never holds the session lock.
+    setsid -f omarchy launch terminal --app-id=org.omarchy.droidlink --hold --title=DroidLink -- bash "$0" run "$request" </dev/null >/dev/null 2>&1 9>&-
     flock -u 9
     for ((attempt=0; attempt<30; attempt++)); do
       if [[ -f "$started_file" ]]; then
         rm -f -- "$started_file"
+        rm -f -- "$request"
         echo 'Session started in the hidden DroidLink terminal.'
         exit 0
       fi
       sleep 0.1
     done
+    rm -f -- "$request"
     echo 'The Omarchy terminal did not start scrcpy. Check your default terminal.' >&2
     exit 1
     ;;
   run)
-    shift
-    serial="$1" audio="$2" recording="$3"
-    shift 3
-    [[ "$1" == -- ]] || exit 2
-    shift
+    [[ "${2:-}" == "$runtime_dir"/request.* && -f "$2" ]] || { echo 'Invalid run request.' >&2; exit 2; }
+    mapfile -d '' -t request < "$2"
+    rm -f -- "$2"
+    [[ ${#request[@]} -ge 4 ]] || { echo 'Invalid run request.' >&2; exit 2; }
+    serial="${request[0]}" audio="${request[1]}" recording="${request[2]}"
+    set -- "${request[@]:3}"
     with_lock
     if read_session; then
       echo 'A DroidLink session is already active.' >&2

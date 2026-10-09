@@ -6,4 +6,10 @@ shift 2
 shift 3
 [[ "${1:-}" == -- ]] || exit 2
 shift
-exec "$@"
+# Ghostty's hold mode drops empty arguments; mimic it so launches must not
+# depend on them reaching the command.
+args=()
+for arg in "$@"; do
+  [[ "$arg" ]] && args+=("$arg")
+done
+exec "${args[@]}"
