@@ -16,24 +16,10 @@ set -uo pipefail
 export LC_ALL=C
 
 source "$(dirname -- "${BASH_SOURCE[0]}")/proc-lib.sh"
+source "$(dirname -- "${BASH_SOURCE[0]}")/adb-lib.sh"
 keeper_dir="$runtime_dir/keepers"
 state_root="${XDG_STATE_HOME:-$HOME/.local/state}/droidlink/devices"
 mkdir -p -m 700 -- "$keeper_dir" "$state_root"
-
-die() {
-  local code="$1"
-  shift
-  printf '%s\n' "$*" >&2
-  exit "$code"
-}
-
-valid_serial() {
-  [[ "$1" =~ ^[A-Za-z0-9._:@-]{1,128}$ ]] || die 1 "Unexpected adb serial '$1'; expected letters, digits and . _ : @ -."
-}
-
-device_shell() {
-  timeout "${2:-4}" adb -s "$1" shell "${@:3}" 2>/dev/null | tr -d '\r'
-}
 
 # The hardware serial reported by the device right now.
 device_id() {

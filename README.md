@@ -22,11 +22,14 @@ settings.
   badge counts authorized, ready transports. **Refresh** (F5) re-reads ADB and
   restarts the Avahi browsers. If the ADB tracker stops (adb missing, its server
   restarting), DroidLink polls `adb devices -l` every 15 seconds by default (the
-  widget setting accepts 5–3600 seconds) and retries the tracker with a growing
+  Settings page accepts 5–3600 seconds) and retries the tracker with a growing
   delay of up to a minute.
-- **Wireless:** explicit connect, targeted disconnect, six-digit wireless
-  pairing, pairing prefill from discovered services, and manual
-  `IP:port` / `hostname:port` / `[IPv6]:port` entry.
+- **Wireless:** pair by scanning a QR code with Android, **Go wireless** to
+  move a USB device to Wi-Fi so the cable can be unplugged, explicit connect,
+  targeted disconnect, six-digit wireless pairing, pairing prefill from
+  discovered services, and manual `IP:port` / `hostname:port` / `[IPv6]:port`
+  entry. See [Pair with a QR code](#pair-with-a-qr-code) and
+  [Go wireless](#go-wireless).
 - **Mirror:** select an authorized device, choose a built-in or saved profile,
   and launch scrcpy. Change resolution, FPS, H.264/H.265/AV1 codec, video bitrate,
   audio forwarding, recording, screen-off, and fullscreen independently. Launch
@@ -55,7 +58,7 @@ without scrolling.
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
 (`timeout`), util-linux (`flock`, `setsid`, `waitpid`), `secret-tool` (libsecret, only to save an unlock PIN), an Omarchy default terminal, Avahi
 (`avahi-browse` and a running `avahi-daemon`), and scrcpy 4.1+ for mirroring and
-idle prevention. The bar and popup warn when `adb`, `scrcpy`, or a configured
+idle prevention. `qrencode` is only needed to pair with a QR code. The bar and popup warn when `adb`, `scrcpy`, or a configured
 default terminal is missing. This implementation was checked against the installed
 scrcpy 4.1 command-line options. Node is only needed for development tests;
 there are no npm packages or Python runtime helpers.
@@ -72,9 +75,12 @@ If the widget is not already in the bar, enable it with:
 omarchy plugin enable pym.droidlink --section right
 ```
 
-This repository preserves plugin ID `pym.droidlink`, the `Panel.qml` entry point,
-and the existing manifest settings schema. It does not modify packaged Omarchy
-files. Omarchy watches the user plugin directory for updates.
+This repository preserves plugin ID `pym.droidlink` and the `Panel.qml` entry
+point. It does not modify packaged Omarchy files or Omarchy's configuration:
+every option is on the popup's **Settings** page and saved in DroidLink's own
+`~/.config/omarchy/droidlink.ini`, under `[preferences]` and `[autoConnect]`.
+Settings from 0.7.0 kept in `shell.json` are no longer read; set them again on
+the Settings page (the defaults are unchanged). Omarchy watches the user plugin directory for updates.
 
 Before each launch, DroidLink registers a named Hyprland window rule with
 `hyprctl eval`. The rule sends its diagnostic terminal straight to the hidden
@@ -135,8 +141,65 @@ This path does not invoke `adb mdns services` and works independently of ADB's
 mDNS build support. If Avahi is missing or its daemon is unavailable, the popup
 reports the error and keeps USB and manual wireless controls available. The
 script does not start or configure the daemon. Some networks block multicast.
-No automatic ADB server restart, TCP-mode switch, package installation, or broad
-disconnect is performed.
+No automatic ADB server restart, package installation, or broad disconnect is
+performed. Wireless debugging and TCP mode are only switched on by an explicit
+**Go wireless**.
+
+### Pair with a QR code
+
+On Android 11 or later, open Wireless, choose **Show QR code**, then on Android
+open Developer options › Wireless debugging › **Pair device with QR code** and
+scan it. Nothing needs to be typed or installed on the phone.
+
+`qr-pair.sh` makes a one-time service name (`droidlink-` and 8 random
+characters) and a 16-character password from `/dev/urandom`, and encodes
+`WIFI:T:ADB;S:<name>;P:<password>;;`, the payload Android Studio uses. The
+payload reaches `qrencode` on stdin, never in a process's arguments. Once
+scanned, Android announces `_adb-tls-pairing._tcp` under that name; DroidLink
+waits for that exact service, so another device's pairing service is never
+used, then runs `adb pair` with the password on stdin and connects as after
+code pairing. The code is held in memory only while it is shown, and is
+dropped when you cancel, leave Wireless, or close the popup (wireless
+discovery stops with the popup, so it could no longer pair). Showing a code
+needs wireless discovery; the button is disabled while Avahi is unavailable.
+
+### Go wireless
+
+A ready USB device has **Go wireless**. With the cable still in, `go-wireless.sh`:
+
+1. Reads the device's Wi-Fi IPv4 address (`wlan*`; mobile data doesn't count).
+2. On Android 11+, turns on Wireless debugging (`settings put global
+   adb_wifi_enabled 1`), waits for the port adbd publishes in
+   `service.adb.tls.port`, and connects to it. A host already trusted over USB
+   is usually accepted without pairing. If it isn't, DroidLink says so and
+   points to **Pair with QR code**. If Android asks whether to allow wireless
+   debugging on this network, allow it.
+3. On Android 10 and older, runs `adb tcpip 5555` and connects to port 5555.
+   That mode is unencrypted and ends when the device reboots.
+
+It then waits for the wireless transport to be ready and tells you to unplug
+the cable. Wireless debugging stays on afterwards; turn it off on Android when
+you're done.
+
+### Auto-connect
+
+Turn on **Auto-connect paired devices** on the popup's Settings page. It is
+saved in DroidLink's own `droidlink.ini` (`[autoConnect] enabled`). Then, when a device that was connected here before turns on
+Wireless debugging (the Quick Settings developer tile is quickest), DroidLink
+connects it without a click, even with the popup closed.
+
+- A device is remembered once it is ready over Wi-Fi here, however it got
+  connected (QR pairing, Go wireless, Connect), by its Wireless debugging
+  service name minus the random suffix (`adb-<serial>`). Up to 50 are kept in
+  `droidlink.ini` under `[autoConnect]`, and remembering happens whether or
+  not the setting is on.
+- Each announced endpoint gets one `adb connect`. A device that refuses this
+  computer (unpaired on Android) is forgotten until it connects again; a
+  network failure waits for the next announcement. Toggling Wireless debugging
+  announces a new port, which is tried once.
+- Devices that were never connected here are never contacted.
+- The Avahi browsers keep running while the setting is on, even with the popup
+  closed. Device details are still only read while the popup is open.
 
 ## Mirroring and profiles
 
@@ -267,7 +330,7 @@ Pattern locks aren't supported. While it is typed, the secret is briefly visible
 to processes on the device itself, which anything with adb access controls
 anyway.
 
-Widget settings choose when this happens: **Wake on mirror launch** (on by
+The Settings page chooses when this happens: **Wake on mirror launch** (on by
 default), **Unlock on mirror launch**, **Wake on connect** and **Unlock on
 connect** (off). A device without a saved PIN is only woken. Devices already
 connected when the shell starts are not woken or unlocked; only their keepers
@@ -287,8 +350,11 @@ node tests/screen-power.test.cjs
 node tests/screen-rotation.test.cjs
 node tests/profiles.test.cjs
 node tests/device-power.test.cjs
+node tests/pairing.test.cjs
+node tests/auto-connect.test.cjs
 bash tests/session.sh
 bash tests/device-power.sh
+bash tests/go-wireless.sh
 bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
 DROIDLINK_TEST_CASE=no_track bash tests/shared-discovery.sh
@@ -309,6 +375,17 @@ simulated lock screen: odd passwords (quotes, spaces, `%s`, `$`, backticks) are
 typed exactly, the secret never appears in any argv, another device never gets
 it, a pattern lock costs no attempt, a wrong secret is tried once then paused,
 and one keeper runs per device and returns on connect.
+
+The go-wireless test runs `go-wireless.sh` against a fake adb that simulates
+Wireless debugging: Android 11+ connects over TLS and never switches to TCP,
+an already-enabled device is left alone, a stale port is skipped, Android 10
+falls back to `adb tcpip`, mobile data alone is refused, and an untrusted host
+is pointed to QR pairing. The pairing test runs `qr-pair.sh` against a fake
+qrencode and checks the payload format, that the password stays out of argv,
+and that each code is new; the smoke test checks that a shown code pairs only
+once its own service is announced, and that auto-connect remembers ready
+phones, reconnects a trusted one, forgets one that refuses, and tries each
+endpoint once.
 
 The session test launches a fake scrcpy through a fake terminal and verifies shared
 state, duplicate-launch rejection, argument preservation, and stop. The

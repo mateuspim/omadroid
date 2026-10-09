@@ -1,5 +1,6 @@
 import QtQuick
 import "Model.js" as Model
+import "Pairing.js" as Pairing
 
 Item {
   id: root
@@ -11,14 +12,16 @@ Item {
   // Set when a pair succeeded before Avahi reported the device's connect port.
   property string pairedAwaitingConnect: ""
   readonly property bool busy: command.busy
+  readonly property string wirelessScript: decodeURIComponent(Qt.resolvedUrl("go-wireless.sh").toString().replace(/^file:\/\//, ""))
   signal changed
 
+  // `code` is the six-digit code typed from Android, or a QR code's password.
   function run(kind, address, code) {
     if (busy)
       return false;
     try {
       var args = Model.adbCommand(kind, address);
-      if (kind === "pair" && !/^\d{6}$/.test(code || ""))
+      if (kind === "pair" && !Pairing.validPairingSecret(code))
         throw new Error("Enter the six-digit pairing code shown on Android.");
       action = kind;
       target = args[2];
@@ -33,6 +36,35 @@ Item {
       failed = true;
       message = e.message;
       return false;
+    }
+  }
+
+  /** Move a USB device to wireless ADB through go-wireless.sh, so its cable can
+   * be unplugged. Example: actions.goWireless("R5CR123ABC") */
+  function goWireless(serial) {
+    if (busy)
+      return false;
+    action = "wireless";
+    target = serial;
+    failed = false;
+    message = "Moving " + serial + " to Wi-Fi…";
+    // Up to ~10 s for Wireless debugging to start, then connect retries.
+    return command.start(["bash", wirelessScript, serial], 60, "");
+  }
+
+  function finishWireless(code, output, error) {
+    failed = code !== 0;
+    message = failed ? Model.commandError(code, "", error, "Go wireless") : output.trim().split("\n").pop();
+  }
+
+  function finishAdb(code, output, error) {
+    failed = !Model.actionSucceeded(action, code, output, error);
+    message = failed ? Model.commandError(code, output, error, "ADB " + action) : (({ pair: "Paired with ", connect: "Connected to ", disconnect: "Disconnected " })[action] + target + ".");
+    if (action === "pair" && !failed && !connectPairedDevice(target)) {
+      pairedAwaitingConnect = target;
+      message = "Paired with " + target + ". Looking for its connection port…";
+      if (!discovery)
+        giveUpPairedConnect();
     }
   }
 
@@ -55,14 +87,10 @@ Item {
   Command {
     id: command
     onFinished: (code, output, error) => {
-      root.failed = !Model.actionSucceeded(root.action, code, output, error);
-      root.message = root.failed ? Model.commandError(code, output, error, "ADB " + root.action) : (({ pair: "Paired with ", connect: "Connected to ", disconnect: "Disconnected " })[root.action] + root.target + ".");
-      if (root.action === "pair" && !root.failed && !root.connectPairedDevice(root.target)) {
-        root.pairedAwaitingConnect = root.target;
-        root.message = "Paired with " + root.target + ". Looking for its connection port…";
-        if (!root.discovery)
-          root.giveUpPairedConnect();
-      }
+      if (root.action === "wireless")
+        root.finishWireless(code, output, error);
+      else
+        root.finishAdb(code, output, error);
       root.changed();
       if (root.discovery)
         root.discovery.refresh();

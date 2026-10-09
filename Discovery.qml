@@ -3,13 +3,14 @@ import "Model.js" as Model
 
 Item {
   id: root
+  // DroidLink's options from the popup's Settings page, in droidlink.ini.
+  readonly property alias preferences: preferences
   // Poll interval for `adb devices -l`, used only while `adb track-devices`
   // isn't running (adb missing, server restarting).
-  property int intervalSec: 15
+  property int intervalSec: preferences.refreshIntervalSec
   property bool active: true
-  // Plugin settings forwarded by DiscoveryConsumer.
-  property bool wakeOnConnect: false
-  property bool unlockOnConnect: false
+  property bool wakeOnConnect: preferences.wakeOnConnect
+  property bool unlockOnConnect: preferences.unlockOnConnect
   // Raw `adb devices -l` rows; `devices` adds the Android device names.
   property var adbDevices: []
   // Serial → Android device name, "" when unset or unreadable. Asked once per
@@ -45,7 +46,12 @@ Item {
   // background browsing.
   property bool mdnsInBackground: false
   property var mdnsHolders: []
-  readonly property bool mdnsWanted: active && (mdnsInBackground || mdnsHolders.length > 0)
+  // Connect remembered devices as they announce themselves, which needs the
+  // browsers running with the popup closed. Toggled from the popup.
+  readonly property bool autoConnect: autoConnector.enabled
+  // Device details are only shown in the popup, so they are only read for one.
+  readonly property bool popupWanted: active && (mdnsInBackground || mdnsHolders.length > 0)
+  readonly property bool mdnsWanted: popupWanted || (active && autoConnect)
   // Resolved Avahi records of the current stream, mutated in place by
   // Model.applyMdnsLine; `services` is published from them.
   property var mdnsRecords: ({})
@@ -202,7 +208,7 @@ Item {
     if (!Model.sameData(kept, deviceInfo))
       deviceInfo = kept;
     infoReadAt = keptAt;
-    if (!mdnsWanted || info.busy)
+    if (!popupWanted || info.busy)
       return;
     var now = Date.now();
     var pending = ready.filter(serial => !(serial in keptAt) || now - keptAt[serial] >= infoMaxAgeSec * 1000);
@@ -210,6 +216,14 @@ Item {
       return;
     infoRequested = pending;
     info.start(["bash", infoScript].concat(pending), 8);
+  }
+
+  function setAutoConnect(on) {
+    autoConnector.setEnabled(on);
+  }
+
+  function setPreference(name, value) {
+    preferences.set(name, value);
   }
 
   function holdMdns(owner, wanted) {
@@ -223,8 +237,8 @@ Item {
     if (!mdnsWanted)
       return stopMdns();
     startMdns();
-    refreshInfo();
   }
+  onPopupWantedChanged: refreshInfo()
   onActiveChanged: {
     if (active)
       return startTracker();
@@ -258,7 +272,7 @@ Item {
   // Details are re-read once a minute while a popup is open.
   Timer {
     interval: root.infoMaxAgeSec * 1000
-    running: root.mdnsWanted
+    running: root.popupWanted
     repeat: true
     onTriggered: root.refreshInfo()
   }
@@ -282,6 +296,15 @@ Item {
     started: root.initialized
     wake: root.wakeOnConnect
     unlock: root.unlockOnConnect
+  }
+  Preferences {
+    id: preferences
+  }
+  AutoConnect {
+    id: autoConnector
+    settingsLocation: preferences.location
+    devices: root.adbDevices
+    services: root.services
   }
   CommandStream {
     id: tracker

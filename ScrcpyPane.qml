@@ -291,7 +291,9 @@ ColumnLayout {
       root.failed = code !== 0;
       if (code === 0)
         root.terminalLaunched = true;
-      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy launch") : root.powerWarning || output.trim();
+      // The session file can report the session active before the launcher
+      // returns; the card header then already says so.
+      root.message = root.failed ? Model.commandError(code, output, error, "scrcpy launch") : root.powerWarning || (root.sessionPid > 0 ? "" : output.trim());
       root.refreshSession();
     }
   }

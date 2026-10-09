@@ -7,10 +7,6 @@ Item {
 
   property var shell: null
   property string pluginId: "pym.droidlink"
-  property int intervalSec: 15
-  // Plugin settings; the service acts on connects once, for every widget.
-  property bool wakeOnConnect: false
-  property bool unlockOnConnect: false
   property bool mdnsWanted: false
   readonly property var sharedDiscovery: shell && typeof shell.serviceFor === "function" ? shell.serviceFor(pluginId) : null
   readonly property var discovery: sharedDiscovery || unavailableDiscovery
@@ -27,20 +23,24 @@ Item {
       sharedDiscovery.holdMdns(root, wanted);
   }
 
-  function configure() {
-    if (sharedDiscovery) {
-      sharedDiscovery.intervalSec = intervalSec;
-      sharedDiscovery.wakeOnConnect = wakeOnConnect;
-      sharedDiscovery.unlockOnConnect = unlockOnConnect;
-      sharedDiscovery.holdMdns(root, mdnsWanted);
-    }
+  // Options are saved by the service in droidlink.ini, so every widget shows
+  // the same state and the service acts on connects once.
+  function setAutoConnect(on) {
+    if (sharedDiscovery)
+      sharedDiscovery.setAutoConnect(on);
+  }
+  function setPreference(name, value) {
+    if (sharedDiscovery)
+      sharedDiscovery.setPreference(name, value);
   }
 
-  onSharedDiscoveryChanged: configure()
-  onIntervalSecChanged: configure()
-  onWakeOnConnectChanged: configure()
-  onUnlockOnConnectChanged: configure()
-  Component.onCompleted: configure()
+  function attach() {
+    if (sharedDiscovery)
+      sharedDiscovery.holdMdns(root, mdnsWanted);
+  }
+
+  onSharedDiscoveryChanged: attach()
+  Component.onCompleted: attach()
   Component.onDestruction: if (sharedDiscovery)
     sharedDiscovery.holdMdns(root, false)
 
@@ -60,5 +60,13 @@ Item {
     readonly property bool tracking: false
     readonly property var rows: []
     readonly property int readyCount: 0
+    readonly property bool autoConnect: false
+    readonly property var preferences: QtObject {
+      readonly property int refreshIntervalSec: 15
+      readonly property bool wakeOnLaunch: true
+      readonly property bool unlockOnLaunch: false
+      readonly property bool wakeOnConnect: false
+      readonly property bool unlockOnConnect: false
+    }
   }
 }

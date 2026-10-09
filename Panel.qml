@@ -34,9 +34,6 @@ Panel {
     id: discoveryConsumer
     shell: root.bar ? root.bar.shell : null
     pluginId: root.moduleName
-    intervalSec: Number(root.setting("refreshIntervalSec", 15)) || 15
-    wakeOnConnect: root.setting("wakeOnConnect", false) === true
-    unlockOnConnect: root.setting("unlockOnConnect", false) === true
   }
 
   function refreshDiscovery() {
@@ -61,8 +58,11 @@ Panel {
       if (root.missingTools && !prerequisites.busy)
         prerequisites.start(["bash", sessionScript, "check"], 3);
       root.refreshDiscovery();
-    } else
+    } else {
       connectionForm.clearCode();
+      // Wireless discovery stops with the popup, so the code could no longer pair.
+      qrPairing.cancel();
+    }
   }
 
   BarIconButton {
@@ -191,6 +191,10 @@ Panel {
             {
               key: "mirror",
               label: "Mirror"
+            },
+            {
+              key: "settings",
+              label: "Settings"
             }
           ]
           delegate: ActionButton {
@@ -235,7 +239,7 @@ Panel {
           // The raw Avahi output stays in the tooltip.
           Label {
             Layout.fillWidth: true
-            visible: root.page !== "mirror" && discovery.mdnsError !== ""
+            visible: (root.page === "devices" || root.page === "wireless") && discovery.mdnsError !== ""
             text: discovery.mdnsLevel === "error" ? "⚠ Wireless discovery: " + discovery.mdnsError + "\nYou can still connect or pair manually in Wireless." : discovery.mdnsError
             color: discovery.mdnsLevel === "error" ? Color.urgent : Util.alpha(Color.foreground, 0.7)
             lineHeight: 1.3
@@ -253,7 +257,7 @@ Panel {
           }
           Label {
             Layout.fillWidth: true
-            visible: root.page !== "mirror" && actions.message !== ""
+            visible: (root.page === "devices" || root.page === "wireless") && actions.message !== ""
             text: (actions.failed ? "⚠ " : "") + actions.message
             color: actions.failed ? Color.urgent : Color.accent
             Accessible.role: Accessible.StaticText
@@ -350,6 +354,13 @@ Panel {
                     onClicked: root.detailsSerial = root.detailsSerial === modelData.serial ? "" : modelData.serial
                   }
                   ActionButton {
+                    text: "Go wireless"
+                    visible: modelData.transport === "USB" && modelData.status === "device"
+                    enabled: !actions.busy
+                    tooltipText: "Turn on Wireless debugging through this cable and connect over Wi-Fi, so the cable can be unplugged"
+                    onClicked: actions.goWireless(modelData.serial)
+                  }
+                  ActionButton {
                     text: "Connect"
                     visible: !modelData.pair && (modelData.source === "mdns" || (modelData.status === "offline" && modelData.endpoint !== ""))
                     enabled: !actions.busy
@@ -401,6 +412,17 @@ Panel {
             font.pixelSize: Style.font.bodySmall
             color: Util.alpha(Color.foreground, 0.7)
           }
+          SettingsPane {
+            Layout.fillWidth: true
+            visible: root.page === "settings"
+            consumer: discoveryConsumer
+          }
+          QrPairing {
+            id: qrPairing
+            Layout.fillWidth: true
+            visible: root.page === "wireless"
+            actions: actions
+          }
           ConnectionForm {
             id: connectionForm
             Layout.fillWidth: true
@@ -426,16 +448,18 @@ Panel {
             devices: discovery.devices
             missingTools: root.missingTools
             panelOpen: root.opened
-            wakeOnLaunch: root.setting("wakeOnLaunch", true) === true
-            unlockOnLaunch: root.setting("unlockOnLaunch", false) === true
+            wakeOnLaunch: discovery.preferences.wakeOnLaunch
+            unlockOnLaunch: discovery.preferences.unlockOnLaunch
           }
         }
       }
     }
   }
   onPageChanged: {
-    if (page !== "wireless")
+    if (page !== "wireless") {
       connectionForm.clearCode();
+      qrPairing.cancel();
+    }
     for (const scroll of [deviceScroll, mirrorScroll]) {
       if (scroll.contentItem)
         scroll.contentItem.contentY = 0;

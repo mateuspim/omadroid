@@ -42,6 +42,44 @@ mock_power() {
     *) return 7 ;;
   esac
 }
+# go-wireless.sh fixture: DROIDLINK_WIRELESS_DIR holds the device's `sdk`, its
+# `ip -4 -o addr show` output in `addresses`, `enabled` (adb_wifi_enabled) and
+# the `port` adbd publishes once enabled (`stale-port` before). Every adb call
+# is appended to `log`. DROIDLINK_TEST_CASE=untrusted connects unauthorized.
+mock_wireless_shell() {
+  local dir="$DROIDLINK_WIRELESS_DIR"
+  printf 'shell %s\n' "$*" >>"$dir/log"
+  case "$*" in
+    'getprop ro.build.version.sdk') printf '%s\r\n' "$(cat "$dir/sdk")" ;;
+    'ip -4 -o addr show') sed 's/$/\r/' "$dir/addresses" ;;
+    'settings get global adb_wifi_enabled') printf '%s\r\n' "$(cat "$dir/enabled")" ;;
+    'settings put global adb_wifi_enabled 1') printf '1' >"$dir/enabled" ;;
+    'getprop service.adb.tls.port')
+      [[ "$(cat "$dir/enabled")" == 1 ]] && printf '%s\r\n' "$(cat "$dir/port")" || printf '%s\r\n' "$(cat "$dir/stale-port" 2>/dev/null)"
+      ;;
+    *) return 7 ;;
+  esac
+}
+mock_wireless() {
+  local dir="$DROIDLINK_WIRELESS_DIR"
+  printf '%s\n' "$*" >>"$dir/log"
+  case "$1" in
+    connect) printf 'connected to %s\n' "$2" ;;
+    -s)
+      case "$3" in
+        tcpip) printf 'restarting in TCP mode port: %s\n' "$4" ;;
+        get-state) [[ "${DROIDLINK_TEST_CASE:-}" == untrusted ]] && printf 'unauthorized\n' || printf 'device\n' ;;
+        shell) shift 3; mock_wireless_shell "$@" ;;
+        *) return 7 ;;
+      esac
+      ;;
+    *) return 7 ;;
+  esac
+}
+if [[ -n "${DROIDLINK_WIRELESS_DIR:-}" ]]; then
+  mock_wireless "$@"
+  exit $?
+fi
 case "${1:-}" in
   track-devices)
     # no_track models an adb whose tracker fails, so discovery falls back to polling.
@@ -73,7 +111,10 @@ case "${1:-}" in
     fi
     ;;
   connect)
-    if [[ "$2" == fail.local:* ]]; then printf '%s\n' "failed to connect to $2"; else printf '%s\n' "connected to $2"; fi
+    # 192.168.1.66 models a phone that no longer trusts this computer.
+    if [[ "$2" == fail.local:* ]]; then printf '%s\n' "failed to connect to $2"
+    elif [[ "$2" == 192.168.1.66:* ]]; then printf '%s\n' "failed to authenticate to $2"
+    else printf '%s\n' "connected to $2"; fi
     ;;
   disconnect)
     [[ $# == 2 ]] || exit 9

@@ -53,6 +53,12 @@ ShellRoot {
         testRoot.check(sharedDiscovery.rows === testRoot.rowsBefore, "a refresh that found nothing new rebuilt the rows: " + JSON.stringify(sharedDiscovery.rows));
         consumerA.active = false;
         testRoot.check(!sharedDiscovery.mdnsWanted, "a destroyed consumer kept holding mDNS");
+        // Auto-connect browses with no popup open, but never reads device details.
+        consumerB.item.setAutoConnect(true);
+        testRoot.check(sharedDiscovery.autoConnect && consumerB.item.discovery.autoConnect, "the popup toggle did not reach the shared service");
+        testRoot.check(sharedDiscovery.mdnsWanted && !sharedDiscovery.popupWanted, "auto-connect did not browse in the background, or read details without a popup");
+        consumerB.item.setAutoConnect(false);
+        testRoot.check(!sharedDiscovery.mdnsWanted, "turning auto-connect off kept mDNS running");
         testRoot.step = 4;
         actions.run("connect", "phone.local:37001", "");
       }
@@ -63,7 +69,6 @@ ShellRoot {
     id: consumerComponent
     DroidLink.DiscoveryConsumer {
       shell: serviceHost
-      intervalSec: 3600
     }
   }
 
