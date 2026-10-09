@@ -5,6 +5,9 @@ import Quickshell.Io
 // bounded output. Process.running = false is Quickshell's native SIGTERM path.
 Item {
   id: root
+  // Never drawn; hidden so a parent layout skips it instead of adding spacing
+  // for it (seven of them left a gap above "Mirror with scrcpy").
+  visible: false
   property bool busy: false
   property string output: ""
   property string errorOutput: ""

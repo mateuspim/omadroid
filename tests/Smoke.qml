@@ -115,6 +115,8 @@ ShellRoot {
     repeat: true
     onTriggered: {
       if (testRoot.step === 7 && !mirroring.busy && mirroring.message) {
+        // Command items once took layout slots and pushed the heading down.
+        testRoot.check(mirroring.children.every(item => !item.visible || item.y === 0 || item.height > 0), "no empty layout slots above the mirror heading");
         mirroring.changeOption("codec", "h264");
         mirroring.changeOption("audio", false);
         mirroring.changeOption("record", true);
