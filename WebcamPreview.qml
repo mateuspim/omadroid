@@ -7,7 +7,7 @@ import qs.Commons
 // Qt's own camera is not used: its cached format list could push a stale
 // size onto the shared output and garble it for every app. Loaded on demand
 // by ScrcpyPane; unloading it stops ffmpeg and closes the device.
-Rectangle {
+Item {
   id: root
   property string device: ""
   // DroidLink's per-user runtime folder, from ScrcpyPane's session path.
@@ -34,34 +34,43 @@ Rectangle {
   // Set while a restart waits for the previous ffmpeg to exit.
   property bool reopen: false
   implicitHeight: Math.min(frame.sourceSize.width > 0 ? width * frame.sourceSize.height / frame.sourceSize.width : width * 9 / 16, maxHeight)
-  radius: Style.cornerRadius
-  color: "black"
-  clip: true
 
-  Image {
-    id: frame
-    anchors.fill: parent
-    fillMode: Image.PreserveAspectFit
-    cache: false
-    asynchronous: true
-    // Keeps the last frame up while the next one loads, so it never blinks.
-    retainWhileLoading: true
-    onStatusChanged: if (frame.status === Image.Ready && feeder.busy && root.frames < 2)
-      root.frames++
-  }
-  // 12 reloads a second once frames flow; before that, twice a second, as
-  // each load of a file ffmpeg has not written yet logs a warning.
-  Timer {
-    interval: root.frames > 0 ? 83 : 500
-    repeat: true
-    running: feeder.busy && !root.reopen && root.framePath !== ""
-    onTriggered: frame.source = "file://" + root.framePath + "?" + (++root.tick)
-  }
-  PreviewSplash {
-    id: splash
-    anchors.fill: parent
-    failed: root.error !== ""
-    label: root.error || (root.streamFormat ? "Waiting for camera frames on " + root.device + "…" : "Waiting for scrcpy to stream to " + root.device + "…")
+  // Shrinks to the frame's shape when maxHeight caps the height, so a capped
+  // preview is centered instead of pillarboxed across the full width.
+  Rectangle {
+    id: box
+    anchors.centerIn: parent
+    width: frame.sourceSize.height > 0 ? Math.min(root.width, root.height * frame.sourceSize.width / frame.sourceSize.height) : root.width
+    height: root.height
+    radius: Style.cornerRadius
+    color: "black"
+    clip: true
+
+    Image {
+      id: frame
+      anchors.fill: parent
+      fillMode: Image.PreserveAspectFit
+      cache: false
+      asynchronous: true
+      // Keeps the last frame up while the next one loads, so it never blinks.
+      retainWhileLoading: true
+      onStatusChanged: if (frame.status === Image.Ready && feeder.busy && root.frames < 2)
+        root.frames++
+    }
+    // 12 reloads a second once frames flow; before that, twice a second, as
+    // each load of a file ffmpeg has not written yet logs a warning.
+    Timer {
+      interval: root.frames > 0 ? 83 : 500
+      repeat: true
+      running: feeder.busy && !root.reopen && root.framePath !== ""
+      onTriggered: frame.source = "file://" + root.framePath + "?" + (++root.tick)
+    }
+    PreviewSplash {
+      id: splash
+      anchors.fill: parent
+      failed: root.error !== ""
+      label: root.error || (root.streamFormat ? "Waiting for camera frames on " + root.device + "…" : "Waiting for scrcpy to stream to " + root.device + "…")
+    }
   }
 
   Command {
