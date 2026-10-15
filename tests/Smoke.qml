@@ -293,6 +293,76 @@ ShellRoot {
       }
     }
   }
+  // Send text overlay against the test discovery: two ready phones, ←/→
+  // switches between them, non-ASCII is refused, a send remembers the phone.
+  readonly property var testDiscovery: discovery
+  property int sendTextHides: 0
+  property bool sendTextDone: false
+  // SendText.qml's window needs Wayland layer shell, so the card is tested alone.
+  DroidLink.SendTextCard {
+    id: sendTextOverlay
+    property bool opened: false
+    function open() { opened = true; reset(); }
+    function close() { opened = false; }
+    width: 420
+    // A `discovery: discovery` property would bind to itself, not the service.
+    consumer: QtObject {
+      readonly property var discovery: testRoot.testDiscovery
+      function setPreference(name, value) { testRoot.testDiscovery.setPreference(name, value); }
+    }
+    onDismissed: {
+      testRoot.sendTextHides += 1;
+      close();
+    }
+  }
+  Timer {
+    interval: 6000
+    running: true
+    onTriggered: {
+      var hotkey = child(settingsPane, "droidlinkHotkey");
+      testRoot.check(hotkey.installed === "", "no Send text hotkey at first: " + hotkey.installed + " " + hotkey.message);
+      hotkey.run(["set", "super+alt+d"]);
+      sendTextOverlay.open("");
+      testRoot.check(sendTextOverlay.opened && sendTextOverlay.target === "USB123", "first ready phone targeted: " + sendTextOverlay.target);
+      sendTextOverlay.chooseNext(1);
+      testRoot.check(sendTextOverlay.target === "adb-PHONE-random._adb-tls-connect._tcp", "→ picks the next phone: " + sendTextOverlay.target);
+      sendTextOverlay.chooseNext(1);
+      testRoot.check(sendTextOverlay.target === "USB123", "→ wraps around");
+      sendTextOverlay.chooseNext(-1);
+      sendTextOverlay.typeText("café");
+      testRoot.check(!sendTextOverlay.canSend && sendTextOverlay.warning.indexOf("é") >= 0, "non-ASCII refused: " + sendTextOverlay.warning);
+      // Pressed keys become chips; the prompt keeps Backspace unless Ctrl+K comes first.
+      var press = (key, modifiers, text) => sendTextOverlay.handleKey({ key: key, modifiers: modifiers || 0, text: text || "" });
+      press(Qt.Key_Escape);
+      testRoot.check(sendTextOverlay.steps.length === 0 && sendTextOverlay.opened, "Esc clears first");
+      press(Qt.Key_A, Qt.ControlModifier);
+      press(Qt.Key_K, Qt.ControlModifier);
+      press(Qt.Key_Control, Qt.ControlModifier);
+      testRoot.check(sendTextOverlay.literalNext, "a lone modifier waits for the key");
+      press(Qt.Key_Backspace);
+      sendTextOverlay.typeText("it's {ok}");
+      press(Qt.Key_Tab);
+      press(Qt.Key_Backspace);
+      testRoot.check(JSON.stringify(sendTextOverlay.steps) === JSON.stringify([{ key: "ctrl+a" }, { key: "backspace" }, { text: "it's {ok}" }]), "keys recorded as steps: " + JSON.stringify(sendTextOverlay.steps));
+      testRoot.check(child(sendTextOverlay, "sendTextKey:ctrl+a") !== null, "a key shows as a chip");
+      press(Qt.Key_Return, Qt.ShiftModifier);
+      testRoot.check(sendTextOverlay.status.indexOf("Typing on Pixel 9") === 0, "typing status names the phone: " + sendTextOverlay.status);
+    }
+  }
+  Connections {
+    target: sendTextOverlay
+    function onOpenedChanged() {
+      // The reopen and close below fire this again.
+      if (sendTextOverlay.opened || testRoot.sendTextDone)
+        return;
+      testRoot.sendTextDone = true;
+      testRoot.check(testRoot.sendTextHides === 1 && !sendTextOverlay.status.startsWith("⚠"), "overlay closes after typing: " + sendTextOverlay.status);
+      testRoot.check(discovery.preferences.lastTextTarget === "adb-PHONE-random._adb-tls-connect._tcp", "the phone typed on is remembered");
+      sendTextOverlay.open("");
+      testRoot.check(sendTextOverlay.target === "adb-PHONE-random._adb-tls-connect._tcp" && sendTextOverlay.steps.length === 0, "reopening preselects it with an empty prompt");
+      sendTextOverlay.close();
+    }
+  }
   // mDNS settles for 1.5 s before the first step.
   Timer {
     interval: 13000
@@ -332,6 +402,9 @@ ShellRoot {
       testRoot.check(testRoot.step === 12 && !mirroring.busy && !otherMonitor.busy, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
       testRoot.check(previewCheck.streamFormat === "" && previewCheck.error === "" && previewCheck.implicitHeight > 0, "webcam preview loads idle");
       testRoot.check(splashCheck.shown && splashCheck.progress > 0, "preview splash animates: " + splashCheck.progress);
+      testRoot.check(testRoot.sendTextDone, "send text finished");
+      var hotkeyRow = child(settingsPane, "droidlinkHotkey");
+      testRoot.check(hotkeyRow.installed === "SUPER + ALT + D" && child(hotkeyRow, "droidlinkHotkeyRemove").visible, "Send text hotkey installed: " + hotkeyRow.installed + " " + hotkeyRow.message);
       console.log("DROIDLINK_SMOKE_OK");
       Qt.quit();
     }

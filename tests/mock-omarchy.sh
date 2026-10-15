@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 set -eu
+# hotkey.sh reads the bound keys; this list mirrors Omarchy's format.
+if [[ "$*" == 'menu keybindings --print' ]]; then
+  printf '%s\n' 'SUPER + K                           → Keybindings' \
+    'SUPER CTRL + A                      → Audio' \
+    'SUPER SHIFT ALT + B                 → Browser' \
+    'CTRL ALT + DELETE                   → Something'
+  [[ -z "${DROIDLINK_HYPR_BINDINGS:-}" ]] || sed -n 's/^o\.bind("\([^"]*\)", "\([^"]*\)".*/\1   → \2/p' "$DROIDLINK_HYPR_BINDINGS" 2>/dev/null
+  exit 0
+fi
 [[ "${1:-}" == launch && "${2:-}" == terminal ]] || exit 2
 shift 2
 [[ "${1:-}" == --app-id=org.omarchy.droidlink && "${2:-}" == --hold && "${3:-}" == --title=DroidLink ]] || exit 2

@@ -67,6 +67,7 @@ Item {
       readonly property bool unlockOnLaunch: false
       readonly property bool wakeOnConnect: false
       readonly property bool unlockOnConnect: false
+      readonly property string lastTextTarget: ""
     }
   }
 }

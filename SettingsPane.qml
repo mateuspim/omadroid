@@ -82,6 +82,10 @@ ColumnLayout {
       }
     }
   }
+  SendTextHotkey {
+    objectName: "droidlinkHotkey"
+    Layout.fillWidth: true
+  }
   Label {
     Layout.fillWidth: true
     text: "Device list"

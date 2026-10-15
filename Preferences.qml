@@ -14,6 +14,8 @@ Item {
   readonly property bool unlockOnLaunch: stored.unlockOnLaunch
   readonly property bool wakeOnConnect: stored.wakeOnConnect
   readonly property bool unlockOnConnect: stored.unlockOnConnect
+  // Serial the Send text overlay typed on last; preselected while it is ready.
+  readonly property string lastTextTarget: stored.lastTextTarget
 
   function clampInterval(seconds) {
     return Math.max(5, Math.min(3600, Math.round(Number(seconds) || 15)));
@@ -24,8 +26,10 @@ Item {
   function set(name, value) {
     if (name === "refreshIntervalSec")
       return stored.refreshIntervalSec = clampInterval(value);
+    if (name === "lastTextTarget")
+      return stored.lastTextTarget = String(value || "");
     if (["wakeOnLaunch", "unlockOnLaunch", "wakeOnConnect", "unlockOnConnect"].indexOf(name) < 0)
-      throw new Error("Unknown DroidLink preference '" + name + "'; expected refreshIntervalSec, wakeOnLaunch, unlockOnLaunch, wakeOnConnect or unlockOnConnect.");
+      throw new Error("Unknown DroidLink preference '" + name + "'; expected refreshIntervalSec, lastTextTarget, wakeOnLaunch, unlockOnLaunch, wakeOnConnect or unlockOnConnect.");
     stored[name] = !!value;
   }
 
@@ -39,5 +43,6 @@ Item {
     property bool unlockOnLaunch: false
     property bool wakeOnConnect: false
     property bool unlockOnConnect: false
+    property string lastTextTarget: ""
   }
 }

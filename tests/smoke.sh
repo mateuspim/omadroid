@@ -8,7 +8,7 @@ if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
 else
   cp "$repo_dir/tests/Smoke.qml" "$test_dir/shell.qml"
 fi
-mkdir "$test_dir/bin" "$test_dir/config" "$test_dir/runtime" "$test_dir/state" "$test_dir/keyring" "$test_dir/device" "$test_dir/home"
+mkdir "$test_dir/bin" "$test_dir/text" "$test_dir/config" "$test_dir/runtime" "$test_dir/state" "$test_dir/keyring" "$test_dir/device" "$test_dir/home"
 mkdir -p "$test_dir/devices/virtual/video4linux/video12" "$test_dir/sys" "$test_dir/dev"
 printf 'DroidLink test camera\n' > "$test_dir/devices/virtual/video4linux/video12/name"
 touch "$test_dir/devices/virtual/video4linux/video12/keep_format" "$test_dir/dev/video12"
@@ -34,7 +34,7 @@ else
   unset DISPLAY WAYLAND_DISPLAY
   platform=offscreen
 fi
-DROIDLINK_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt" DROIDLINK_FOOT="$test_dir/bin/foot" HOME="$test_dir/home" DROIDLINK_CLIPBOARD_LOG="$test_dir/clipboard" DROIDLINK_VIDEO_SYSFS="$test_dir/sys" DROIDLINK_VIDEO_DEV="$test_dir/dev" DROIDLINK_POWER_DIR="$test_dir/device" DROIDLINK_KEYRING="$test_dir/keyring" XDG_STATE_HOME="$test_dir/state" DROIDLINK_HYPRCTL_LOG="$test_dir/hyprctl" PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 20s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
+DROIDLINK_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt" DROIDLINK_FOOT="$test_dir/bin/foot" HOME="$test_dir/home" DROIDLINK_CLIPBOARD_LOG="$test_dir/clipboard" DROIDLINK_VIDEO_SYSFS="$test_dir/sys" DROIDLINK_VIDEO_DEV="$test_dir/dev" DROIDLINK_POWER_DIR="$test_dir/device" DROIDLINK_TEXT_DIR="$test_dir/text" DROIDLINK_HYPR_BINDINGS="$test_dir/bindings.lua" DROIDLINK_KEYRING="$test_dir/keyring" XDG_STATE_HOME="$test_dir/state" DROIDLINK_HYPRCTL_LOG="$test_dir/hyprctl" PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 20s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
 cat "$test_dir/output"
 test "$test_status" -eq 0
 if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|DROIDLINK_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
@@ -52,5 +52,10 @@ rg -q -- '--v4l2-sink=/dev/video12' "$test_dir/scrcpy-args"
 rg -q '^omarchy pkg add v4l2loopback-dkms$' "$test_dir/clipboard"
 rg -q 'Fixture profile' "$test_dir/config/omarchy/droidlink.ini"
 rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/droidlink.ini"
+# Send text pressed the recorded keys, typed on the chosen phone and pressed Enter.
+[[ "$(cat "$test_dir/text/typed")" == "<CTRL+A><DEL>it's {ok}<ENTER>" ]]
+rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/droidlink.ini"
+# The Settings page installed the Send text hotkey.
+rg -qxF 'o.bind("SUPER + ALT + D", "DroidLink send text", "omarchy-shell shell toggle pym.droidlink")' "$test_dir/bindings.lua"
 # "Wake on mirror launch" is on by default.
 test -e "$test_dir/device/awake"

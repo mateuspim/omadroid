@@ -42,6 +42,31 @@ mock_power() {
     *) return 7 ;;
   esac
 }
+# send-text.sh fixture: DROIDLINK_TEXT_DIR/typed collects what the device
+# types, keys as <ENTER> or <CTRL+A>. The command string is evaluated like the
+# device's sh would, so a quoting mistake changes what gets typed; %s is typed
+# as a space, as Android does. DROIDLINK_TEST_CASE=input_error answers like an
+# input command that threw; serial MISSING isn't connected.
+mock_input() {
+  local dir="$DROIDLINK_TEXT_DIR" space='%s' keys
+  case "$1" in
+    text) [[ $# == 2 ]] || return 9; printf '%s' "${2//$space/ }" >>"$dir/typed" ;;
+    keyevent | keycombination)
+      shift
+      keys="$(printf '%s\n' "$@" | sed 's/^KEYCODE_//; s/_LEFT$//' | paste -sd+)"
+      printf '<%s>' "$keys" >>"$dir/typed"
+      ;;
+    *) return 7 ;;
+  esac
+}
+mock_text() {
+  local dir="$DROIDLINK_TEXT_DIR"
+  printf '%s\n' "$*" >>"$dir/argv"
+  [[ "$serial" != MISSING ]] || { printf "adb: device 'MISSING' not found\n" >&2; return 1; }
+  [[ "${DROIDLINK_TEST_CASE:-}" == input_error ]] && { printf 'java.lang.IllegalStateException: no window\r\n'; return 0; }
+  input() { mock_input "$@"; }
+  eval "$*"
+}
 # go-wireless.sh fixture: DROIDLINK_WIRELESS_DIR holds the device's `sdk`, its
 # `ip -4 -o addr show` output in `addresses`, `enabled` (adb_wifi_enabled) and
 # the `port` adbd publishes once enabled (`stale-port` before). Every adb call
@@ -156,6 +181,10 @@ case "${1:-}" in
         '/dev/fuse        233775104 133125120 100518912  57% /storage/emulated' \
         'tmpfs              5491156         0   5491156   0% /storage'
       exit 0
+    fi
+    if [[ -n "${DROIDLINK_TEXT_DIR:-}" && ( "$*" == 'input text '* || "$*" == 'input key'* ) && "$*" != *KEYCODE_WAKEUP* ]]; then
+      mock_text "$@"
+      exit $?
     fi
     if [[ -n "${DROIDLINK_POWER_DIR:-}" ]]; then
       mock_power "$serial" "$@"

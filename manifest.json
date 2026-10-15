@@ -8,10 +8,12 @@
   "description": "Discover ADB devices and launch scrcpy from the Omarchy bar.",
   "kinds": [
     "bar-widget",
+    "overlay",
     "service"
   ],
   "entryPoints": {
     "barWidget": "Panel.qml",
+    "overlay": "SendText.qml",
     "service": "Discovery.qml"
   },
   "barWidget": {
