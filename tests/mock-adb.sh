@@ -132,6 +132,10 @@ case "${1:-}" in
     [[ "${3:-}" == shell ]] || exit 7
     serial="$2"
     shift 3
+    if [[ "$*" == 'getprop ro.build.version.sdk' ]]; then
+      printf '%s\r\n' "${DROIDLINK_TEST_SDK:-36}"
+      exit 0
+    fi
     if [[ "$*" == 'settings get global device_name' ]]; then
       # USB123 has a name set on the phone; other devices report none.
       [[ "$serial" == USB123 ]] && printf 'Desk phone\r\n' || printf 'null\r\n'

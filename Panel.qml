@@ -27,7 +27,7 @@ Panel {
   // is noticed without spawning the check on every open.
   Command {
     id: prerequisites
-    onFinished: (code, output, error) => root.missingTools = code === 0 ? output.trim().split("\n").filter(Boolean).join(", ") : "adb, scrcpy, Omarchy default terminal"
+    onFinished: (code, output, error) => root.missingTools = code === 0 ? output.trim().split("\n").filter(Boolean).join(", ") : "adb, scrcpy, foot or an Omarchy default terminal"
   }
 
   DiscoveryConsumer {
@@ -69,7 +69,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsLevel === "error" ? " · wireless discovery unavailable" : "")
+    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (scrcpyPane.sessionPid > 0 ? " · " + (scrcpyPane.sessionType === "webcam" ? "Webcam" : scrcpyPane.sessionType === "audio" ? "Audio" : "Mirroring") + " active" : "") + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsLevel === "error" ? " · wireless discovery unavailable" : "")
     iconComponent: Component {
       Item {
         Text {
@@ -90,6 +90,14 @@ Panel {
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           font.bold: true
+        }
+        Text {
+          anchors.left: parent.left
+          anchors.bottom: parent.bottom
+          visible: scrcpyPane.sessionPid > 0
+          text: scrcpyPane.sessionType === "webcam" ? "●" : "▶"
+          color: Color.accent
+          font.pixelSize: Style.font.caption
         }
       }
     }
@@ -193,6 +201,10 @@ Panel {
               label: "Mirror"
             },
             {
+              key: "webcam",
+              label: "Webcam"
+            },
+            {
               key: "settings",
               label: "Settings"
             }
@@ -215,13 +227,13 @@ Panel {
         id: pageHost
         Layout.fillWidth: true
         Layout.fillHeight: true
-        implicitHeight: root.page === "mirror" ? scrcpyPane.implicitHeight : pageContent.implicitHeight
+        implicitHeight: root.page === "mirror" || root.page === "webcam" ? scrcpyPane.implicitHeight : pageContent.implicitHeight
 
         Controls.ScrollView {
           id: deviceScroll
           objectName: "droidlinkScroll"
           anchors.fill: parent
-          visible: root.page !== "mirror"
+          visible: root.page !== "mirror" && root.page !== "webcam"
           contentWidth: availableWidth
           clip: true
           Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
@@ -431,13 +443,30 @@ Panel {
           }
           }
         }
+        // Opening the next-session options below a running session (and its
+        // preview) scrolls them into view once the layout has grown.
+        Connections {
+          target: scrcpyPane
+          function onOptionsExpandedChanged() {
+            if (scrcpyPane.optionsExpanded)
+              optionsScroll.restart();
+          }
+        }
+        Timer {
+          id: optionsScroll
+          interval: 50
+          onTriggered: {
+            var view = mirrorScroll.contentItem;
+            view.contentY = Math.max(0, Math.min(scrcpyPane.optionsTop, view.contentHeight - view.height));
+          }
+        }
         // Session controls make this page taller than the popup's height cap,
         // so it scrolls like the device pages instead of overflowing the card.
         Controls.ScrollView {
           id: mirrorScroll
           objectName: "droidlinkMirrorScroll"
           anchors.fill: parent
-          visible: root.page === "mirror"
+          visible: root.page === "mirror" || root.page === "webcam"
           contentWidth: availableWidth
           clip: true
           Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
@@ -448,6 +477,8 @@ Panel {
             devices: discovery.devices
             missingTools: root.missingTools
             panelOpen: root.opened
+            pageMode: root.page === "webcam" ? "webcam" : "mirror"
+            onRequestPage: page => root.page = page
             wakeOnLaunch: discovery.preferences.wakeOnLaunch
             unlockOnLaunch: discovery.preferences.unlockOnLaunch
           }

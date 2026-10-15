@@ -47,7 +47,7 @@ ShellRoot {
     running: true
     repeat: true
     onTriggered: {
-      var names = ["devices", "wireless", "mirror"];
+      var names = ["devices", "wireless", "mirror", "webcam"];
       if (root.frame >= names.length) {
         console.log("DROIDLINK_PREVIEW_OK");
         Qt.quit();

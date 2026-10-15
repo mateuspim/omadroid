@@ -6,6 +6,7 @@ ShellRoot {
   id: testRoot
   property int step: 0
   property bool stopQueued: false
+  property bool webcamApplied: false
   function check(condition, message) {
     if (!condition) {
       console.error("DROIDLINK_TEST_FAILED: " + message);
@@ -24,6 +25,18 @@ ShellRoot {
     id: mirroring
     width: 440
     devices: discovery.devices
+  }
+  // Loaded only on demand in the panel; instantiated here so a QML error in
+  // either fails the smoke test. No device, so no camera opens.
+  DroidLink.WebcamPreview {
+    id: previewCheck
+    width: 320
+  }
+  DroidLink.PreviewSplash {
+    id: splashCheck
+    width: 320
+    height: 180
+    label: "Waiting"
   }
   DroidLink.DevicePowerControls {
     id: powerControls
@@ -136,6 +149,9 @@ ShellRoot {
       } else if (testRoot.step === 9 && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && !testRoot.stopQueued) {
         testRoot.check(mirroring.message.indexOf("Session started") !== 0, "launch message cleared once active: " + mirroring.message);
         testRoot.check(child(mirroring, "droidlinkSessionCard").visible && !child(mirroring, "droidlinkNextOptions").visible, "session card first, options folded");
+        mirroring.pageMode = "webcam";
+        testRoot.check(!child(mirroring, "droidlinkSessionCard").visible && child(mirroring, "droidlinkOtherSession").visible && child(mirroring, "droidlinkWebcamOptions").visible, "webcam page keeps camera settings visible during mirroring");
+        mirroring.pageMode = "mirror";
         mirroring.optionsExpanded = true;
         testRoot.check(child(mirroring, "droidlinkNextOptions").visible, "options expand during a session");
         testRoot.stopQueued = true;
@@ -210,9 +226,76 @@ ShellRoot {
     interval: 300
     onTriggered: otherMonitor.stop()
   }
-  // Mirrors stop at step 10; mDNS settles for 1.5 s before the first step.
   Timer {
-    interval: 9000
+    interval: 200
+    running: testRoot.step >= 10 && testRoot.step < 12
+    repeat: true
+    onTriggered: {
+      // Opening the Webcam page reads the phone's cameras; wait for them.
+      if (testRoot.step === 10 && !mirroring.cameras) {
+        mirroring.chooseDevice("USB123");
+        mirroring.pageMode = "webcam";
+        return;
+      }
+      if (testRoot.step === 10) {
+        mirroring.pageMode = "webcam";
+        testRoot.check(child(mirroring, "droidlinkWebcamOptions").visible && !child(mirroring, "droidlinkMirrorResolution").visible && !child(mirroring, "droidlinkMirrorLaunch").visible, "webcam page shows only camera settings");
+        var outputs = mirroring.webcamOutputs;
+        mirroring.webcamOutputs = [];
+        mirroring.webcamIssue = "missing-package";
+        testRoot.check(child(mirroring, "droidlinkWebcamSetup").visible, "missing driver shows setup card");
+        mirroring.copyWebcamCommands();
+        mirroring.webcamOutputs = outputs;
+        mirroring.chooseDevice("USB123");
+        testRoot.check(mirroring.webcamSink === "/dev/video12", "the first loopback output is selected: " + mirroring.webcamSink);
+        mirroring.webcamSink = "/dev/video12";
+        // The fixture lists the Tab S11's cameras: front becomes camera 1 and
+        // the Call preset's 1080p fits it.
+        // Panes here sit outside a window, so layouts never re-measure and
+        // widths cannot be checked; only that the folded section opens.
+        mirroring.webcamDetailsOpen = true;
+        testRoot.check(child(mirroring, "droidlinkWebcamDetails").visible, "quality and adjustments open");
+        testRoot.check(mirroring.cameras && mirroring.cameras.length === 3, "cameras read from the phone: " + JSON.stringify(mirroring.cameras));
+        testRoot.check(mirroring.webcam.camera === "id:1" && mirroring.webcam.size === "1920x1080" && mirroring.webcam.fps === "30", "webcam settings fit the camera: " + JSON.stringify(mirroring.webcam));
+        mirroring.applyPreset("sharp");
+        testRoot.check(mirroring.webcam.size === "2032x1144" && mirroring.webcam.bitRate === "24", "Sharp preset picks the camera's largest 16:9: " + JSON.stringify(mirroring.webcam));
+        mirroring.setWebcam({ camera: "id:2" }, true);
+        mirroring.applyPreset("sharp");
+        testRoot.check(mirroring.webcam.size === "3840x2160", "camera 2 reaches 4K");
+        mirroring.setWebcam({ camera: "id:1", zoom: "2", torch: true }, true);
+        mirroring.applyPreset("call");
+        testRoot.step = 11;
+        mirroring.launchWebcam();
+      } else if (testRoot.webcamApplied && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && mirroring.sessionArgs.indexOf("--camera-fps=24") >= 0) {
+        // Apply restarted the webcam with the new rate, and the other widget
+        // learned the new command from the running scrcpy.
+        if (JSON.stringify(otherMonitor.sessionArgs) !== JSON.stringify(mirroring.sessionArgs))
+          return;
+        testRoot.check(!mirroring.webcamChanged && !mirroring.restartPending && !otherMonitor.webcamChanged, "applied settings match the running webcam on both widgets");
+        testRoot.step = 12;
+        otherMonitor.stop();
+      } else if (!testRoot.webcamApplied && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid) {
+        // Another widget reads the running command from /proc, as after a
+        // shell reload.
+        if (JSON.stringify(otherMonitor.sessionArgs) !== JSON.stringify(mirroring.sessionArgs))
+          return;
+        testRoot.check(otherMonitor.sessionType === "webcam" && mirroring.sessionType === "webcam", "webcam session type shared across widgets");
+        testRoot.check(otherMonitor.sessionSink === "/dev/video12" && otherMonitor.sessionRecording === "", "webcam sink shared across widgets: " + otherMonitor.sessionSink);
+        testRoot.check(mirroring.sessionArgs.indexOf("--camera-id=1") >= 0 && mirroring.sessionArgs.indexOf("--camera-zoom=2") >= 0 && mirroring.sessionArgs.indexOf("--camera-torch") >= 0, "webcam starts with the chosen camera and adjustments: " + JSON.stringify(mirroring.sessionArgs));
+        testRoot.check(!mirroring.webcamChanged && !otherMonitor.webcamChanged, "nothing to apply right after start, on either widget: " + JSON.stringify(otherMonitor.webcam));
+        mirroring.webcamPreview = true;
+        testRoot.check(child(mirroring, "droidlinkWebcamPreview").visible, "Preview shows during a webcam session");
+        testRoot.check(!child(otherMonitor, "droidlinkSessionCard").visible && child(otherMonitor, "droidlinkOtherSession").visible && child(otherMonitor, "droidlinkNextOptions").visible, "mirror page keeps its options visible during webcam capture");
+        mirroring.setWebcam({ fps: "24" });
+        testRoot.check(mirroring.webcamChanged && child(mirroring, "droidlinkWebcamApply").visible, "a changed setting offers Apply");
+        testRoot.webcamApplied = true;
+        mirroring.applyWebcam();
+      }
+    }
+  }
+  // mDNS settles for 1.5 s before the first step.
+  Timer {
+    interval: 13000
     running: true
     onTriggered: {
       var named = discovery.devices.find(row => row.serial === "USB123");
@@ -246,7 +329,9 @@ ShellRoot {
       testRoot.check(unknownRejected, "an unknown preference is rejected by name");
       testRoot.check(autoConnect.stage === 3, "auto-connect finished: stage " + autoConnect.stage + " attempts " + JSON.stringify(autoConnect.attempts) + " known " + JSON.stringify(autoConnect.known));
       testRoot.check(qrActions.pairCalls.length === 1 && JSON.stringify(qrActions.pairCalls[0]) === JSON.stringify(["pair", "192.168.1.5:42000", testRoot.qrPassword]) && qrPairing.code === null, "QR pairing pairs the announced service once: " + JSON.stringify(qrActions.pairCalls));
-      testRoot.check(testRoot.step === 10, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
+      testRoot.check(testRoot.step === 12 && !mirroring.busy && !otherMonitor.busy, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
+      testRoot.check(previewCheck.streamFormat === "" && previewCheck.error === "" && previewCheck.implicitHeight > 0, "webcam preview loads idle");
+      testRoot.check(splashCheck.shown && splashCheck.progress > 0, "preview splash animates: " + splashCheck.progress);
       console.log("DROIDLINK_SMOKE_OK");
       Qt.quit();
     }

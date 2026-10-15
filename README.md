@@ -42,6 +42,12 @@ settings.
   audio-only session. While a session runs, its controls (Stop, phone screen,
   rotation) come first and the options for the next launch fold under
   **Next session options**.
+- **Webcam:** send a phone's front or back camera to a selected v4l2loopback
+  output. Choose capture orientation and an automatic or explicit camera size.
+  The bar and every popup show a running webcam session separately from mirroring.
+  A session opened on the other page appears as a compact status card there;
+  that page keeps its own settings visible while Start waits for the current
+  session to end.
 - **Keep awake, wake and unlock:** each ready device card has **Keep awake**,
   **Wake** (**Wake & unlock** once a PIN is saved) and **Unlock PIN…**. See
   [Keep awake and unlock](#keep-awake-and-unlock).
@@ -56,12 +62,103 @@ without scrolling.
 ## Requirements and enabling
 
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
-(`timeout`), util-linux (`flock`, `setsid`, `waitpid`), `secret-tool` (libsecret, only to save an unlock PIN), an Omarchy default terminal, Avahi
+(`timeout`), util-linux (`flock`, `setsid`, `waitpid`), `secret-tool` (libsecret, only to save an unlock PIN), foot (preferred for the hidden session terminal) or an Omarchy default terminal, Avahi
 (`avahi-browse` and a running `avahi-daemon`), and scrcpy 4.1+ for mirroring and
-idle prevention. `qrencode` is only needed to pair with a QR code. The bar and popup warn when `adb`, `scrcpy`, or a configured
+idle prevention. `qrencode` is only needed to pair with a QR code. The Android
+webcam also needs `v4l2loopback` (see below); its in-panel preview needs
+`ffmpeg` (with `ffprobe`), **Copy commands**
+needs `wl-copy` (wl-clipboard), and `fuser` (psmisc), when present, lets
+DroidLink refuse an output another app is holding. The bar and popup warn when `adb`, `scrcpy`, or a configured
 default terminal is missing. This implementation was checked against the installed
 scrcpy 4.1 command-line options. Node is only needed for development tests;
 there are no npm packages or Python runtime helpers.
+
+### Android webcam setup
+
+Camera capture requires Android 12 or later, scrcpy 4.1+, and a Linux
+`v4l2loopback` output. The Webcam page reports whether the package is missing,
+the kernel module is unavailable or unloaded, or no output is visible. **Set up
+webcam** or **Enable output** opens a visible terminal after you click it;
+Omarchy's package helper and `sudo` ask for a password there. It loads one
+output now and at every boot, by writing
+`/etc/modules-load.d/v4l2loopback.conf` and `/etc/modprobe.d/v4l2loopback.conf`;
+if either file already exists, your config is kept and only `modprobe` runs.
+**Copy commands** puts the manual commands on the clipboard. On Omarchy, those
+commands, which are also what the setup terminal runs, are:
+
+```bash
+omarchy pkg add v4l2loopback-dkms
+sudo modprobe v4l2loopback devices=1 exclusive_caps=1
+printf 'v4l2loopback\n' | sudo tee /etc/modules-load.d/v4l2loopback.conf
+printf 'options v4l2loopback devices=1 exclusive_caps=1\n' | sudo tee /etc/modprobe.d/v4l2loopback.conf
+```
+
+The output then takes the next free `/dev/videoN` and the driver's default
+label. To pick both, load it yourself instead, using an unused number:
+
+```bash
+sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="DroidLink Camera" exclusive_caps=1
+```
+
+A bare `modprobe` lasts until reboot; to choose your own options at boot, edit
+the `options` line in `/etc/modprobe.d/v4l2loopback.conf`. See the
+[v4l2loopback README](https://github.com/v4l2loopback/v4l2loopback/blob/main/README.md)
+for other distributions and module options.
+
+`exclusive_caps=1` makes the device appear as a capture device to applications
+after scrcpy starts writing. If you already have loopback devices, use their
+existing numbers and labels; DroidLink lists detected loopback outputs so you
+can choose the right one and checks write access before launch. Opening the
+Webcam page never installs or loads anything. Other USB cameras are never listed
+as outputs.
+
+On the **Webcam** page, select a Ready phone and a V4L2 output, then press
+**Start webcam**. The Mirror page keeps its mirroring and audio-only options.
+
+Opening the page asks the phone for its cameras (`scrcpy --list-camera-sizes`)
+once per device; **Refresh** asks again and also finds V4L2 outputs. Every camera is listed by its id,
+so a phone with two front cameras offers both, and Resolution, Frame rate and
+Zoom only offer what the chosen camera reports. Until the list arrives, Front
+and Back and common sizes are offered.
+
+- **Quality**: a preset (**Call** 1080p · 30 fps · 12 Mbps H.265, **Sharp** 4K
+  · 30 fps · 24 Mbps H.265, **Saver** 720p · 24 fps · 6 Mbps H.264) picks the
+  closest size and rate the camera supports. Resolution, Frame rate, Bitrate
+  and Codec can also be set by hand, which shows the preset as Custom. Over
+  Wi-Fi, bitrate is usually what limits sharpness; H.265 looks better than
+  H.264 at the same bitrate. Automatic resolution leaves the size to scrcpy,
+  which may pick the full sensor size.
+- **Adjustments**: Orientation (rotate or mirror), initial Zoom, Torch (on
+  cameras with a light), and Smoothing, a `--v4l2-buffer` delay that hides
+  Wi-Fi jitter.
+
+Settings are saved in `droidlink.ini` and apply when the webcam starts;
+Android cameras top out at the frame rates the phone lists (often 30 fps).
+Exposure, focus and white balance stay automatic: scrcpy has no controls for
+them. While a webcam runs, changing a setting shows **Apply · restart**, which
+stops and restarts the webcam on the same phone and output with the new
+settings. Apps reading the output may stay open through the short gap when
+the size and orientation stay the same; if they change, close those apps
+first, or scrcpy reports the output as busy. If a size fails, select Automatic or another size and use **Show log**
+for the phone's error. The Android webcam sends video only; it
+does not forward the phone microphone. Start the webcam before opening OBS or a
+video call, then select the chosen `/dev/videoN` or its card label as a **Video
+Capture Device** in OBS or as the camera in the call. A consumer that stays
+open across a size or orientation change can keep the old V4L2 format and show
+garbled video; the Preview detects that and says so. **Stop webcam** ends the shared
+scrcpy session from any DroidLink bar instance.
+
+While the webcam runs, **Preview** in its session card shows the output inside
+the popup, read the same way OBS or a call reads it, so a working preview means
+other apps receive the camera. An Omarchy loading screen covers it until frames
+arrive. The preview opens only once scrcpy is streaming, follows the session's
+own output, and closes when the popup closes or you leave the Webcam page. It
+runs `ffmpeg`, which reads the output at its current size and writes a small
+JPEG (480 px wide, about 12 per second) to DroidLink's runtime folder; ffmpeg
+also exits if the shell does. If apps reading the output receive a different
+size than scrcpy writes (an app that opened it during an earlier session can
+fix its old size), the preview says so instead of showing garbled video: close
+every app using the output, then stop and start the webcam.
 
 The existing development link is:
 
@@ -274,12 +371,15 @@ create `.mka` files. A missing or read-only folder stops the launch with a
 message saying so. The session displays its exact path. Audio is included only
 when forwarding is enabled and supported.
 Use **Stop mirroring** or close the scrcpy window to finalize a recording.
-Scrcpy runs in Omarchy's configured default terminal on a hidden
-`special:droidlink` workspace, leaving only the scrcpy video window visible.
+Scrcpy runs in foot when it is installed, otherwise in Omarchy's configured
+default terminal, on a hidden `special:droidlink` workspace, leaving only the
+scrcpy video window visible. Foot is preferred because each of its windows is a
+separate process, so DroidLink never shares a process with your own terminals.
 Press **Show log** on the Mirror page (or run
 `hyprctl dispatch 'hl.dsp.workspace.toggle_special("droidlink")'`) to show or hide its
 diagnostic terminal. The terminal is asked to stay open after scrcpy exits if
-the configured terminal supports that option. Closing the popup, switching
+the configured terminal supports that option; the next launch closes the
+previous session's terminal. Closing the popup, switching
 tabs, or restarting the Omarchy shell leaves the session running. Every monitor's
 widget reads the same session state and can stop it; only one DroidLink session
 runs at a time. Nothing polls the session: widgets watch its state file, and
@@ -401,7 +501,7 @@ Temporary test files are removed on exit.
 
 For a visual review, create a temporary directory and run
 `DROIDLINK_PREVIEW_DIR=/absolute/path/to/that/directory bash tests/smoke.sh`.
-This briefly opens a separate preview window with fake devices, captures its three tabs,
+This briefly opens a separate preview window with fake devices, captures its four tabs,
 and exits. Preview requires the QtTest QML module.
 
 The original implementation milestones were validated in order: read-only USB/mDNS popup,
