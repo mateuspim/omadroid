@@ -101,6 +101,13 @@ mock_wireless() {
     *) return 7 ;;
   esac
 }
+# device-volume.sh fixture: tests/mock-volume-adb.sh answers its calls and
+# exits 100 for anything else.
+if [[ -n "${DROIDLINK_VOLUME_MOCK:-}" ]]; then
+  volume_code=0
+  bash "$DROIDLINK_VOLUME_MOCK" "$@" || volume_code=$?
+  [[ "$volume_code" == 100 ]] || exit "$volume_code"
+fi
 if [[ -n "${DROIDLINK_WIRELESS_DIR:-}" ]]; then
   mock_wireless "$@"
   exit $?

@@ -38,6 +38,34 @@ ShellRoot {
     height: 180
     label: "Waiting"
   }
+  // Sound page against tests/mock-volume-adb.sh: the game playing at 10/100.
+  DroidLink.SoundPane {
+    id: soundPane
+    width: 440
+    devices: discovery.devices
+    active: true
+  }
+  Timer {
+    interval: 9000
+    running: true
+    onTriggered: {
+      testRoot.check(soundPane.volume && soundPane.volume.mode === "samsung" && soundPane.readError === "", "sound status read: " + JSON.stringify(soundPane.volume) + " " + soundPane.readError);
+      var game = soundPane.apps.find(app => app.uid === 10360);
+      testRoot.check(game && game.label === "Honkai: Star Rail" && game.volume === 10 && testRoot.child(soundPane, "soundApp:10360") !== null, "the playing game has a row: " + JSON.stringify(soundPane.apps));
+      testRoot.check(testRoot.child(soundPane, "soundStream:media") !== null, "media has a row");
+      // A new reading moves the sliders; rebuilding them broke a drag.
+      var row = testRoot.child(soundPane, "soundApp:10360");
+      soundPane.volume = JSON.parse(JSON.stringify(soundPane.volume));
+      testRoot.check(testRoot.child(soundPane, "soundApp:10360") === row, "rows survive a new reading");
+      soundPane.setApp(game, 35);
+      soundPane.setApp(game, 40);
+      testRoot.check(soundPane.apps.find(app => app.uid === 10360).volume === 40, "a change shows at once");
+      soundPane.toggleStream(soundPane.volume.streams.find(stream => stream.key === "media"));
+      // Clicked like a person would: the handler once sent the opposite command.
+      testRoot.child(soundPane, "soundMuteAll").clicked();
+      testRoot.check(soundPane.volume.master === true, "Mute all shows at once");
+    }
+  }
   DroidLink.DevicePowerControls {
     id: powerControls
     width: 440
@@ -403,6 +431,8 @@ ShellRoot {
       testRoot.check(previewCheck.streamFormat === "" && previewCheck.error === "" && previewCheck.implicitHeight > 0, "webcam preview loads idle");
       testRoot.check(splashCheck.shown && splashCheck.progress > 0, "preview splash animates: " + splashCheck.progress);
       testRoot.check(testRoot.sendTextDone, "send text finished");
+      var gameNow = soundPane.volume.apps.find(app => app.uid === 10360);
+      testRoot.check(gameNow.volume === 40 && soundPane.volume.streams.find(stream => stream.key === "media").muted && soundPane.volume.master === true && soundPane.changeError === "", "sound changes reached the device: " + JSON.stringify(gameNow) + " " + soundPane.changeError);
       var hotkeyRow = child(settingsPane, "droidlinkHotkey");
       testRoot.check(hotkeyRow.installed === "SUPER + ALT + D" && child(hotkeyRow, "droidlinkHotkeyRemove").visible, "Send text hotkey installed: " + hotkeyRow.installed + " " + hotkeyRow.message);
       console.log("DROIDLINK_SMOKE_OK");

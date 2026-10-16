@@ -1,0 +1,114 @@
+// Projections of `device-volume.sh status` for the Sound page.
+// tests/device-volume.sh covers device-volume.sh itself.
+
+// Stream key → label, in the order the page lists them.
+var streamLabels = {
+  media: "Media",
+  notification: "Notifications",
+  ring: "Ringtone",
+  call: "Calls",
+  system: "System",
+  alarm: "Alarms",
+  assistant: "Assistant / Bixby"
+};
+
+/** Parse `device-volume.sh status`. Example:
+ * parseVolumeStatus("mode samsung\nmaster 0\nringer normal\nstream media 3 13 0 15 0\napp 10360 playing 10 0 com.x Game")
+ * → { mode: "samsung", master: false, ringer: "normal", streams: [{ key: "media", index: 3, volume: 13, min: 0, max: 15, muted: false, label: "Media" }],
+ *     apps: [{ uid: 10360, playing: true, volume: 10, muted: false, package: "com.x", label: "Game" }] }
+ * @param {string} output
+ * @returns {object|null} null without a mode line
+ */
+function parseVolumeStatus(output) {
+  var status = { mode: "", master: null, ringer: "", streams: [], apps: [] };
+  String(output).split("\n").forEach(function(line) { readStatusLine(status, line.trim()); });
+  if (!status.mode)
+    return null;
+  status.streams.sort(function(a, b) { return streamOrder(a.key) - streamOrder(b.key); });
+  return status;
+}
+
+function readStatusLine(status, line) {
+  var match;
+  if ((match = /^mode (samsung|appops)$/.exec(line)))
+    status.mode = match[1];
+  else if ((match = /^master ([01-])$/.exec(line)))
+    status.master = match[1] === "-" ? null : match[1] === "1";
+  else if ((match = /^ringer (normal|vibrate|silent|-)$/.exec(line)))
+    status.ringer = match[1] === "-" ? "" : match[1];
+  else if ((match = /^stream ([a-z]+) (\d+) (\d+) (\d+) (\d+) ([01])$/.exec(line)) && streamLabels[match[1]])
+    status.streams.push({ key: match[1], index: +match[2], volume: +match[3], min: +match[4], max: +match[5], muted: match[6] === "1", label: streamLabels[match[1]] });
+  else if ((match = /^app (\d+) (playing|paused) (\d+|-) ([01-]) (\S+) (.+)$/.exec(line)))
+    status.apps.push({ uid: +match[1], playing: match[2] === "playing", volume: match[3] === "-" ? null : +match[3], muted: match[4] === "-" ? null : match[4] === "1", package: match[5], label: match[6] });
+}
+
+function streamOrder(key) {
+  return Object.keys(streamLabels).indexOf(key);
+}
+
+/** Apps worth a row: everything playing, plus paused apps that have a
+ * launcher name or a changed volume/mute (so a muted app can be restored).
+ * Playing first, then by name.
+ * Example: visibleApps([{ playing: false, label: "com.x", package: "com.x", volume: 100, muted: false }]) → []
+ */
+function visibleApps(apps) {
+  return apps.filter(function(app) {
+    return app.playing || app.label !== app.package || app.muted === true || (app.volume !== null && app.volume !== 100);
+  }).sort(function(a, b) {
+    return (b.playing - a.playing) || a.label.localeCompare(b.label);
+  });
+}
+
+/** Status with one stream or app changed, shown before the next read so a
+ * slider doesn't jump back. Example: withChange(status, "app", 10360, { volume: 40 }).
+ * @param {object} status @param {string} kind "stream"|"app" @param {string|number} id key or uid
+ * @param {object} change fields to replace
+ */
+function withChange(status, kind, id, change) {
+  if (!status)
+    return status;
+  var copy = JSON.parse(JSON.stringify(status));
+  var rows = kind === "stream" ? copy.streams : copy.apps;
+  rows.forEach(function(row) {
+    if ((kind === "stream" ? row.key : row.uid) !== id)
+      return;
+    Object.keys(change).forEach(function(name) { row[name] = change[name]; });
+  });
+  return copy;
+}
+
+/** Value text for a row. Example: volumeText(13, 15, false) → "13/15"; volumeText(40, 100, true) → "Muted". */
+function volumeText(volume, max, muted) {
+  if (muted)
+    return "Muted";
+  return max === 100 ? volume + "%" : volume + "/" + max;
+}
+
+/** The ready device to show: the chosen one while it's ready, else the first.
+ * Example: pickVolumeTarget([{ serial: "A", status: "device" }], "gone") → "A"
+ */
+function pickVolumeTarget(devices, chosen) {
+  var ready = devices.filter(function(row) { return row.status === "device"; });
+  if (ready.some(function(row) { return row.serial === chosen; }))
+    return chosen;
+  return ready.length ? ready[0].serial : "";
+}
+
+/** Add a command to the waiting changes. A "set" replaces a waiting "set" of
+ * the same stream or app, so a drag sends only its latest value; anything
+ * else is appended in order.
+ * Example: queueChange([["bash", "v.sh", "app", "S", "1", "set", "35"]], ["bash", "v.sh", "app", "S", "1", "set", "40"])
+ *   → [["bash", "v.sh", "app", "S", "1", "set", "40"]]
+ * @param {Array<Array<string>>} queue @param {Array<string>} command
+ * @returns {Array<Array<string>>} a new queue
+ */
+function queueChange(queue, command) {
+  var target = setTarget(command);
+  var kept = target ? queue.filter(function(waiting) { return setTarget(waiting) !== target; }) : queue.slice();
+  return kept.concat([command]);
+}
+
+// "app S 1" for […, "app", "S", "1", "set", N]; "" for other commands.
+function setTarget(command) {
+  return command[command.length - 2] === "set" ? command.slice(2, -2).join(" ") : "";
+}

@@ -27,6 +27,12 @@ chmod +x "$test_dir/bin/adb" "$test_dir/bin/scrcpy" "$test_dir/bin/omarchy" "$te
 ln -s /usr/share/omarchy/shell/Commons "$test_dir/Commons"
 ln -s /usr/share/omarchy/shell/Ui "$test_dir/Ui"
 ln -s "$repo_dir" "$test_dir/plugin"
+# The Sound page's device: tests/mock-volume-adb.sh with the Tab S11's codes.
+mkdir "$test_dir/volume"
+python3 -I "$repo_dir/tests/make-audio-dex.py" "$test_dir/volume/framework.jar"
+printf 13 >"$test_dir/volume/stream-3"
+printf 10 >"$test_dir/volume/app-10360"
+printf '10360 started\n' >"$test_dir/volume/players"
 test_status=0
 if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
   platform=wayland
@@ -34,7 +40,7 @@ else
   unset DISPLAY WAYLAND_DISPLAY
   platform=offscreen
 fi
-DROIDLINK_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt" DROIDLINK_FOOT="$test_dir/bin/foot" HOME="$test_dir/home" DROIDLINK_CLIPBOARD_LOG="$test_dir/clipboard" DROIDLINK_VIDEO_SYSFS="$test_dir/sys" DROIDLINK_VIDEO_DEV="$test_dir/dev" DROIDLINK_POWER_DIR="$test_dir/device" DROIDLINK_TEXT_DIR="$test_dir/text" DROIDLINK_HYPR_BINDINGS="$test_dir/bindings.lua" DROIDLINK_KEYRING="$test_dir/keyring" XDG_STATE_HOME="$test_dir/state" DROIDLINK_HYPRCTL_LOG="$test_dir/hyprctl" PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 20s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
+DROIDLINK_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" DROIDLINK_VOLUME_DIR="$test_dir/volume" XDG_CACHE_HOME="$test_dir/cache" DROIDLINK_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt" DROIDLINK_FOOT="$test_dir/bin/foot" HOME="$test_dir/home" DROIDLINK_CLIPBOARD_LOG="$test_dir/clipboard" DROIDLINK_VIDEO_SYSFS="$test_dir/sys" DROIDLINK_VIDEO_DEV="$test_dir/dev" DROIDLINK_POWER_DIR="$test_dir/device" DROIDLINK_TEXT_DIR="$test_dir/text" DROIDLINK_HYPR_BINDINGS="$test_dir/bindings.lua" DROIDLINK_KEYRING="$test_dir/keyring" XDG_STATE_HOME="$test_dir/state" DROIDLINK_HYPRCTL_LOG="$test_dir/hyprctl" PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 20s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
 cat "$test_dir/output"
 test "$test_status" -eq 0
 if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|DROIDLINK_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
@@ -57,5 +63,10 @@ rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/droidlink.ini"
 rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/droidlink.ini"
 # The Settings page installed the Send text hotkey.
 rg -qxF 'o.bind("SUPER + ALT + D", "DroidLink send text", "omarchy-shell shell toggle pym.droidlink")' "$test_dir/bindings.lua"
+# The Sound page sent only the drag's last value.
+[[ "$(cat "$test_dir/volume/app-10360")" == 40 ]]
+# Mute all muted rather than unmuted.
+[[ "$(cat "$test_dir/volume/master")" == 1 ]]
+! grep -q 'unexpected' "$test_dir/volume/log"
 # "Wake on mirror launch" is on by default.
 test -e "$test_dir/device/awake"

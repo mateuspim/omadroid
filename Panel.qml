@@ -188,26 +188,12 @@ Panel {
         Accessible.name: "DroidLink pages"
         Repeater {
           model: [
-            {
-              key: "devices",
-              label: "Devices"
-            },
-            {
-              key: "wireless",
-              label: "Wireless"
-            },
-            {
-              key: "mirror",
-              label: "Mirror"
-            },
-            {
-              key: "webcam",
-              label: "Webcam"
-            },
-            {
-              key: "settings",
-              label: "Settings"
-            }
+            { key: "devices", label: "Devices" },
+            { key: "wireless", label: "Wireless" },
+            { key: "mirror", label: "Mirror" },
+            { key: "webcam", label: "Webcam" },
+            { key: "sound", label: "Sound" },
+            { key: "settings", label: "Settings" }
           ]
           delegate: ActionButton {
             required property var modelData
@@ -423,6 +409,16 @@ Panel {
             text: discovery.busy || !discovery.initialized ? "Discovering devices…" : discovery.tracking ? "Following devices live · updated " + discovery.updatedAt : "Last scan " + (discovery.updatedAt || "pending") + " · every " + discovery.intervalSec + "s"
             font.pixelSize: Style.font.bodySmall
             color: Util.alpha(Color.foreground, 0.7)
+          }
+          SoundPane {
+            objectName: "droidlinkSound"
+            Layout.fillWidth: true
+            // Room for the scrollbar, which is drawn over the page's right edge.
+            Layout.rightMargin: Style.space(14)
+            scrollView: deviceScroll.contentItem
+            visible: root.page === "sound"
+            devices: discovery.devices
+            active: root.page === "sound" && root.opened
           }
           SettingsPane {
             Layout.fillWidth: true
