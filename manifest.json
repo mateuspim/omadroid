@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "pym.droidlink",
   "name": "DroidLink",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "author": "pym",
   "license": "MIT",
   "description": "Discover ADB devices and launch scrcpy from the Omarchy bar.",
