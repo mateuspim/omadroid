@@ -51,7 +51,7 @@ ColumnLayout {
     if (session.busy)
       return;
     if (!ready)
-      return session.report("Select a device that is Ready before launching.", true);
+      return session.report("Select a device that is Ready before launching.", true, "mirror");
     session.launchMirror(serial, profile, folderField.text, !!audioOnly);
   }
   function selectProfile(name) {
@@ -72,7 +72,7 @@ ColumnLayout {
   }
   function resetOptions() {
     selectProfile(baseProfileName);
-    session.report("Options restored from “" + baseProfileName + "”.", false);
+    session.report("Options restored from “" + baseProfileName + "”.", false, "mirror");
   }
   function invalidProfileName(name, candidate) {
     return !Model.validProfile(candidate) || name === "Custom" || Model.builtInProfiles().some(p => p.name === name);
@@ -83,23 +83,23 @@ ColumnLayout {
     name = String(name || nameField.text).trim();
     var candidate = Object.assign({}, profile, { name: name });
     if (invalidProfileName(name, candidate))
-      return session.report("Choose a name of 1–48 characters, different from Custom and the built-in profiles.", true);
+      return session.report("Choose a name of 1–48 characters, different from Custom and the built-in profiles.", true, "mirror");
     if (customProfiles.some(p => p.name === name) && confirmOverwrite !== name)
       return askOverwrite(name);
     confirmOverwrite = "";
     var list = customProfiles.filter(p => p.name !== name);
     if (list.length >= 30)
-      return session.report("Remove a saved profile first (limit: 30).", true);
+      return session.report("Remove a saved profile first (limit: 30).", true, "mirror");
     list.push(candidate);
     saved.profilesJson = JSON.stringify(list);
     selectProfile(name);
     nameField.text = "";
-    session.report("Saved profile “" + name + "”.", false);
+    session.report("Saved profile “" + name + "”.", false, "mirror");
   }
   function askOverwrite(name) {
     confirmRemove = false;
     confirmOverwrite = name;
-    session.report("“" + name + "” already exists. Press Replace to overwrite it.", false);
+    session.report("“" + name + "” already exists. Press Replace to overwrite it.", false, "mirror");
     confirmExpiry.restart();
   }
   function removeProfile() {
@@ -107,18 +107,18 @@ ColumnLayout {
     if (!confirmRemove) {
       confirmOverwrite = "";
       confirmRemove = true;
-      session.report("Press Confirm to remove “" + name + "”.", false);
+      session.report("Press Confirm to remove “" + name + "”.", false, "mirror");
       confirmExpiry.restart();
       return;
     }
     confirmRemove = false;
     saved.profilesJson = JSON.stringify(customProfiles.filter(p => p.name !== name));
     selectProfile("Balanced");
-    session.report("Removed profile “" + name + "”.", false);
+    session.report("Removed profile “" + name + "”.", false, "mirror");
   }
   function cancelConfirmations() {
     if (confirmRemove || confirmOverwrite)
-      session.report("", false);
+      session.report("", false, "mirror");
     confirmRemove = false;
     confirmOverwrite = "";
   }

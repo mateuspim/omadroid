@@ -116,7 +116,7 @@ ColumnLayout {
   Label {
     Layout.fillWidth: true
     visible: root.serial === "" && root.readyDevices.length === 0
-    text: "No device ready. Connect one on the Devices page."
+    text: "No device ready. Connect one from the device list."
     color: Util.alpha(Color.foreground, 0.7)
   }
   Flow {

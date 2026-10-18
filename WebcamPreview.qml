@@ -123,7 +123,7 @@ Item {
       if (++root.attempts < root.maxAttempts)
         return root.open();
       root.close();
-      root.error = "No frames from " + root.device + " after " + root.maxAttempts + " tries. Stop and start the webcam, then check Show log.";
+      root.error = "No frames from " + root.device + " after " + root.maxAttempts + " tries. Stop and start the webcam, then check Log.";
     }
   }
 

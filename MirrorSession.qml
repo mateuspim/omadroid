@@ -18,7 +18,7 @@ import "Model.js" as Model
 //   Launch:   launchMirror(serial, profile, folder, audioOnly)
 //             launchWebcam(serial, webcamSettings, sink)
 //             restartWebcam(webcamSettings)  — Apply: same phone and output
-//   Control:  stop(), toggleLog(), refreshSession(), report(text, isFailure)
+//   Control:  stop(), toggleLog(), refreshSession(), report(text, isFailure, kind?)
 //   Signal:   webcamArgsRead() — a running webcam's command was read back
 //
 // Usage:
@@ -40,6 +40,9 @@ Item {
 
   property string message: ""
   property bool failed: false
+  // The section the message belongs to ("mirror" | "webcam" | "" = both), so
+  // a webcam error doesn't also show under Mirror.
+  property string messageKind: ""
   property bool stopping: false
   property string sessionSerial: ""
   property string sessionRecording: ""
@@ -85,7 +88,9 @@ Item {
   }
   // Messages from the forms (profile saved, device not ready) share the
   // session's line, so one place reports what last happened.
-  function report(text, isFailure) {
+  function report(text, isFailure, kind) {
+    if (kind !== undefined)
+      messageKind = kind;
     failed = !!isFailure;
     message = String(text || "");
   }
@@ -100,6 +105,7 @@ Item {
   function launchMirror(serial, profile, folder, audioOnly) {
     if (busy)
       return;
+    messageKind = "mirror";
     var blocked = missingToolsReason("launching scrcpy");
     if (blocked)
       return report(blocked, true);
@@ -117,6 +123,7 @@ Item {
   function launchWebcam(serial, settings, sink) {
     if (busy)
       return;
+    messageKind = "webcam";
     var blocked = missingToolsReason("starting a webcam");
     if (!blocked && !sink)
       blocked = "No v4l2loopback output selected. Create one, then press Refresh.";
@@ -219,18 +226,22 @@ Item {
       }
     } else if (lines[1] && sessionType === "webcam" && !stopping && (wasActive || webcamReportDue)) {
       webcamReportDue = false;
-      report(lines[1], true);
+      report(lines[1], true, "webcam");
     } else if (wasActive && !stopping && message.indexOf("Session stopped") !== 0 && message.indexOf("Session force-stopped") !== 0) {
-      report(endedMessage(), false);
+      report(endedMessage(), false, sessionKindOfMessage());
     } else if (message.indexOf("Session started") === 0) {
-      message = "scrcpy exited. Press Show log for its output." + recordingNote();
+      report("scrcpy exited. Press Log for its output." + recordingNote(), false, sessionKindOfMessage());
     }
+  }
+  // Audio-only sessions live in the Mirror section.
+  function sessionKindOfMessage() {
+    return sessionType === "webcam" ? "webcam" : "mirror";
   }
   function recordingNote() {
     return sessionRecording ? " Recording: " + sessionRecording : "";
   }
   function endedMessage() {
-    return (sessionType === "webcam" ? "Webcam session ended. Check Show log for camera or size errors." : sessionAudioOnly ? "Audio session ended." : "Mirroring ended.") + recordingNote();
+    return (sessionType === "webcam" ? "Webcam session ended. Check Log for camera or size errors." : sessionAudioOnly ? "Audio session ended." : "Mirroring ended.") + recordingNote();
   }
 
   // Nothing polls. Every instance watches the session file, which appears on

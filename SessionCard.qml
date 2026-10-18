@@ -5,7 +5,7 @@ import qs.Commons
 import "Model.js" as Model
 
 // The running session's controls: what runs and where, Preview (webcam),
-// Show log and Stop, battery, recording, the last message, the webcam's
+// Log and Stop, battery, recording, the last message, the webcam's
 // Apply offer and preview, and the mirror's screen power and rotation.
 //
 // Public API

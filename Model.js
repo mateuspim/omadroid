@@ -653,7 +653,7 @@ function webcamSetup(issue) {
   case "module-unavailable": return { title: "Driver needs a build", detail: "The package is installed, but no module is available for this kernel. Check the DKMS build and matching kernel headers.", action: "", step: "", commands: "dkms status\npacman -Q linux-omarchy-headers v4l2loopback-dkms" };
   case "no-output": return { title: "No virtual camera output", detail: "The driver is loaded, but no output is visible. Check its devices and permissions.", action: "", step: "", commands: "ls -l /dev/video*" };
   case "scan-error": return { title: "Could not check camera outputs", detail: "Press Refresh to try again.", action: "", step: "", commands: "" };
-  default: return { title: "No virtual camera output", detail: "Enable a v4l2loopback output, then refresh this page.", action: "", step: "", commands: "" };
+  default: return { title: "No virtual camera output", detail: "Enable a v4l2loopback output, then press Refresh.", action: "", step: "", commands: "" };
   }
 }
 

@@ -179,7 +179,7 @@ ColumnLayout {
     if (session.busy)
       return;
     if (!ready)
-      return session.report("Select a device that is Ready before starting a webcam.", true);
+      return session.report("Select a device that is Ready before starting a webcam.", true, "webcam");
     session.launchWebcam(serial, webcam, webcamSink);
   }
 

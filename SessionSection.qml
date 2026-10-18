@@ -115,7 +115,7 @@ ColumnLayout {
   Label {
     Layout.fillWidth: true
     Layout.preferredWidth: 1
-    visible: root.session.message !== "" && !root.session.busy
+    visible: root.session.message !== "" && !root.session.busy && (root.session.messageKind === "" || root.session.messageKind === root.kind)
     text: (root.session.failed ? "⚠ " : "") + root.session.message
     color: root.session.failed ? Color.urgent : Color.accent
     wrapMode: Text.WrapAnywhere
