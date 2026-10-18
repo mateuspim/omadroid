@@ -61,37 +61,65 @@ ShellRoot {
     running: true
     onTriggered: {
       var item = finder.findChild(widget, "omadroidPopup");
-      item.parent = mount; widget.toggle();
+      item.parent = mount;
+      widget.toggle();
     }
   }
+  property bool shown: false
+  // A view name: home, add, settings, or device-<section> (the USB phone) /
+  // wifi-<section> (the wireless one), section = mirror|webcam|sound|info.
+  // `start` starts a webcam from the shown webcam page (the mock scrcpy keeps
+  // camera sessions running, not mirrors); `stopped` ends it from home.
+  function show(name) {
+    if (name === "start") {
+      finder.findChild(mount, "omadroidDevicePage").sectionItem.options.launchWebcam();
+      return;
+    }
+    if (name === "stopped") {
+      widget.go("home");
+      Qt.callLater(() => widget.stopSession());
+      return;
+    }
+    var parts = name.split("-");
+    if (parts[0] !== "device" && parts[0] !== "wifi") {
+      widget.go(name);
+      return;
+    }
+    widget.deviceSection = parts[1];
+    widget.go("device", parts[0] === "device" ? "USB123" : "adb-PHONE-random._adb-tls-connect._tcp");
+  }
+  // Each view gets one tick to load and settle, the next to be captured.
   Timer {
-    interval: 2500
+    interval: 1500
     running: true
     repeat: true
     onTriggered: {
-      // OMADROID_PREVIEW_PAGES picks the pages, comma-separated, in order.
-      var names = (Quickshell.env("OMADROID_PREVIEW_PAGES") || "devices,wireless,mirror,webcam,sound,settings").split(",");
+      // OMADROID_PREVIEW_PAGES picks the views, comma-separated, in order.
+      var names = (Quickshell.env("OMADROID_PREVIEW_PAGES") || "home,device-mirror,device-webcam,device-sound,device-info,wifi-mirror,add,settings,device-webcam,start,home,stopped").split(",");
       if (root.frame >= names.length) {
         console.log("OMADROID_PREVIEW_OK");
         Qt.quit();
         return;
       }
       var name = names[root.frame];
-      var item = mount.children[0];
-      if (!item) {
+      if (!root.shown) {
+        root.show(name);
+        root.shown = true;
+        return;
+      }
+      if (!mount.children[0]) {
         console.error("OMADROID_TEST_FAILED: popup missing");
         Qt.exit(1);
         return;
       }
       if (!surface.grabToImage(function (result) {
-        if (!result.saveToFile(Quickshell.env("OMADROID_PREVIEW_DIR") + "/" + name + ".png")) {
+        if (!result.saveToFile(Quickshell.env("OMADROID_PREVIEW_DIR") + "/" + root.frame + "-" + name + ".png")) {
           console.error("OMADROID_TEST_FAILED: cannot save capture");
           Qt.exit(1);
           return;
         }
         root.frame++;
-        if (root.frame < names.length)
-          widget.page = names[root.frame];
+        root.shown = false;
       })) {
         console.error("OMADROID_TEST_FAILED: capture failed");
         Qt.exit(1);

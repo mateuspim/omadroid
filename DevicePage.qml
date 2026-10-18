@@ -34,6 +34,8 @@ ColumnLayout {
 
   // Shared by the quick actions and the Info section's unlock PIN.
   readonly property alias powerState: devicePower
+  // The loaded section, so the panel can launch through the Mirror form's profile.
+  readonly property alias sectionItem: sectionLoader.item
   readonly property string serial: device ? device.serial : ""
   readonly property bool ready: device !== null && device.status === "device"
   readonly property string shownSection: DevicePage.pageSection(section)
