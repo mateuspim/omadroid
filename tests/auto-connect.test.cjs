@@ -1,13 +1,8 @@
 // AutoConnect.js projections. tests/Smoke.qml covers the QML component.
-const { readFileSync } = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-// QML's `.import "Model.js" as Model` becomes a Model namespace here.
-const Model = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), Model);
-const auto = vm.createContext({ Model });
-vm.runInContext(readFileSync(`${__dirname}/../AutoConnect.js`, 'utf8').replace(/^\.import .*$/m, ''), auto);
+const { loadJs } = require('./load-js.cjs');
+const auto = loadJs('AutoConnect.js');
 const plain = value => JSON.parse(JSON.stringify(value));
 
 const service = (name, endpoint) => ({ serial: name, service: '_adb-tls-connect._tcp', endpoint, pair: false });

@@ -1,6 +1,6 @@
 // Pure projections for the home view (device list, header, session banner).
-// Kept apart from Model.js, which is already past the 500-line budget and owns
-// parsing; this file only turns Discovery rows into what the list shows.
+// Kept apart from Model.js, which owns parsing; this file only turns
+// Discovery rows into what the list shows.
 
 var GROUP_TITLES = { connected: "CONNECTED", attention: "NEEDS ATTENTION", nearby: "NEARBY" };
 

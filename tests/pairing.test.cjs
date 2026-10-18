@@ -2,12 +2,11 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
+const { loadJs } = require('./load-js.cjs');
 const { spawnSync } = require('node:child_process');
-const pairing = vm.createContext({});
-vm.runInContext(fs.readFileSync(`${__dirname}/../Pairing.js`, 'utf8'), pairing);
+const pairing = loadJs('Pairing.js');
 const plain = value => JSON.parse(JSON.stringify(value));
 
 // Runs qr-pair.sh with a PATH of only the tools it uses (so a real qrencode

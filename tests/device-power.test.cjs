@@ -1,10 +1,8 @@
 // DevicePower.js projections. tests/device-power.sh covers device-power.sh itself.
-const { readFileSync } = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const power = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../DevicePower.js`, 'utf8'), power);
+const { loadJs } = require('./load-js.cjs');
+const power = loadJs('DevicePower.js');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 test('parsePowerStatus reads the status line', () => {

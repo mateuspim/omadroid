@@ -1,10 +1,8 @@
 // SendText.js projections. tests/send-text.sh covers send-text.sh itself.
-const { readFileSync } = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const sendText = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../SendText.js`, 'utf8'), sendText);
+const { loadJs } = require('./load-js.cjs');
+const sendText = loadJs('SendText.js');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const devices = [
   { serial: 'A', status: 'device' },

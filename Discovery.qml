@@ -1,4 +1,5 @@
 import QtQuick
+import "DeviceInfo.js" as DeviceInfo
 import "Model.js" as Model
 
 Item {
@@ -24,7 +25,7 @@ Item {
   property var infoReadAt: ({})
   property var infoRequested: []
   property int infoMaxAgeSec: 60
-  readonly property var devices: Model.withDeviceInfo(Model.withDeviceNames(adbDevices, deviceNames), deviceInfo)
+  readonly property var devices: DeviceInfo.withDeviceInfo(Model.withDeviceNames(adbDevices, deviceNames), deviceInfo)
   property var services: []
   property string devicesError: ""
   // mdnsError is the short text shown on the page; mdnsLevel is "", "warning" or "error".
@@ -351,7 +352,7 @@ Item {
   Command {
     id: info
     onFinished: (code, output, error) => {
-      var found = Model.parseDeviceInfo(output);
+      var found = DeviceInfo.parseDeviceInfo(output);
       var merged = Object.assign({}, root.deviceInfo), readAt = Object.assign({}, root.infoReadAt);
       var now = Date.now();
       root.infoRequested.forEach(serial => {

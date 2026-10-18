@@ -5,8 +5,9 @@ const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const Model = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), Model);
+const { loadJs } = require('./load-js.cjs');
+const Model = loadJs('Model.js');
+const Webcam = loadJs('Webcam.js');
 const sessionSource = readFileSync(`${__dirname}/../MirrorSession.qml`, 'utf8');
 const webcamSource = readFileSync(`${__dirname}/../WebcamOptions.qml`, 'utf8');
 const cameraList = readFileSync(`${__dirname}/camera-sizes.txt`, 'utf8');
@@ -38,7 +39,7 @@ function loadQmlMethods(source, context) {
 /** An idle session. Example: sessionFixture({ wakeOnLaunch: true }).launchMirror(...). */
 function sessionFixture(overrides) {
   const context = vm.createContext(Object.assign({
-    Model, Qt: new FakeQt(), Math, Date, Object, String, Number, JSON,
+    Model, Webcam, Qt: new FakeQt(), Math, Date, Object, String, Number, JSON,
     missingTools: '', wakeOnLaunch: false, unlockOnLaunch: false,
     busy: false, stopping: false, message: '', failed: false,
     sessionSerial: '', sessionType: 'mirror', sessionAudioOnly: false, sessionRecording: '', sessionSink: '',
@@ -68,13 +69,13 @@ test('launches are refused with the missing tools named', () => {
   assert.equal(missing.failed, true);
   assert.match(missing.message, /Install scrcpy/);
   const noSink = sessionFixture();
-  noSink.launchWebcam('USB123', Model.webcamSettings(''), '');
+  noSink.launchWebcam('USB123', Webcam.webcamSettings(''), '');
   assert.match(noSink.message, /No v4l2loopback output/);
 });
 
 test('Apply stops the webcam, then restarts it on the same phone and output with the new settings', () => {
   const session = sessionFixture({ busy: true, sessionType: 'webcam', sessionPid: 42, sessionSerial: 'USB123', sessionSink: '/dev/video12' });
-  const settings = Object.assign(Model.webcamSettings(''), { fps: '24' });
+  const settings = Object.assign(Webcam.webcamSettings(''), { fps: '24' });
   session.restartWebcam(settings);
   assert.equal(session.pendingSwitch.kind, 'webcam');
   assert.deepEqual(session.stopper.calls[0], ['bash', '/plugin/session.sh', 'stop']);
@@ -97,10 +98,10 @@ test('a webcam that failed before any status saw it reports its error once', () 
 });
 
 test('cameraFitChanges swaps a facing for a camera id and an unlisted size for the closest', () => {
-  const context = vm.createContext({ Model, webcam: Object.assign(Model.webcamSettings(''), { camera: 'front', size: '9999x9999' }) });
+  const context = vm.createContext({ Model, Webcam, webcam: Object.assign(Webcam.webcamSettings(''), { camera: 'front', size: '9999x9999' }) });
   loadQmlMethods(webcamSource, context);
-  const cameras = Model.parseCameraList(cameraList);
-  const camera = Model.chosenCamera(cameras, 'front');
+  const cameras = Webcam.parseCameraList(cameraList);
+  const camera = Webcam.chosenCamera(cameras, 'front');
   const changes = context.cameraFitChanges(camera);
   assert.equal(changes.camera, 'id:' + camera.id);
   assert.ok(camera.sizes.includes(changes.size), changes.size);
@@ -121,7 +122,7 @@ function endSession(session) {
 
 test('starting the webcam while mirroring stops the mirror, then starts the webcam', () => {
   const session = mirroringFixture();
-  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  session.launchWebcam('USB123', Webcam.webcamSettings(''), '/dev/video12');
   assert.deepEqual(session.stopper.calls, [['bash', '/plugin/session.sh', 'stop']]);
   assert.equal(session.launcher.calls.length, 0, 'nothing starts before the mirror ended');
   assert.match(session.message, /Switching to the webcam/);
@@ -140,7 +141,7 @@ test('mirroring another phone while one mirrors switches to the new phone', () =
 
 test('stop while a switch waits cancels the switch and keeps stopping', () => {
   const session = mirroringFixture();
-  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  session.launchWebcam('USB123', Webcam.webcamSettings(''), '/dev/video12');
   assert.equal(session.stopping, true);
   session.stop();
   assert.equal(session.pendingSwitch, null);
@@ -152,7 +153,7 @@ test('stop while a switch waits cancels the switch and keeps stopping', () => {
 
 test('a second launch while a switch waits is ignored', () => {
   const session = mirroringFixture();
-  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  session.launchWebcam('USB123', Webcam.webcamSettings(''), '/dev/video12');
   session.launchMirror('PHONE', Model.builtInProfiles()[0], '', false);
   endSession(session);
   assert.equal(session.launcher.calls.length, 1);
@@ -162,7 +163,7 @@ test('a second launch while a switch waits is ignored', () => {
 test('a launch while a session is still starting does not stop it', () => {
   const session = sessionFixture({ busy: true, sessionPid: 0, sessionSerial: 'USB123' });
   session.preparer.busy = true;
-  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  session.launchWebcam('USB123', Webcam.webcamSettings(''), '/dev/video12');
   assert.equal(session.stopper.calls.length, 0, 'the starting session is left alone');
   assert.equal(session.pendingSwitch, null);
   assert.match(session.message, /Wait until the current session has started/);
@@ -170,7 +171,7 @@ test('a launch while a session is still starting does not stop it', () => {
 
 test('stop cancels a switch after the stopper returned, before the status re-read', () => {
   const session = mirroringFixture();
-  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  session.launchWebcam('USB123', Webcam.webcamSettings(''), '/dev/video12');
   session.stopping = false;
   session.stop();
   assert.equal(session.pendingSwitch, null);

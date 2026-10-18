@@ -4,8 +4,8 @@ const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const screenPowerModel = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../ScreenPower.js`, 'utf8'), screenPowerModel);
+const { loadJs } = require('./load-js.cjs');
+const screenPowerModel = loadJs('ScreenPower.js');
 const controlsSource = readFileSync(`${__dirname}/../ScreenPowerControls.qml`, 'utf8');
 const paneSource = readFileSync(`${__dirname}/../MirrorOptions.qml`, 'utf8');
 

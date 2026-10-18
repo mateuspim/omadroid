@@ -4,7 +4,7 @@ import QtQuick.Controls as Controls
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
-import "Model.js" as Model
+import "Webcam.js" as Webcam
 
 // "Quality and adjustments" of the webcam form: folded by default with a
 // one-line summary, unfolding to resolution, rate, bitrate, codec,
@@ -34,7 +34,7 @@ ColumnLayout {
     Label {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
-      text: Model.webcamSummary(root.webcam)
+      text: Webcam.webcamSummary(root.webcam)
       wrapMode: Text.NoWrap
       elide: Text.ElideRight
       color: Util.alpha(Commons.Color.foreground, 0.6)
@@ -53,7 +53,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       label: "Resolution"
       value: root.webcam.size
-      options: Model.cameraSizeOptions(root.options.currentCamera)
+      options: Webcam.cameraSizeOptions(root.options.currentCamera)
       Accessible.name: "Camera capture size"
       onChanged: value => root.options.setWebcam({ size: value })
     }
@@ -62,7 +62,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       label: "Frame rate"
       value: root.webcam.fps
-      options: Model.cameraFpsOptions(root.options.currentCamera)
+      options: Webcam.cameraFpsOptions(root.options.currentCamera)
       Accessible.name: "Camera frame rate"
       onChanged: value => root.options.setWebcam({ fps: value })
     }
@@ -98,7 +98,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       label: "Zoom"
       value: root.webcam.zoom
-      options: Model.cameraZoomOptions(root.options.currentCamera)
+      options: Webcam.cameraZoomOptions(root.options.currentCamera)
       Accessible.name: "Camera zoom"
       onChanged: value => root.options.setWebcam({ zoom: value }, true)
     }

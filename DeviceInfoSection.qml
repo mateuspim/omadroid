@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "DeviceInfo.js" as DeviceInfo
 import "Model.js" as Model
 import "DevicePage.js" as DevicePage
 import "DevicePower.js" as DevicePower
@@ -14,7 +15,7 @@ ColumnLayout {
   required property var device
   // The page's DevicePowerState, shared with the quick actions.
   required property var powerState
-  readonly property var details: Model.deviceDetails(device.info)
+  readonly property var details: DeviceInfo.deviceDetails(device.info)
   property string copied: ""
   property string copyError: ""
   spacing: Style.space(8)

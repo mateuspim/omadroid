@@ -1,9 +1,7 @@
-const { readFileSync } = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const list = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../DeviceListModel.js`, 'utf8'), list);
+const { loadJs } = require('./load-js.cjs');
+const list = loadJs('DeviceListModel.js');
 const plain = value => JSON.parse(JSON.stringify(value));
 
 // Rows shaped like Discovery.rows for the smoke fixtures (tests/mock-adb.sh, mock-avahi-browse.sh).

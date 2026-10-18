@@ -4,8 +4,8 @@ const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const screenRotationModel = vm.createContext({});
-vm.runInContext(readFileSync(__dirname + '/../ScreenRotation.js', 'utf8'), screenRotationModel);
+const { loadJs } = require('./load-js.cjs');
+const screenRotationModel = loadJs('ScreenRotation.js');
 const controlsSource = readFileSync(__dirname + '/../ScreenRotationControls.qml', 'utf8');
 
 class FakeCommand {

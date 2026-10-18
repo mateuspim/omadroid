@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
 import qs.Commons as Commons
-import "Model.js" as Model
+import "DeviceInfo.js" as DeviceInfo
 
 // The running session's controls: what runs and where, Preview (webcam),
 // Log and Stop, battery, recording, the last message, the webcam's
@@ -76,7 +76,7 @@ Rectangle {
         }
         Label {
           Layout.fillWidth: true
-          text: [root.deviceName, root.battery ? Model.batteryLabel(root.battery) : ""].filter(Boolean).join(" · ")
+          text: [root.deviceName, root.battery ? DeviceInfo.batteryLabel(root.battery) : ""].filter(Boolean).join(" · ")
           color: Util.alpha(Commons.Color.foreground, 0.7)
           font.pixelSize: Style.font.bodySmall
           elide: Text.ElideRight

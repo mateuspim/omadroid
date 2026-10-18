@@ -1,4 +1,5 @@
 .import "Model.js" as Model
+.import "DeviceInfo.js" as DeviceInfo
 
 // Text for the device page's hero and Info section, from a discovery row and
 // its parsed device-info.sh `info`.
@@ -41,13 +42,13 @@ function heroStats(info) {
   if (info.battery && info.battery.level !== undefined)
     parts.push(info.battery.level + "%" + (info.battery.status === 2 ? " ⚡" : ""));
   if (info.internal) parts.push(storageShort(info.internal));
-  if (info.memKb) parts.push(Model.formatSize(info.memKb) + " RAM");
+  if (info.memKb) parts.push(DeviceInfo.formatSize(info.memKb) + " RAM");
   return parts.join(" · ");
 }
 
 /** "136/239 GB", or "125 GB/1.02 TB" when the units differ. */
 function storageShort(storage) {
-  var used = Model.formatSize(storage.usedKb), total = Model.formatSize(storage.totalKb);
+  var used = DeviceInfo.formatSize(storage.usedKb), total = DeviceInfo.formatSize(storage.totalKb);
   var sameUnit = used.split(" ")[1] === total.split(" ")[1];
   return (sameUnit ? used.split(" ")[0] : used) + "/" + total;
 }

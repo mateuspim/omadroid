@@ -1,4 +1,4 @@
-.import "Model.js" as Model
+.import "Webcam.js" as Webcam
 
 // The device page's two registries: session kinds (the big Mirror · Audio ·
 // Webcam cards, one scrcpy session at a time) and device controls (the
@@ -54,7 +54,7 @@ function webcamCardSummary(webcam, cameras) {
 
 /** Example: cameraShortName("back", null) → "Back"; cameraShortName("id:2", null) → "Camera 2" */
 function cameraShortName(choice, cameras) {
-  var camera = Model.chosenCamera(cameras, choice);
+  var camera = Webcam.chosenCamera(cameras, choice);
   var facing = camera ? camera.facing : choice;
   if (facing === "front" || facing === "back" || facing === "external")
     return facing.charAt(0).toUpperCase() + facing.slice(1);

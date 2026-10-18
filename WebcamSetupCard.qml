@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.Commons
 import qs.Commons as Commons
 import "Model.js" as Model
+import "Webcam.js" as Webcam
 
 // v4l2loopback setup guidance, shown while no loopback output exists: what is
 // missing, a button that opens the fix in a visible terminal, and the manual
@@ -28,7 +29,7 @@ Rectangle {
   property string setupMessage: ""
   property bool setupPending: false
   property double setupStartedAt: 0
-  readonly property var guidance: Model.webcamSetup(issue)
+  readonly property var guidance: Webcam.webcamSetup(issue)
   readonly property string setupScript: decodeURIComponent(Qt.resolvedUrl("webcam-setup.sh").toString().replace(/^file:\/\//, ""))
   signal refreshRequested
 

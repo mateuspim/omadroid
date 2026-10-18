@@ -1,10 +1,8 @@
 // SoundVolume.js projections. tests/device-volume.sh covers device-volume.sh itself.
-const { readFileSync } = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const sound = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../SoundVolume.js`, 'utf8'), sound);
+const { loadJs } = require('./load-js.cjs');
+const sound = loadJs('SoundVolume.js');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 // device-volume.sh status of the Tab S11 on 2026-10-16.
 const tabStatus = [

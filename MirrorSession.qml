@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import "Model.js" as Model
+import "Webcam.js" as Webcam
 
 // The single scrcpy session (mirror, audio-only or webcam) of this machine.
 // Non-visual. The session itself lives in session.sh's state file, so every
@@ -124,7 +125,7 @@ Item {
       report(e.message, true);
     }
   }
-  // Example: launchWebcam("USB123", Model.webcamSettings(""), "/dev/video12")
+  // Example: launchWebcam("USB123", Webcam.webcamSettings(""), "/dev/video12")
   function launchWebcam(serial, settings, sink) {
     if (busy)
       return switchTo("webcam", serial, () => launchWebcam(serial, settings, sink));
@@ -139,7 +140,7 @@ Item {
   }
   function startWebcam(serial, settings, sink, restarting) {
     try {
-      var args = Model.webcamCommand(serial, settings, sink);
+      var args = Webcam.webcamCommand(serial, settings, sink);
       sessionArgs = args;
       webcamReportDue = true;
       markStarting(serial, "webcam", "", sink);

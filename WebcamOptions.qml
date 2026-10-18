@@ -7,6 +7,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
+import "Webcam.js" as Webcam
 import "SettingsFile.js" as SettingsFile
 
 // Webcam settings for one device: camera, quality, v4l2 output, the folded
@@ -36,17 +37,17 @@ ColumnLayout {
   property bool panelOpen: true
   // Reading cameras runs scrcpy on the phone, so a folded form doesn't ask.
   property bool scanCameras: panelOpen
-  // Camera, quality and adjustments for the next webcam (Model.webcamSettings),
+  // Camera, quality and adjustments for the next webcam (Webcam.webcamSettings),
   // saved in omadroid.ini. Replaced whole by setWebcam() so bindings update.
-  property var webcam: Model.webcamSettings("")
-  // Each device's cameras (Model.parseCameraList), read once per serial.
+  property var webcam: Webcam.webcamSettings("")
+  // Each device's cameras (Webcam.parseCameraList), read once per serial.
   // A phone whose scan failed maps to [] (and its error), so it is not asked
   // again on every open; Refresh asks again.
   property var cameraCatalog: ({})
   property var cameraScanErrors: ({})
   readonly property string cameraScanError: cameraScanErrors[serial] || ""
   readonly property var cameras: cameraCatalog[serial] || null
-  readonly property var currentCamera: Model.chosenCamera(cameras, webcam.camera)
+  readonly property var currentCamera: Webcam.chosenCamera(cameras, webcam.camera)
   // Set when the camera list arrives mid-session; fitting then would change
   // the shown settings and offer an Apply nobody asked for.
   property bool fitPending: false
@@ -62,7 +63,7 @@ ColumnLayout {
     var target = webcamRunning ? session.sessionSerial : serial;
     var sink = webcamRunning ? session.sessionSink : webcamSink;
     try {
-      return (webcamRunning || ready) && target && sink ? Model.webcamCommand(target, webcam, sink) : null;
+      return (webcamRunning || ready) && target && sink ? Webcam.webcamCommand(target, webcam, sink) : null;
     } catch (e) {
       return null;
     }
@@ -77,7 +78,7 @@ ColumnLayout {
     property string webcamJson: ""
   }
   Component.onCompleted: {
-    webcam = Model.webcamSettings(saved.webcamJson);
+    webcam = Webcam.webcamSettings(saved.webcamJson);
     refreshWebcamOutputs();
     Qt.callLater(scanCamerasIfNeeded);
   }
@@ -128,7 +129,7 @@ ColumnLayout {
   // saved newer settings since.
   function reloadWebcam() {
     saved.sync();
-    webcam = Model.webcamSettings(saved.value("webcamJson", saved.webcamJson));
+    webcam = Webcam.webcamSettings(saved.value("webcamJson", saved.webcamJson));
   }
   // Example: setWebcam({ fps: "24" }) marks the quality preset Custom.
   function setWebcam(changes, keepPreset) {
@@ -143,12 +144,12 @@ ColumnLayout {
     saved.sync();
   }
   function applyPreset(name) {
-    var preset = Model.webcamPresets().find(p => p.value === name);
+    var preset = Webcam.webcamPresets().find(p => p.value === name);
     if (preset)
       setWebcam({
         preset: name,
-        size: Model.pickCameraSize(currentCamera, preset.size),
-        fps: Model.pickCameraFps(currentCamera, preset.fps),
+        size: Webcam.pickCameraSize(currentCamera, preset.size),
+        fps: Webcam.pickCameraFps(currentCamera, preset.fps),
         bitRate: preset.bitRate,
         codec: preset.codec
       }, true);
@@ -161,7 +162,7 @@ ColumnLayout {
       return;
     if (webcamRunning && !chosen)
       return fitPending = true;
-    var changes = cameraFitChanges(Model.chosenCamera(cameras, webcam.camera) || cameras[0]);
+    var changes = cameraFitChanges(Webcam.chosenCamera(cameras, webcam.camera) || cameras[0]);
     if (Object.keys(changes).length)
       setWebcam(changes, true);
   }
@@ -169,12 +170,12 @@ ColumnLayout {
     var changes = {};
     if (webcam.camera !== "id:" + camera.id)
       changes.camera = "id:" + camera.id;
-    var preset = Model.webcamPresets().find(p => p.value === webcam.preset);
+    var preset = Webcam.webcamPresets().find(p => p.value === webcam.preset);
     if (webcam.size !== "auto" && camera.sizes.indexOf(webcam.size) < 0)
-      changes.size = Model.pickCameraSize(camera, preset ? preset.size : webcam.size);
-    if (Model.cameraFpsOptions(camera).every(o => o.value !== webcam.fps))
-      changes.fps = Model.pickCameraFps(camera, webcam.fps);
-    if (Model.cameraZoomOptions(camera).every(o => o.value !== webcam.zoom))
+      changes.size = Webcam.pickCameraSize(camera, preset ? preset.size : webcam.size);
+    if (Webcam.cameraFpsOptions(camera).every(o => o.value !== webcam.fps))
+      changes.fps = Webcam.pickCameraFps(camera, webcam.fps);
+    if (Webcam.cameraZoomOptions(camera).every(o => o.value !== webcam.zoom))
       changes.zoom = "1";
     return changes;
   }
@@ -194,7 +195,7 @@ ColumnLayout {
     id: cameraScan
     property string serial: ""
     onFinished: (code, output, error) => {
-      var list = code === 0 ? Model.parseCameraList(output) : [];
+      var list = code === 0 ? Webcam.parseCameraList(output) : [];
       var errors = Object.assign({}, root.cameraScanErrors);
       errors[cameraScan.serial] = list.length ? "" : code === 0 ? "The phone listed no cameras. Camera capture needs Android 12+." : Model.commandError(code, output, error, "Camera list");
       root.cameraScanErrors = errors;
@@ -252,7 +253,7 @@ ColumnLayout {
       label: "Camera · Android 12+"
       value: root.webcam.camera
       // A saved camera id stays selectable before the list is read.
-      options: Model.cameraOptions(root.cameras).concat(!root.cameras && /^id:/.test(root.webcam.camera) ? [{ value: root.webcam.camera, label: "Camera " + root.webcam.camera.slice(3) + " (saved)" }] : [])
+      options: Webcam.cameraOptions(root.cameras).concat(!root.cameras && /^id:/.test(root.webcam.camera) ? [{ value: root.webcam.camera, label: "Camera " + root.webcam.camera.slice(3) + " (saved)" }] : [])
       Accessible.name: "Phone camera"
       onChanged: value => {
         root.setWebcam({ camera: value }, true);
@@ -264,7 +265,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       label: "Quality"
       value: root.webcam.preset
-      options: Model.webcamPresets().map(p => ({ value: p.value, label: p.label })).concat([{ value: "custom", label: "Custom" }])
+      options: Webcam.webcamPresets().map(p => ({ value: p.value, label: p.label })).concat([{ value: "custom", label: "Custom" }])
       Accessible.name: "Quality preset"
       onChanged: value => {
         if (value !== "custom")

@@ -1,16 +1,10 @@
 // DeviceActions.js and DevicePage.js projections. tests/DevicePreview.qml
 // renders the page itself.
-const { readFileSync } = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-// QML's `.import "Model.js" as Model` becomes a Model namespace here.
-const Model = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), Model);
-const page = vm.createContext({ Model });
-vm.runInContext(readFileSync(`${__dirname}/../DevicePage.js`, 'utf8').replace(/^\.import .*$/m, ''), page);
-const registry = vm.createContext({ Model });
-vm.runInContext(readFileSync(`${__dirname}/../DeviceActions.js`, 'utf8').replace(/^\.import .*$/m, ''), registry);
+const { loadJs } = require('./load-js.cjs');
+const page = loadJs('DevicePage.js');
+const registry = loadJs('DeviceActions.js');
 const plain = value => JSON.parse(JSON.stringify(value));
 
 const usb = { serial: 'USB123', name: 'Desk phone', model: 'Pixel 6', transport: 'USB', source: 'adb', status: 'device', endpoint: '' };

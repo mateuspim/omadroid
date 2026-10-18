@@ -55,7 +55,7 @@ case "${1:-}" in
     fi
     ;;
   cameras)
-    # Asks the phone for its cameras, sizes and frame rates; Model.js parses
+    # Asks the phone for its cameras, sizes and frame rates; Webcam.js parses
     # the list. Needs no session, and leaves a running one alone.
     serial="${2:-}"
     [[ "$serial" && "$serial" != -* && "$serial" != *[[:space:][:cntrl:]]* ]] || { echo "Invalid device '$serial'." >&2; exit 2; }

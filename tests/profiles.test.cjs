@@ -4,8 +4,8 @@ const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const Model = vm.createContext({});
-vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), Model);
+const { loadJs } = require('./load-js.cjs');
+const Model = loadJs('Model.js');
 const paneSource = readFileSync(`${__dirname}/../MirrorOptions.qml`, 'utf8');
 
 /** Records report() into the fixture's message and failed, as the session does. */

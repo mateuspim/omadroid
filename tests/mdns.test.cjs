@@ -1,14 +1,13 @@
 // Offline only: every avahi-browse invocation resolves to a temporary fixture.
 const { test } = require('node:test');
+const { loadJs } = require('./load-js.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const vm = require('node:vm');
 const repo = path.resolve(__dirname, '..');
-const model = vm.createContext({});
-vm.runInContext(fs.readFileSync(path.join(repo, 'Model.js'), 'utf8'), model);
+const model = loadJs('Model.js');
 
 // Runs the follow helper against the fake Avahi; stops it with `signal` after
 // `settleMs` unless it exits on its own first.
