@@ -35,9 +35,9 @@ webcam_error() {
   # No grep -q after a pipe: it exits early, the first grep then dies of
   # SIGPIPE on a long log, and pipefail turns a match into a failure.
   if grep -viE 'capture failed: frame [0-9]+' "$log_file" | grep -iE 'camera.*(not found|unavailable|cannot|unsupported|failed)|no camera' >/dev/null; then
-    echo 'The selected camera is unavailable. Try the other camera and check Show log.'
+    echo 'The selected camera is unavailable. Try the other camera and check Log.'
   elif grep -qiE '(camera.size|capture size|resolution).*(unsupported|not supported|invalid|failed)' "$log_file"; then
-    echo 'This camera does not support the chosen size. Select Automatic or another quality and check Show log.'
+    echo 'This camera does not support the chosen size. Select Automatic or another quality and check Log.'
   elif grep -qiE 'busy|device or resource busy' "$log_file"; then
     echo 'The V4L2 output is occupied. Close its other user, then retry.'
   fi
@@ -188,11 +188,11 @@ case "${1:-}" in
     terminal_available || { echo 'No terminal is available. Install foot or set an Omarchy default terminal.' >&2; exit 127; }
     with_lock
     if read_session; then
-      echo 'A OmaDroid session is already active.' >&2
+      echo 'An OmaDroid session is already active.' >&2
       exit 1
     fi
     if launch_in_progress; then
-      echo 'A OmaDroid session is already starting.' >&2
+      echo 'An OmaDroid session is already starting.' >&2
       exit 1
     fi
     printf '%s\n%s\n' "$$" "$(start_time "$$")" > "$launching_file"
@@ -235,7 +235,7 @@ case "${1:-}" in
     set -- "${request[@]:3}"
     with_lock
     if read_session; then
-      echo 'A OmaDroid session is already active.' >&2
+      echo 'An OmaDroid session is already active.' >&2
       exit 1
     fi
     printf '%s\n%s\n%s\n%s\n%s\n' "$$" "$(start_time "$$")" "$serial" "$session_type" "$recording" > "$state_file"

@@ -73,7 +73,7 @@ go 2 USB123
 # A host the device doesn't trust over TLS is pointed at QR pairing.
 reset_device 34 0
 OMADROID_TEST_CASE=untrusted go 4 USB123
-[[ "$out" == *"isn't authorized"*"Pair with QR code"* ]] || fail "untrusted hint: $out"
+[[ "$out" == *"isn't authorized"*"Add device › QR code"* ]] || fail "untrusted hint: $out"
 
 # Serials are checked before adb sees them.
 reset_device 34 0

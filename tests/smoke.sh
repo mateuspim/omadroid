@@ -35,7 +35,7 @@ else
   ln -s /usr/share/omarchy/shell/Ui "$test_dir/Ui"
 fi
 ln -s "$repo_dir" "$test_dir/plugin"
-# The Sound page's device: tests/mock-volume-adb.sh with the Tab S11's codes.
+# The Sound section's device: tests/mock-volume-adb.sh with the Tab S11's codes.
 mkdir "$test_dir/volume"
 python3 -I "$repo_dir/tests/make-audio-dex.py" "$test_dir/volume/framework.jar"
 printf 13 >"$test_dir/volume/stream-3"
@@ -70,7 +70,7 @@ rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/omadroid.ini"
 rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/omadroid.ini"
 # The Settings page installed the Send text hotkey.
 rg -qxF 'o.bind("SUPER + ALT + D", "OmaDroid send text", "omarchy-shell shell toggle pym.omadroid")' "$test_dir/bindings.lua"
-# The Sound page sent only the drag's last value.
+# The Sound section sent only the drag's last value.
 [[ "$(cat "$test_dir/volume/app-10360")" == 40 ]]
 # Mute all muted rather than unmuted.
 [[ "$(cat "$test_dir/volume/master")" == 1 ]]

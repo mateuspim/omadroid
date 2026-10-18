@@ -1,4 +1,4 @@
-// Projections of `device-volume.sh status` for the Sound page.
+// Projections of `device-volume.sh status` for the device page's Sound section.
 // tests/device-volume.sh covers device-volume.sh itself.
 
 // Stream key → label, in the order the page lists them.

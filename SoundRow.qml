@@ -4,8 +4,8 @@ import qs.Commons
 import qs.Ui
 import "SoundVolume.js" as SoundVolume
 
-// One row of the Sound page: mute toggle, name, value and a slider, laid out
-// like the Omarchy audio panel's app rows. Right-click on the slider mutes too.
+// One row of the device page's Sound section: mute toggle, name, value and a
+// slider, laid out like the Omarchy audio panel's app rows. Right-click on the slider mutes too.
 // The wheel scrolls the page instead of changing the volume: on a page of
 // sliders, scrolling past one shouldn't change it.
 ColumnLayout {

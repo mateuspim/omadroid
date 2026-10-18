@@ -18,7 +18,7 @@ enable_output() {
     printf 'v4l2loopback\n' | sudo tee "$load_conf" >/dev/null
     printf 'options v4l2loopback devices=1 exclusive_caps=1\n' | sudo tee "$options_conf" >/dev/null
   fi
-  echo 'Ready. Return to OmaDroid and press Refresh on the Webcam page.'
+  echo "Ready. Return to OmaDroid and press Refresh in the device's Webcam section."
 }
 
 # In the setup terminal: a success closes after 10 s (Enter closes at once);

@@ -3,7 +3,7 @@ import "Model.js" as Model
 import "DevicePower.js" as DevicePower
 
 // Non-visual power state of one ready device: keep awake, wake/unlock, lock
-// and the unlock secret, through device-power.sh. Shared by the card's
+// and the unlock secret, through device-power.sh. Shared by
 // DevicePowerControls and the device page's quick actions and Info section,
 // so both run the same commands. The secret only passes through here on its
 // way to the keyring, on stdin.
@@ -24,7 +24,7 @@ Item {
   readonly property string powerScript: decodeURIComponent(Qt.resolvedUrl("device-power.sh").toString().replace(/^file:\/\//, ""))
 
   Component.onCompleted: refresh()
-  // Bindings may set `ready` before `serial` while the card is created.
+  // Bindings may set `ready` before `serial` while the page is created.
   onReadyChanged: refresh()
   onSerialChanged: {
     power = null;

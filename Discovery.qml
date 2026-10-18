@@ -87,7 +87,7 @@ Item {
   }
 
   // Rescans that found nothing new keep the same arrays, so bound views
-  // (device cards, the mirror device list) aren't rebuilt.
+  // (the device list, the device page) aren't rebuilt.
   function setDevices(rows) {
     if (Model.sameData(rows, adbDevices))
       return;

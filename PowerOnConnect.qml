@@ -39,8 +39,8 @@ Item {
 
   Command {
     id: command
-    // Failures (an unreachable device, no saved PIN) are shown on the card when
-    // the popup opens; there is nothing to report here.
+    // Failures (an unreachable device, no saved PIN) are shown on the device page
+    // when it opens; there is nothing to report here.
     onFinished: (code, output, error) => root.runQueued()
   }
 }

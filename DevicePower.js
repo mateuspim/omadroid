@@ -29,7 +29,7 @@ function connectedCommand(script, serials, wake, unlock, atStartup) {
   return ["bash", script, "connected", act(wake), act(unlock)].concat(serials);
 }
 
-/** One-line state for the card's Unlock PIN button tooltip. */
+/** One-line Unlock PIN state, for the power controls' tooltip and the device page's Info section. */
 function secretLabel(secret) {
   return ({
     none: "No unlock PIN saved",

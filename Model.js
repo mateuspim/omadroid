@@ -280,7 +280,7 @@ function deviceSummary(info) {
   return parts.join(" · ");
 }
 
-/** Label/value pairs for the expanded device card, omitting anything unread. */
+/** Label/value pairs for the device page's Info section, omitting anything unread. */
 function deviceDetails(info) {
   if (!info) return [];
   var rows = [];
@@ -302,7 +302,7 @@ function deviceDetails(info) {
   return rows;
 }
 
-/** Merge adb devices with mDNS services into the Devices page rows.
+/** Merge adb devices with mDNS services into the home view's device rows.
  * Android runs one wireless adbd per host, so a connect service on the host of
  * a wireless device is that device even when the ports differ: a ready device
  * keeps adb's live endpoint (Avahi may hold a stale cached port), an offline
@@ -354,7 +354,7 @@ function commandError(code, output, error, name) {
   return String(error || output || name + " exited with code " + code).trim().slice(-1800);
 }
 
-/** Summarize discover-mdns.sh stderr for the Devices page.
+/** Summarize discover-mdns.sh stderr for the home view's device list.
  * A cached record whose host no longer answers yields Avahi resolve timeouts, once per
  * IPv4/IPv6 record; those become one hint per device. Unknown lines stay in details.
  * Example: mdnsStatus(0, "Failed to resolve service 'adb-X-a' of type '_adb-tls-connect._tcp' in domain 'local': Timeout reached", [], {})

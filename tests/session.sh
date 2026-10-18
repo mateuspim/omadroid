@@ -246,7 +246,7 @@ printf '[server] WARN: Camera capture failed: frame 3767\n' > "$XDG_RUNTIME_DIR/
 rm -f -- "$XDG_RUNTIME_DIR/omadroid-$UID/stopped"
 [[ "$(session status)" == inactive ]]
 printf 'ERROR: camera size 1920x1080 is not supported\n' > "$XDG_RUNTIME_DIR/omadroid-$UID/scrcpy.log"
-[[ "$(session status)" == $'inactive\nThis camera does not support the chosen size. Select Automatic or another quality and check Show log.' ]]
+[[ "$(session status)" == $'inactive\nThis camera does not support the chosen size. Select Automatic or another quality and check Log.' ]]
 # A launch already starting blocks a second one, which must not close the
 # first one's terminal as stale.
 sleep 30 &
