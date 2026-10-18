@@ -1,20 +1,18 @@
 import QtQuick
 import Quickshell
 import "plugin" as OmaDroid
+import "plugin/tests/smoke" as SmokeTests
 
 ShellRoot {
   id: testRoot
   property int step: 0
-  property bool stopQueued: false
-  property bool webcamApplied: false
   function check(condition, message) {
     if (!condition) {
       console.error("OMADROID_TEST_FAILED: " + message);
       Qt.exit(1);
     }
   }
-  // The pane holds a Mirror and a Webcam section with the same objectNames;
-  // the one on screen wins, else the first (hidden) match.
+  // The visible match wins, else the first (hidden) one.
   function child(item, name) {
     var all = [];
     collect(item, name, all);
@@ -27,9 +25,10 @@ ShellRoot {
       collect(item.children[i], name, all);
     }
   }
-  OmaDroid.ScrcpyPane {
-    id: mirroring
-    width: 440
+  // Mirror, audio and webcam sessions through the device page's cards.
+  SmokeTests.SmokeSessions {
+    id: sessions
+    host: testRoot
     devices: discovery.devices
   }
   // Loaded only on demand in the panel; instantiated here so a QML error in
@@ -199,54 +198,6 @@ ShellRoot {
       }
     }
   }
-  OmaDroid.ScrcpyPane {
-    id: otherMonitor
-    width: 440
-    devices: discovery.devices
-  }
-  Timer {
-    interval: 200
-    running: testRoot.step >= 7 && testRoot.step < 10
-    repeat: true
-    onTriggered: {
-      if (testRoot.step === 7 && !mirroring.busy && mirroring.message) {
-        // Command items once took layout slots and pushed the heading down.
-        testRoot.check(mirroring.children.every(item => !item.visible || item.y === 0 || item.height > 0), "no empty layout slots above the mirror heading");
-        mirroring.changeOption("codec", "h264");
-        mirroring.changeOption("audio", false);
-        mirroring.changeOption("record", true);
-        mirroring.changeOption("screenOff", true);
-        mirroring.changeOption("fullscreen", true);
-        mirroring.saveProfile("Fixture profile");
-        mirroring.selectProfile("Balanced");
-        mirroring.selectProfile("Fixture profile");
-        testRoot.check(mirroring.profile.screenOff && !mirroring.profile.audio, "saved profile restores options");
-        testRoot.step = 8;
-        mirroring.launch();
-      } else if (testRoot.step === 8 && !mirroring.busy && mirroring.sessionRecording.endsWith(".mkv")) {
-        testRoot.check(!mirroring.failed, "scrcpy successful exit: " + mirroring.message);
-        testRoot.step = 9;
-        mirroring.changeOption("fps", "120");
-        mirroring.launch();
-      } else if (testRoot.step === 9 && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && !testRoot.stopQueued) {
-        testRoot.check(mirroring.message.indexOf("Session started") !== 0, "launch message cleared once active: " + mirroring.message);
-        testRoot.check(child(mirroring, "omadroidSessionCard").visible && !child(mirroring, "omadroidNextOptions").visible, "session card first, options folded");
-        mirroring.pageMode = "webcam";
-        testRoot.check(!child(mirroring, "omadroidSessionCard").visible && child(mirroring, "omadroidOtherSession").visible && child(mirroring, "omadroidWebcamOptions").visible, "webcam page keeps camera settings visible during mirroring");
-        mirroring.pageMode = "mirror";
-        mirroring.optionsExpanded = true;
-        testRoot.check(child(mirroring, "omadroidNextOptions").visible, "options expand during a session");
-        testRoot.stopQueued = true;
-        stopTimer.start();
-      } else if (testRoot.step === 9 && testRoot.stopQueued && !mirroring.busy && !otherMonitor.busy) {
-        testRoot.check(!child(mirroring, "omadroidSessionCard").visible && child(mirroring, "omadroidNextOptions").visible, "options shown when idle");
-        testRoot.step = 10;
-        mirroring.chooseDevice("UNPLUGGED");
-        mirroring.launch();
-        testRoot.check(mirroring.failed && !mirroring.busy, "stale selection cannot launch on a different phone");
-      }
-    }
-  }
   OmaDroid.Discovery {
     id: discovery
     mdnsInBackground: true
@@ -296,82 +247,7 @@ ShellRoot {
         Qt.callLater(() => command.start(["omadroid-intentionally-missing-executable"], 2));
       } else if (testRoot.step === 6) {
         testRoot.check(code === 127, "missing executable");
-        testRoot.step = 7;
-        mirroring.chooseDevice("USB123");
-        mirroring.changeOption("codec", "av1");
-        Qt.callLater(() => mirroring.launch());
-      }
-    }
-  }
-  Timer {
-    id: stopTimer
-    interval: 300
-    onTriggered: otherMonitor.stop()
-  }
-  Timer {
-    interval: 200
-    running: testRoot.step >= 10 && testRoot.step < 12
-    repeat: true
-    onTriggered: {
-      // Opening the Webcam page reads the phone's cameras; wait for them.
-      if (testRoot.step === 10 && !mirroring.webcamOptions.cameras) {
-        mirroring.chooseDevice("USB123");
-        mirroring.pageMode = "webcam";
-        return;
-      }
-      if (testRoot.step === 10) {
-        mirroring.pageMode = "webcam";
-        testRoot.check(child(mirroring, "omadroidWebcamOptions").visible && !child(mirroring, "omadroidMirrorResolution").visible && !child(mirroring, "omadroidMirrorLaunch").visible, "webcam page shows only camera settings");
-        var outputs = mirroring.webcamOptions.webcamOutputs;
-        mirroring.webcamOptions.webcamOutputs = [];
-        mirroring.webcamOptions.webcamIssue = "missing-package";
-        testRoot.check(child(mirroring, "omadroidWebcamSetup").visible, "missing driver shows setup card");
-        mirroring.webcamOptions.copyWebcamCommands();
-        mirroring.webcamOptions.webcamOutputs = outputs;
-        mirroring.chooseDevice("USB123");
-        testRoot.check(mirroring.webcamOptions.webcamSink === "/dev/video12", "the first loopback output is selected: " + mirroring.webcamOptions.webcamSink);
-        mirroring.webcamOptions.webcamSink = "/dev/video12";
-        // The fixture lists the Tab S11's cameras: front becomes camera 1 and
-        // the Call preset's 1080p fits it.
-        // Panes here sit outside a window, so layouts never re-measure and
-        // widths cannot be checked; only that the folded section opens.
-        mirroring.webcamOptions.webcamDetailsOpen = true;
-        testRoot.check(child(mirroring, "omadroidWebcamDetails").visible, "quality and adjustments open");
-        testRoot.check(mirroring.webcamOptions.cameras && mirroring.webcamOptions.cameras.length === 3, "cameras read from the phone: " + JSON.stringify(mirroring.webcamOptions.cameras));
-        testRoot.check(mirroring.webcamOptions.webcam.camera === "id:1" && mirroring.webcamOptions.webcam.size === "1920x1080" && mirroring.webcamOptions.webcam.fps === "30", "webcam settings fit the camera: " + JSON.stringify(mirroring.webcamOptions.webcam));
-        mirroring.webcamOptions.applyPreset("sharp");
-        testRoot.check(mirroring.webcamOptions.webcam.size === "2032x1144" && mirroring.webcamOptions.webcam.bitRate === "24", "Sharp preset picks the camera's largest 16:9: " + JSON.stringify(mirroring.webcamOptions.webcam));
-        mirroring.webcamOptions.setWebcam({ camera: "id:2" }, true);
-        mirroring.webcamOptions.applyPreset("sharp");
-        testRoot.check(mirroring.webcamOptions.webcam.size === "3840x2160", "camera 2 reaches 4K");
-        mirroring.webcamOptions.setWebcam({ camera: "id:1", zoom: "2", torch: true }, true);
-        mirroring.webcamOptions.applyPreset("call");
-        testRoot.step = 11;
-        mirroring.launchWebcam();
-      } else if (testRoot.webcamApplied && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && mirroring.sessionArgs.indexOf("--camera-fps=24") >= 0) {
-        // Apply restarted the webcam with the new rate, and the other widget
-        // learned the new command from the running scrcpy.
-        if (JSON.stringify(otherMonitor.sessionArgs) !== JSON.stringify(mirroring.sessionArgs))
-          return;
-        testRoot.check(!mirroring.webcamChanged && !mirroring.restartPending && !otherMonitor.webcamChanged, "applied settings match the running webcam on both widgets");
-        testRoot.step = 12;
-        otherMonitor.stop();
-      } else if (!testRoot.webcamApplied && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid) {
-        // Another widget reads the running command from /proc, as after a
-        // shell reload.
-        if (JSON.stringify(otherMonitor.sessionArgs) !== JSON.stringify(mirroring.sessionArgs))
-          return;
-        testRoot.check(otherMonitor.sessionType === "webcam" && mirroring.sessionType === "webcam", "webcam session type shared across widgets");
-        testRoot.check(otherMonitor.sessionSink === "/dev/video12" && otherMonitor.sessionRecording === "", "webcam sink shared across widgets: " + otherMonitor.sessionSink);
-        testRoot.check(mirroring.sessionArgs.indexOf("--camera-id=1") >= 0 && mirroring.sessionArgs.indexOf("--camera-zoom=2") >= 0 && mirroring.sessionArgs.indexOf("--camera-torch") >= 0, "webcam starts with the chosen camera and adjustments: " + JSON.stringify(mirroring.sessionArgs));
-        testRoot.check(!mirroring.webcamChanged && !otherMonitor.webcamChanged, "nothing to apply right after start, on either widget: " + JSON.stringify(otherMonitor.webcamOptions.webcam));
-        mirroring.webcamPreview = true;
-        testRoot.check(child(mirroring, "omadroidWebcamPreview").visible, "Preview shows during a webcam session");
-        testRoot.check(!child(otherMonitor, "omadroidSessionCard").visible && child(otherMonitor, "omadroidOtherSession").visible && child(otherMonitor, "omadroidNextOptions").visible, "mirror page keeps its options visible during webcam capture");
-        mirroring.webcamOptions.setWebcam({ fps: "24" });
-        testRoot.check(mirroring.webcamChanged && child(mirroring, "omadroidWebcamApply").visible, "a changed setting offers Apply");
-        testRoot.webcamApplied = true;
-        mirroring.applyWebcam();
+        sessions.begin();
       }
     }
   }
@@ -485,7 +361,7 @@ ShellRoot {
       testRoot.check(unknownRejected, "an unknown preference is rejected by name");
       testRoot.check(autoConnect.stage === 3, "auto-connect finished: stage " + autoConnect.stage + " attempts " + JSON.stringify(autoConnect.attempts) + " known " + JSON.stringify(autoConnect.known));
       testRoot.check(qrActions.pairCalls.length === 1 && JSON.stringify(qrActions.pairCalls[0]) === JSON.stringify(["pair", "192.168.1.5:42000", testRoot.qrPassword]) && qrPairing.code === null, "QR pairing pairs the announced service once: " + JSON.stringify(qrActions.pairCalls));
-      testRoot.check(testRoot.step === 12 && !mirroring.busy && !otherMonitor.busy, "all process checks finished: step=" + testRoot.step + " first=" + mirroring.sessionPid + "/" + mirroring.message + " other=" + otherMonitor.sessionPid + "/" + otherMonitor.message);
+      testRoot.check(testRoot.step === 12 && sessions.idle, "all process checks finished: step=" + testRoot.step + " first=" + sessions.first.sessionPid + "/" + sessions.first.message + " other=" + sessions.second.sessionPid + "/" + sessions.second.message);
       testRoot.check(previewCheck.streamFormat === "" && previewCheck.error === "" && previewCheck.implicitHeight > 0, "webcam preview loads idle");
       testRoot.check(splashCheck.shown && splashCheck.progress > 0, "preview splash animates: " + splashCheck.progress);
       testRoot.check(testRoot.sendTextDone, "send text finished");

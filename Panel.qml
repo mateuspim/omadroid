@@ -20,8 +20,9 @@ Panel {
   // "home" | "device" | "add" | "settings"
   property string view: "home"
   property string deviceSerial: ""
-  // Remembered across devices, so reopening a page lands where you were.
-  property string deviceSection: "mirror"
+  // Remembered across devices, so reopening a page lands where you were:
+  // "sound" | "info" (older values fall back to Sound, DevicePage.pageSection).
+  property string deviceSection: "sound"
   // Shown on home after the opened device disappeared.
   property string notice: ""
   readonly property var discovery: discoveryConsumer.discovery
@@ -75,24 +76,10 @@ Panel {
   function stopSession() {
     mirrorSession.stop();
   }
+  // The session's device page leads with its cards and the running
+  // session's controls right under them.
   function openSession() {
-    deviceSection = mirrorSession.sessionType === "webcam" ? "webcam" : "mirror";
     go("device", mirrorSession.sessionSerial);
-  }
-  // The quick actions toggle: a session of that kind here stops, otherwise
-  // the Mirror form launches with its saved profile.
-  function mirrorAction(serial, audioOnly) {
-    var kind = audioOnly ? "audio" : "mirror";
-    if (mirrorSession.busy && mirrorSession.sessionSerial === serial && root.sessionKind === kind) {
-      mirrorSession.stop();
-      return;
-    }
-    deviceSection = "mirror";
-    Qt.callLater(() => {
-      var section = devicePage.item ? devicePage.item.sectionItem : null;
-      if (section && section.options)
-        section.options.launch(audioOnly);
-    });
   }
   // The overlay picks its device from lastTextTarget, so set it first.
   function openSendText(serial) {
@@ -273,12 +260,8 @@ Panel {
               section: root.deviceSection
               onSectionChanged: root.deviceSection = section
               scrollView: pageScroll.contentItem
-              sessionType: mirrorSession.busy && mirrorSession.sessionSerial === root.deviceSerial ? root.sessionKind : ""
-              sessionBusy: mirrorSession.busy
-              mirrorSection: mirrorComponent
-              webcamSection: webcamComponent
-              onMirrorRequested: serial => root.mirrorAction(serial, false)
-              onAudioRequested: serial => root.mirrorAction(serial, true)
+              session: mirrorSession
+              devices: discovery.rows
               onSendTextRequested: serial => root.openSendText(serial)
             }
           }
@@ -296,26 +279,6 @@ Panel {
           }
         }
       }
-    }
-  }
-
-  // DevicePage also binds device and panelOpen once loaded.
-  Component {
-    id: mirrorComponent
-    MirrorSection {
-      serial: root.deviceSerial
-      session: mirrorSession
-      devices: discovery.devices
-      onShowSessionRequested: root.openSession()
-    }
-  }
-  Component {
-    id: webcamComponent
-    WebcamSection {
-      serial: root.deviceSerial
-      session: mirrorSession
-      devices: discovery.devices
-      onShowSessionRequested: root.openSession()
     }
   }
 }

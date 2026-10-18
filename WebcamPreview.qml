@@ -6,11 +6,11 @@ import qs.Commons
 // which keeps one small JPEG updated; this shows it about 12 times a second.
 // Qt's own camera is not used: its cached format list could push a stale
 // size onto the shared output and garble it for every app. Loaded on demand
-// by ScrcpyPane; unloading it stops ffmpeg and closes the device.
+// by SessionCard; unloading it stops ffmpeg and closes the device.
 Item {
   id: root
   property string device: ""
-  // OmaDroid's per-user runtime folder, from ScrcpyPane's session path.
+  // OmaDroid's per-user runtime folder, from MirrorSession's session path.
   property string runtimeDir: ""
   property int frames: 0
   property string error: ""
@@ -21,7 +21,7 @@ Item {
   // never yields frames ends in an error instead of cycling forever.
   property int attempts: 0
   readonly property int maxAttempts: 3
-  // ScrcpyPane lowers this while the next-session options are open.
+  // SessionCard lowers this while a card's options are open below it.
   property real maxHeight: 320
   readonly property string token: Math.random().toString(36).slice(2, 10).replace(/[^a-z0-9]/g, "") || "frame"
   // A new file per run, so a frame left by the previous ffmpeg never counts

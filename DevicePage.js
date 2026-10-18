@@ -3,20 +3,20 @@
 // Text for the device page's hero and Info section, from a discovery row and
 // its parsed device-info.sh `info`.
 
-/** The page's sections, in switcher order. */
+/** The page's sections, in switcher order. Sessions (Mirror, Audio, Webcam)
+ * are cards above the switcher, not sections. */
 function deviceSections() {
   return [
-    { value: "mirror", label: "Mirror" },
-    { value: "webcam", label: "Webcam" },
     { value: "sound", label: "Sound" },
     { value: "info", label: "Info" }
   ];
 }
 
-/** A known section, or "mirror" for anything else (e.g. a stale saved value).
- * Example: pageSection("info") → "info"; pageSection("bogus") → "mirror" */
+/** A known section, or "sound" for anything else, such as the "mirror" and
+ * "webcam" sections a panel remembered before they became cards.
+ * Example: pageSection("info") → "info"; pageSection("mirror") → "sound" */
 function pageSection(value) {
-  return deviceSections().some(function(s) { return s.value === value; }) ? value : "mirror";
+  return deviceSections().some(function(s) { return s.value === value; }) ? value : "sound";
 }
 
 /** Hero meta line: model (when it isn't the name) · Android · transport, and

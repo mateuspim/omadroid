@@ -8,13 +8,16 @@ import qs.Ui
 import "Model.js" as Model
 
 // Webcam settings for one device: camera, quality, v4l2 output, the folded
-// quality details, Start webcam (or Apply while it runs) and setup guidance
-// when no v4l2loopback output exists. Settings are saved in omadroid.ini and
-// shared by every device and widget.
+// quality details and setup guidance when no v4l2loopback output exists. The
+// device page's Webcam card starts it through launchWebcam(), and the
+// running session's card applies changes through applyWebcam(). Settings are
+// saved in omadroid.ini and shared by every device and widget.
 //
 // Public API
 //   serial (required), session (required, MirrorSession), ready, panelOpen
-//   (this form is on screen: cameras are read then), webcam, cameras,
+//   (the popup is open: outputs are rescanned and settings reloaded then),
+//   scanCameras (this form is on screen: the phone's cameras are read then;
+//   defaults to panelOpen), webcam, cameras,
 //   webcamSink, webcamOutputs, webcamIssue, webcamDetailsOpen, webcamChanged
 //   launchWebcam(), applyWebcam(), setWebcam(changes, keepPreset),
 //   applyPreset(name), refreshWebcamOutputs(), refreshCameras(),
@@ -29,6 +32,8 @@ ColumnLayout {
   required property var session
   property bool ready: false
   property bool panelOpen: true
+  // Reading cameras runs scrcpy on the phone, so a folded form doesn't ask.
+  property bool scanCameras: panelOpen
   // Camera, quality and adjustments for the next webcam (Model.webcamSettings),
   // saved in omadroid.ini. Replaced whole by setWebcam() so bindings update.
   property var webcam: Model.webcamSettings("")
@@ -80,6 +85,7 @@ ColumnLayout {
     Qt.callLater(scanCamerasIfNeeded);
   }
   onReadyChanged: Qt.callLater(scanCamerasIfNeeded)
+  onScanCamerasChanged: Qt.callLater(scanCamerasIfNeeded)
   onSerialChanged: {
     Qt.callLater(scanCamerasIfNeeded);
     if (cameras && cameras.length)
@@ -107,7 +113,7 @@ ColumnLayout {
   }
   // Only a form on screen asks, once per device.
   function scanCamerasIfNeeded() {
-    if (panelOpen && ready && !cameraCatalog[serial])
+    if (scanCameras && ready && !cameraCatalog[serial])
       refreshCameras();
   }
   function refreshCameras() {
@@ -175,9 +181,8 @@ ColumnLayout {
     if (webcamChanged)
       session.restartWebcam(webcam);
   }
+  // While another session runs, MirrorSession switches to the webcam.
   function launchWebcam() {
-    if (session.busy)
-      return;
     if (!ready)
       return session.report("Select a device that is Ready before starting a webcam.", true, "webcam");
     session.launchWebcam(serial, webcam, webcamSink);
@@ -287,15 +292,6 @@ ColumnLayout {
   RowLayout {
     Layout.fillWidth: true
     ActionButton {
-      objectName: "omadroidWebcamStart"
-      readonly property bool applies: root.session.sessionType === "webcam" && root.session.busy
-      text: applies ? "Apply · restart" : "Start webcam"
-      selected: true
-      enabled: applies ? root.webcamChanged && !root.session.restartPending : root.ready && root.webcamSink !== "" && !root.session.missingTools && !root.session.busy
-      tooltipText: applies ? "Restart the running webcam with these settings" : "Start the phone camera as a webcam"
-      onClicked: applies ? root.applyWebcam() : root.launchWebcam()
-    }
-    ActionButton {
       text: "Refresh"
       enabled: !webcamScan.busy && !cameraScan.busy
       tooltipText: "Find V4L2 outputs again and ask the phone for its cameras"
@@ -303,15 +299,6 @@ ColumnLayout {
         root.refreshWebcamOutputs();
         root.refreshCameras();
       }
-    }
-    Item {
-      Layout.fillWidth: true
-    }
-    ActionButton {
-      text: "Log"
-      visible: root.session.terminalLaunched
-      tooltipText: "Show or hide the terminal of the last session, with scrcpy's output"
-      onClicked: root.session.toggleLog()
     }
   }
   WebcamSetupCard {

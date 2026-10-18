@@ -66,27 +66,39 @@ ShellRoot {
     }
   }
   property bool shown: false
-  // A view name: home, add, settings, or device-<section> (the USB phone) /
-  // wifi-<section> (the wireless one), section = mirror|webcam|sound|info.
-  // `start` starts a webcam from the shown webcam page (the mock scrcpy keeps
-  // camera sessions running, not mirrors); `stopped` ends it from home.
+  // A view name: home, add, settings, or device[-<part>] (the USB phone) /
+  // wifi[-<part>] (the wireless one), part = sound|info (a section) or
+  // mirror|audio|webcam (that card's ⚙ options open).
+  // Session steps act on the shown device page: `click-<kind>` clicks a
+  // session card (`start` = click-webcam), `record` turns on recording,
+  // `wait` captures as is, `stopped` ends the session from home. The mock
+  // scrcpy keeps camera sessions running; OMADROID_SCRCPY_STAY=1 keeps
+  // mirrors and audio running too.
+  function sessions() {
+    return finder.findChild(mount, "omadroidDevicePage").sessions;
+  }
   function show(name) {
-    if (name === "start") {
-      finder.findChild(mount, "omadroidDevicePage").sectionItem.options.launchWebcam();
-      return;
-    }
-    if (name === "stopped") {
-      widget.go("home");
-      Qt.callLater(() => widget.stopSession());
-      return;
-    }
+    var steps = {
+      start: () => sessions().activate("webcam"),
+      record: () => sessions().mirrorOptions.changeOption("record", true),
+      wait: () => {},
+      stopped: () => {
+        widget.go("home");
+        Qt.callLater(() => widget.stopSession());
+      }
+    };
+    if (steps[name])
+      return steps[name]();
     var parts = name.split("-");
-    if (parts[0] !== "device" && parts[0] !== "wifi") {
-      widget.go(name);
-      return;
-    }
-    widget.deviceSection = parts[1];
+    if (parts[0] === "click")
+      return sessions().activate(parts[1]);
+    if (parts[0] !== "device" && parts[0] !== "wifi")
+      return widget.go(name);
+    if (parts[1] === "sound" || parts[1] === "info")
+      widget.deviceSection = parts[1];
     widget.go("device", parts[0] === "device" ? "USB123" : "adb-PHONE-random._adb-tls-connect._tcp");
+    var kind = ["mirror", "audio", "webcam"].indexOf(parts[1]) >= 0 ? parts[1] : "";
+    Qt.callLater(() => sessions().optionsKind = kind);
   }
   // Each view gets one tick to load and settle, the next to be captured.
   Timer {
@@ -95,7 +107,7 @@ ShellRoot {
     repeat: true
     onTriggered: {
       // OMADROID_PREVIEW_PAGES picks the views, comma-separated, in order.
-      var names = (Quickshell.env("OMADROID_PREVIEW_PAGES") || "home,device-mirror,device-webcam,device-sound,device-info,wifi-mirror,add,settings,device-webcam,start,home,stopped").split(",");
+      var names = (Quickshell.env("OMADROID_PREVIEW_PAGES") || "home,device,device-mirror,device-webcam,device-info,wifi-sound,add,settings,device,start,home,stopped").split(",");
       if (root.frame >= names.length) {
         console.log("OMADROID_PREVIEW_OK");
         Qt.quit();

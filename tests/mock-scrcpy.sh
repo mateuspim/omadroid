@@ -24,6 +24,13 @@ if [[ " $* " == *' --no-window --keep-active '* ]]; then
 fi
 printf '%s\n' "$@" >> "$OMADROID_TEST_ARGS"
 printf '%s\n' 'INFO: scrcpy fixture started'
+# OMADROID_SCRCPY_STAY=1 keeps every session running until stopped, and
+# takes two seconds to stop, so a preview can show a mirror (or audio) being
+# replaced by a switch.
+if [[ -n "${OMADROID_SCRCPY_STAY:-}" ]]; then
+  trap 'sleep 2; exit 0' TERM
+  while true; do sleep 0.1; done
+fi
 for arg in "$@"; do
   if [[ "$arg" == --video-source=camera ]]; then
     trap 'exit 0' TERM

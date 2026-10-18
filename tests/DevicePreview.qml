@@ -13,10 +13,11 @@ ShellRoot {
   id: root
   property int frame: 0
   // Frames named <device>-<section>-<click> first click that objectName, then
-  // capture on the next tick: "usb-info-unlockPinEdit" opens the PIN editor.
+  // capture on the next tick: "usb-info-unlockPinEdit" opens the PIN editor,
+  // "usb-sound-sessionOptions:mirror" the Mirror card's options.
   property bool clicked: false
   readonly property var devicesBySlug: ({ usb: "USB123", wifi: "adb-PHONE-random._adb-tls-connect._tcp", locked: "LOCKED" })
-  readonly property var frames: (Quickshell.env("OMADROID_PREVIEW_PAGES") || "usb-mirror,usb-sound,usb-info,usb-info-unlockPinEdit,usb-mirror-quickAction:lock,wifi-mirror,wifi-sound,wifi-info,locked-info").split(",")
+  readonly property var frames: (Quickshell.env("OMADROID_PREVIEW_PAGES") || "usb-sound,usb-info,usb-info-unlockPinEdit,usb-sound-deviceControl:lock,usb-sound-sessionOptions:mirror,wifi-sound,wifi-info,locked-info").split(",")
   readonly property string frameName: frames[Math.min(frame, frames.length - 1)]
   readonly property string currentSerial: devicesBySlug[frameName.split("-")[0]] || ""
   readonly property var currentRow: fakeDiscovery.rows.find(row => row.serial === currentSerial) || null
@@ -33,6 +34,9 @@ ShellRoot {
   OmaDroid.Actions {
     id: fakeActions
     discovery: fakeDiscovery
+  }
+  OmaDroid.MirrorSession {
+    id: fakeSession
   }
   FloatingWindow {
     implicitWidth: 460
@@ -54,6 +58,8 @@ ShellRoot {
           width: 428
           device: root.currentRow
           actions: fakeActions
+          session: fakeSession
+          devices: fakeDiscovery.rows
           section: root.frameName.split("-")[1]
         }
       }

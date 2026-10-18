@@ -7,9 +7,11 @@ import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-// Mirror options for one device: profile, video settings, option chips,
-// saved profiles, and Launch / Audio only. Profiles and the recording folder
-// are saved in omadroid.ini; messages go to the session's message line.
+// Mirror options for one device: profile, video settings, option chips and
+// saved profiles. The device page's Mirror and Audio cards start sessions
+// through launch(); this form only holds what they start. Profiles and the
+// recording folder are saved in omadroid.ini; messages go to the session's
+// message line.
 //
 // Public API
 //   serial (required), session (required, MirrorSession), ready (the device
@@ -32,7 +34,6 @@ ColumnLayout {
   property bool confirmRemove: false
   readonly property var customProfiles: Model.savedProfiles(saved.profilesJson)
   readonly property var profiles: Model.builtInProfiles().concat(customProfiles)
-  readonly property bool canLaunch: ready && !session.missingTools && !session.busy
   spacing: Style.space(6)
 
   Core.Settings {
@@ -46,10 +47,9 @@ ColumnLayout {
   onProfileNameChanged: if (confirmRemove)
     cancelConfirmations()
 
-  // Example: launch(true) starts windowless audio on `serial`.
+  // Example: launch(true) starts windowless audio on `serial`. While another
+  // session runs, MirrorSession switches to this one.
   function launch(audioOnly) {
-    if (session.busy)
-      return;
     if (!ready)
       return session.report("Select a device that is Ready before launching.", true, "mirror");
     session.launchMirror(serial, profile, folderField.text, !!audioOnly);
@@ -269,34 +269,6 @@ ColumnLayout {
       visible: root.profileName === "Custom"
       tooltipText: "Restore options from “" + root.baseProfileName + "” without changing saved profiles or connections"
       onClicked: root.resetOptions()
-    }
-  }
-  RowLayout {
-    objectName: "omadroidMirrorLaunch"
-    Layout.fillWidth: true
-    visible: !root.session.busy
-    ActionButton {
-      text: "Launch"
-      selected: true
-      enabled: root.canLaunch
-      tooltipText: "Start video mirroring with these options"
-      Accessible.name: "Launch scrcpy"
-      onClicked: root.launch(false)
-    }
-    ActionButton {
-      text: "Audio only"
-      enabled: root.canLaunch
-      tooltipText: "Start windowless audio; stop it here in OmaDroid"
-      onClicked: root.launch(true)
-    }
-    Item {
-      Layout.fillWidth: true
-    }
-    ActionButton {
-      text: "Log"
-      visible: root.session.terminalLaunched
-      tooltipText: "Show or hide the terminal of the last session, with scrcpy's output"
-      onClicked: root.session.toggleLog()
     }
   }
 }
