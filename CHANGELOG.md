@@ -29,6 +29,12 @@ The first public release, as OmaDroid (`pym.omadroid`).
 - **Unlock PIN bound to the device:** the saved PIN is tied to a sha256 of the
   device's `ro.serialno` and `android_id`, and unlock refuses, without spending
   its one attempt, when the identity differs.
+- **Fix a PIN where the warning shows:** a PIN that can't be used gets a
+  **Save PIN…** button on the device page, and the control reads Wake until it
+  is saved again.
+- **Docs:** `docs/architecture.md`, Architecture Decision Records in
+  `docs/adr/`, and agent instructions in `AGENTS.md`. Scripts live in
+  `scripts/`.
 - `tests/run-all.sh` runs every test suite and prints `OMADROID_ALL_OK`.
 
 ### Fixed

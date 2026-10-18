@@ -519,6 +519,11 @@ and only its hash is kept on this computer. Unlocking:
    secret is saved again, so a wrong or outdated PIN never runs into Android's
    lockout or wipe limits.
 
+When a saved PIN can't be used (unlocking is paused, or it was saved without the
+device's identity), the device page says so under its controls with a **Save
+PIN…** button that opens the PIN field right there, and the control reads
+**Wake** instead of **Unlock** until it is saved again.
+
 Passwords may use printable ASCII (4–64 characters, inner spaces allowed);
 `input text` can't type accents or emoji, so those are refused when saving.
 Pattern locks aren't supported. While it is typed, the secret briefly
