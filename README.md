@@ -1,9 +1,28 @@
 # <img src="icon.svg" alt="" width="32" height="32" align="top"> OmaDroid
 
-An Omarchy bar widget for discovering Android Debug Bridge (ADB) devices over
-USB and wireless mDNS, then mirroring them, playing their audio or using their
-camera as a webcam with scrcpy. See [CHANGELOG.md](CHANGELOG.md) for what each
-release changed.
+![OmaDroid: the device list and a device page with the Mirror, Audio and Webcam session cards](preview.png)
+
+**Android on your Omarchy desktop.** OmaDroid is a bar widget that finds your
+phones and tablets over USB and Wi-Fi (ADB and mDNS), then mirrors them, plays
+their audio or uses their camera as a webcam with
+[scrcpy](https://github.com/Genymobile/scrcpy), all from one popup that follows
+your Omarchy theme.
+
+[Install](#install) · [Remove](#remove) · [Requirements](#requirements-and-enabling) ·
+[Features](#features) · [Architecture](docs/architecture.md) ·
+[Changelog](CHANGELOG.md)
+
+- **One click per session:** Mirror, Audio or Webcam. Starting another session
+  switches to it.
+- **Wireless without a cable:** pair with a QR code, a pairing code or an
+  address. A USB device moves to Wi-Fi with one button, and auto-connect
+  reconnects trusted devices.
+- **Device controls:** wake, unlock with a PIN kept in your keyring, lock,
+  keep awake and rotation.
+- **Sound:** volume keys, mute all, ringer mode and per-app volume for apps
+  playing sound.
+- **Send text:** a hotkey opens a prompt, and what you type there is typed on
+  the device.
 
 ## Quick start
 
@@ -111,6 +130,39 @@ omarchy plugin add https://github.com/mateuspim/omadroid --enable
 ```
 
 `omarchy plugin update pym.omadroid` pulls new versions later.
+
+## Remove
+
+If you installed the Send text hotkey, remove it first: **Remove** in the
+**Send text hotkey** row of Settings (⚙), or
+`~/.config/omarchy/plugins/pym.omadroid/scripts/hotkey.sh remove`. This deletes only
+OmaDroid's marked block in `~/.config/hypr/bindings.lua`. Then remove the
+plugin:
+
+```bash
+omarchy plugin remove pym.omadroid
+```
+
+Removing the plugin leaves your settings and saved data on disk. To delete
+them too:
+
+```bash
+rm -f ~/.config/omarchy/omadroid.ini     # settings and profiles
+rm -rf ~/.local/state/omadroid           # per-device unlock state
+rm -rf ~/.cache/omadroid                 # per-firmware audio codes
+secret-tool clear app omadroid           # saved unlock PINs (keyring)
+```
+
+The webcam setup also installed a system driver. If no other app uses it, undo
+it with:
+
+```bash
+sudo rm -f /etc/modules-load.d/v4l2loopback.conf /etc/modprobe.d/v4l2loopback.conf
+omarchy pkg drop v4l2loopback-dkms
+```
+
+Recordings stay in the folder you chose, and the packages from
+[Requirements](#requirements-and-enabling) stay installed.
 
 ## Requirements and enabling
 

@@ -20,7 +20,8 @@ is the user manual; read its section before changing a feature.
 - Naming: env vars `OMADROID_*`, objectNames `omadroid…`, plugin id
   `pym.omadroid`, settings `~/.config/omarchy/omadroid.ini`, keyring
   attribute `app omadroid`, terminal app-id `io.github.mateuspim.omadroid`.
-  Never reintroduce `DroidLink`/`droidlink` or new `org.omarchy.*` ids.
+  Never reintroduce `DroidLink`/`droidlink` or new `org.omarchy.*` ids (the
+  webcam setup reusing `org.omarchy.terminal` is the one exception, ADR 13).
 - Qt 6.12: QtQuick exports its own `Color`. Write
   `import qs.Commons as Commons` and `Commons.Color.x`; never a bare `Color.`.
 - Shell scripts: bash, `set -uo pipefail` (or `-euo`), plain-text results on

@@ -38,7 +38,8 @@ case "${1:-}" in
     [[ "${2:-}" == install || "${2:-}" == load ]] || { echo 'Invalid setup action.' >&2; exit 2; }
     source "$(dirname -- "$0")/terminal-lib.sh"
     terminal_available || { echo 'No terminal is available. Install foot or set an Omarchy default terminal.' >&2; exit 127; }
-    # Omarchy floats and centers org.omarchy.terminal in its built-in rules.
+    # Omarchy floats and centers org.omarchy.terminal in its built-in rules
+    # (docs/adr/0013-webcam-setup-reuses-omarchy-terminal-id.md).
     # The setup asks for Enter itself, so the window closes when it is read.
     terminal_hold=0
     launch_terminal org.omarchy.terminal 'OmaDroid webcam setup' bash "$0" "$2"

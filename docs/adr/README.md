@@ -21,6 +21,7 @@ history. For how the parts fit together today, see the
 | [10](0010-starting-a-session-switches-to-it.md) | Starting a session while another runs switches to it | 2026-10-18 | Accepted |
 | [11](0011-qualify-theme-color-for-qt-6-12.md) | Qualify the theme `Color` as `Commons.Color` (Qt 6.12) | 2026-10-18 | Accepted |
 | [12](0012-small-js-modules.md) | Keep modules small: split by responsibility, files under 500 lines | 2026-10-18 | Accepted |
+| [13](0013-webcam-setup-reuses-omarchy-terminal-id.md) | The webcam setup terminal reuses Omarchy's `org.omarchy.terminal` app-id | 2026-10-18 | Accepted |
 
 ## Adding a record
 
