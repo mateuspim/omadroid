@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // One big session card on the device page (Mirror, Audio or Webcam): icon,
@@ -41,8 +42,8 @@ Button {
   Accessible.role: Accessible.Button
   Accessible.name: entry.label + ", " + entry.subtitle
 
-  readonly property color highlight: entry.urgent ? Color.urgent : Color.accent
-  readonly property color tint: entry.urgent || entry.running ? highlight : Color.foreground
+  readonly property color highlight: entry.urgent ? Commons.Color.urgent : Commons.Color.accent
+  readonly property color tint: entry.urgent || entry.running ? highlight : Commons.Color.foreground
 
   Rectangle {
     anchors.fill: parent
@@ -89,8 +90,8 @@ Button {
         iconText: "󰒓"
         fontSize: Style.font.bodySmall
         size: Style.space(20)
-        foreground: root.optionsOpen ? Color.accent : Util.alpha(Color.foreground, 0.6)
-        hoverColor: Color.accent
+        foreground: root.optionsOpen ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.6)
+        hoverColor: Commons.Color.accent
         tooltipText: (root.optionsOpen ? "Hide " : "Show ") + root.entry.label.toLowerCase() + " options"
         Accessible.role: Accessible.Button
         Accessible.name: root.entry.label + " options"
@@ -107,7 +108,7 @@ Button {
       Layout.minimumHeight: Math.ceil(subtitleMetrics.lineSpacing * 2)
       textFormat: Text.PlainText
       text: root.entry.subtitle
-      color: root.entry.urgent ? Color.urgent : root.entry.running ? Color.accent : Util.alpha(Color.foreground, 0.65)
+      color: root.entry.urgent ? Commons.Color.urgent : root.entry.running ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.65)
       wrapMode: Text.Wrap
       maximumLineCount: 2
       elide: Text.ElideRight

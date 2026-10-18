@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
+import qs.Commons as Commons
 import "Model.js" as Model
 
 // The running session's controls: what runs and where, Preview (webcam),
@@ -43,8 +44,8 @@ Rectangle {
 
   implicitHeight: content.implicitHeight + Style.space(24)
   radius: Style.cornerRadius
-  color: Util.alpha(Color.accent, 0.06)
-  border.color: Util.alpha(Color.accent, 0.4)
+  color: Util.alpha(Commons.Color.accent, 0.06)
+  border.color: Util.alpha(Commons.Color.accent, 0.4)
 
   ColumnLayout {
     id: content
@@ -67,7 +68,7 @@ Rectangle {
         Label {
           Layout.fillWidth: true
           text: (root.session.sessionPid > 0 ? "● " : "") + root.session.sessionTitle
-          color: Color.accent
+          color: Commons.Color.accent
           font.bold: true
           elide: Text.ElideRight
           wrapMode: Text.NoWrap
@@ -76,7 +77,7 @@ Rectangle {
         Label {
           Layout.fillWidth: true
           text: [root.deviceName, root.battery ? Model.batteryLabel(root.battery) : ""].filter(Boolean).join(" · ")
-          color: Util.alpha(Color.foreground, 0.7)
+          color: Util.alpha(Commons.Color.foreground, 0.7)
           font.pixelSize: Style.font.bodySmall
           elide: Text.ElideRight
           wrapMode: Text.NoWrap
@@ -115,7 +116,7 @@ Rectangle {
       wrapMode: Text.WrapAnywhere
       maximumLineCount: 2
       elide: Text.ElideRight
-      color: Util.alpha(Color.foreground, 0.7)
+      color: Util.alpha(Commons.Color.foreground, 0.7)
       font.pixelSize: Style.font.bodySmall
       Accessible.name: text
     }
@@ -123,7 +124,7 @@ Rectangle {
       Layout.fillWidth: true
       visible: root.session.message !== ""
       text: (root.session.failed ? "⚠ " : "") + root.session.message
-      color: root.session.failed ? Color.urgent : Color.accent
+      color: root.session.failed ? Commons.Color.urgent : Commons.Color.accent
       wrapMode: Text.WrapAnywhere
       maximumLineCount: 3
       elide: Text.ElideRight
@@ -140,7 +141,7 @@ Rectangle {
         Layout.preferredWidth: 1
         text: "Settings changed since start."
         wrapMode: Text.WordWrap
-        color: Util.alpha(Color.foreground, 0.7)
+        color: Util.alpha(Commons.Color.foreground, 0.7)
         font.pixelSize: Style.font.bodySmall
       }
       ActionButton {
@@ -171,7 +172,7 @@ Rectangle {
       Layout.fillWidth: true
       visible: previewLoader.active && previewLoader.status === Loader.Error
       text: "⚠ The preview could not load. Check the shell log for WebcamPreview.qml."
-      color: Color.urgent
+      color: Commons.Color.urgent
       wrapMode: Text.WordWrap
     }
     ScreenPowerControls {

@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Wayland
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 // Send text overlay: a centered prompt, opened with
 // `omarchy-shell shell toggle pym.omadroid` (bind it to a key), that types
@@ -53,7 +54,7 @@ Item {
 
     Rectangle {
       anchors.fill: parent
-      color: Color.menu.scrim
+      color: Commons.Color.menu.scrim
     }
 
     MouseArea {

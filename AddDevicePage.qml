@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // The "Add device" view: one switcher for the three ways to reach a wireless
@@ -111,7 +112,7 @@ ColumnLayout {
     visible: root.showStatus && root.actions.message !== ""
     text: (root.actions.failed ? "⚠ " : "") + root.actions.message
     urgent: root.actions.failed
-    color: root.actions.failed ? Color.urgent : Color.accent
+    color: root.actions.failed ? Commons.Color.urgent : Commons.Color.accent
     Accessible.role: Accessible.StaticText
   }
 }

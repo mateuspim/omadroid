@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -66,7 +67,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       text: "󰄜  " + pairingHostField.text
       wrapMode: Text.WrapAnywhere
-      color: Util.alpha(Color.foreground, 0.8)
+      color: Util.alpha(Commons.Color.foreground, 0.8)
       Accessible.name: "Pairing device " + pairingHostField.text
     }
     TextField {

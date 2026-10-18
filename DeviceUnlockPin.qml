@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // The unlock PIN editor: a password field with Save and Forget, shown while
@@ -71,6 +72,6 @@ ColumnLayout {
     text: "Kept in your desktop keyring, never in OmaDroid's settings. It is entered once per unlock; a failed try pauses unlocking until you save it again."
     wrapMode: Text.WordWrap
     font.pixelSize: Style.font.bodySmall
-    color: Util.alpha(Color.foreground, 0.7)
+    color: Util.alpha(Commons.Color.foreground, 0.7)
   }
 }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // One muted line of help under a control, with the longer explanation in a
@@ -13,7 +14,7 @@ Label {
   Layout.fillWidth: true
   // A wrapped Label reports its unwrapped width; this keeps it from widening the popup.
   Layout.preferredWidth: 1
-  color: urgent ? Color.urgent : Util.alpha(Color.foreground, 0.65)
+  color: urgent ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.65)
   font.pixelSize: Style.font.bodySmall
   wrapMode: Text.WordWrap
   Accessible.description: detail

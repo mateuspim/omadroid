@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // The popup's Settings view. Every option is saved by the shared discovery
@@ -112,7 +113,7 @@ ColumnLayout {
   HintLabel {
     Layout.topMargin: Style.space(4)
     text: "Saved in omadroid.ini"
-    color: Util.alpha(Color.foreground, 0.45)
+    color: Util.alpha(Commons.Color.foreground, 0.45)
   }
 
   // Separator + header between the sections that aren't toggle lists.

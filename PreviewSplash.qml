@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 
 // Covers the webcam preview until frames arrive, after Omarchy's boot screen
 // (and the Mosaic plugin's swap veil): the Omarchy wordmark with a light
@@ -93,7 +94,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: Style.cornerRadius
-    color: Color.menu.background
+    color: Commons.Color.menu.background
   }
 
   Column {
@@ -129,7 +130,7 @@ Item {
 
         Rectangle {
           anchors.fill: parent
-          color: Color.menu.text
+          color: Commons.Color.menu.text
           opacity: 0.5
         }
 
@@ -143,7 +144,7 @@ Item {
           gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.5; color: Color.menu.text }
+            GradientStop { position: 0.5; color: Commons.Color.menu.text }
             GradientStop { position: 1.0; color: "transparent" }
           }
           NumberAnimation on x {
@@ -172,7 +173,7 @@ Item {
         anchors.centerIn: parent
         visible: shape.status === Image.Error
         text: "omarchy"
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.display
         font.bold: true
@@ -186,13 +187,13 @@ Item {
       radius: height / 2
       anchors.horizontalCenter: parent.horizontalCenter
       visible: !root.failed
-      color: Util.alpha(Color.menu.text, 0.15)
+      color: Util.alpha(Commons.Color.menu.text, 0.15)
 
       Rectangle {
         width: parent.width * root.progress
         height: parent.height
         radius: parent.radius
-        color: Color.accent
+        color: Commons.Color.accent
       }
     }
 
@@ -202,7 +203,7 @@ Item {
       visible: root.label !== ""
       textFormat: Text.PlainText
       text: root.label
-      color: root.failed ? Color.urgent : Util.alpha(Color.menu.text, 0.6)
+      color: root.failed ? Commons.Color.urgent : Util.alpha(Commons.Color.menu.text, 0.6)
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.Wrap

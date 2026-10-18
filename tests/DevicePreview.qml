@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import "plugin" as OmaDroid
 
 // Offscreen review of DevicePage against the fake Discovery of smoke.sh: one
@@ -41,13 +42,13 @@ ShellRoot {
   FloatingWindow {
     implicitWidth: 460
     implicitHeight: 900
-    color: Color.popups.background
+    color: Commons.Color.popups.background
     Rectangle {
       id: surface
       anchors.centerIn: parent
       width: 460
       height: 900
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       Loader {
         id: pageLoader
         x: 16

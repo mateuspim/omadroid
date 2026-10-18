@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "Pairing.js" as Pairing
@@ -95,7 +96,7 @@ ColumnLayout {
     Layout.preferredWidth: 1
     visible: root.code !== null
     text: "Waiting for the scan…"
-    color: Color.accent
+    color: Commons.Color.accent
     font.pixelSize: Style.font.bodySmall
     horizontalAlignment: Text.AlignHCenter
   }

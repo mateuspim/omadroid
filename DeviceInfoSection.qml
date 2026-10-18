@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "DevicePage.js" as DevicePage
@@ -32,7 +33,7 @@ ColumnLayout {
     Layout.fillWidth: true
     visible: root.details.length === 0
     text: root.device.status === "device" ? "Reading battery, storage and memory…" : "Details appear once the device is ready."
-    color: Util.alpha(Color.foreground, 0.7)
+    color: Util.alpha(Commons.Color.foreground, 0.7)
   }
   GridLayout {
     Layout.fillWidth: true
@@ -51,7 +52,7 @@ ColumnLayout {
         Layout.alignment: Qt.AlignTop
         text: modelData
         wrapMode: isValue ? Text.WordWrap : Text.NoWrap
-        color: isValue ? Color.foreground : Util.alpha(Color.foreground, 0.7)
+        color: isValue ? Commons.Color.foreground : Util.alpha(Commons.Color.foreground, 0.7)
       }
     }
   }
@@ -72,7 +73,7 @@ ColumnLayout {
       Label {
         text: modelData.label
         wrapMode: Text.NoWrap
-        color: Util.alpha(Color.foreground, 0.7)
+        color: Util.alpha(Commons.Color.foreground, 0.7)
       }
       Label {
         Layout.fillWidth: true
@@ -95,7 +96,7 @@ ColumnLayout {
     Layout.fillWidth: true
     visible: root.copied !== "" || root.copyError !== ""
     text: root.copyError ? "⚠ " + root.copyError : root.copied + " copied."
-    color: root.copyError ? Color.urgent : Util.alpha(Color.foreground, 0.7)
+    color: root.copyError ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.7)
     font.pixelSize: Style.font.bodySmall
   }
 
@@ -116,7 +117,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       text: DevicePower.secretLabel(root.powerState.power ? root.powerState.power.secret : "")
       wrapMode: Text.WordWrap
-      color: root.powerState.power && root.powerState.power.secret === "blocked" ? Color.urgent : Color.foreground
+      color: root.powerState.power && root.powerState.power.secret === "blocked" ? Commons.Color.urgent : Commons.Color.foreground
     }
     ActionButton {
       objectName: "unlockPinEdit"

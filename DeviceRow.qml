@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DeviceListModel.js" as DeviceList
 
@@ -69,7 +70,7 @@ CursorSurface {
       horizontalAlignment: Text.AlignHCenter
       textFormat: Text.PlainText
       text: DeviceList.transportGlyph(root.row)
-      color: root.opens ? Color.accent : root.attention ? Color.urgent : Util.alpha(Color.foreground, 0.6)
+      color: root.opens ? Commons.Color.accent : root.attention ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.6)
       font.family: Style.font.family
       font.pixelSize: Style.font.heading
     }
@@ -87,7 +88,7 @@ CursorSurface {
       Label {
         Layout.fillWidth: true
         text: DeviceList.deviceSubtitle(root.row)
-        color: root.attention ? Util.alpha(Color.urgent, 0.85) : Util.alpha(Color.foreground, 0.6)
+        color: root.attention ? Util.alpha(Commons.Color.urgent, 0.85) : Util.alpha(Commons.Color.foreground, 0.6)
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.NoWrap
         elide: Text.ElideRight
@@ -97,7 +98,7 @@ CursorSurface {
       visible: root.opens
       textFormat: Text.PlainText
       text: "›"
-      color: Util.alpha(Color.foreground, root.hasCursor ? 0.9 : 0.45)
+      color: Util.alpha(Commons.Color.foreground, root.hasCursor ? 0.9 : 0.45)
       font.family: Style.font.family
       font.pixelSize: Style.font.heading
       Layout.rightMargin: Style.space(4)

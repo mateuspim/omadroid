@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "SendText.js" as SendText
 
@@ -28,14 +29,14 @@ BorderSurface {
   readonly property string warning: SendText.unsupportedWarning(SendText.stepsText(steps))
   readonly property bool canSend: target !== "" && warning === "" && !sender.busy
   readonly property string sendScript: decodeURIComponent(Qt.resolvedUrl("send-text.sh").toString().replace(/^file:\/\//, ""))
-  property color foreground: Color.menu.text
+  property color foreground: Commons.Color.menu.text
   // Esc on an empty prompt, or a finished send.
   signal dismissed
 
   height: content.implicitHeight + contentTopInset + contentBottomInset
   radius: Style.cornerRadius
-  color: Color.menu.background
-  borderSpec: Border.surfaceSpec("menu", "border", Color.menu.border, Math.max(1, Style.space(2)))
+  color: Commons.Color.menu.background
+  borderSpec: Border.surfaceSpec("menu", "border", Commons.Color.menu.border, Math.max(1, Style.space(2)))
   padding: Style.spacing.panelPadding
 
   /** Start over for a new summon. Example: card.reset() */

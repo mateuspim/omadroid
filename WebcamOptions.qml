@@ -4,6 +4,7 @@ import QtQuick.Controls as Controls
 import QtCore as Core
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -225,14 +226,14 @@ ColumnLayout {
     Layout.preferredWidth: 1
     visible: !root.ready
     text: "Connect and authorize this device to use its camera."
-    color: Util.alpha(Color.foreground, 0.7)
+    color: Util.alpha(Commons.Color.foreground, 0.7)
   }
   Label {
     Layout.fillWidth: true
     Layout.preferredWidth: 1
     visible: cameraScan.busy || root.cameraScanError !== ""
     text: cameraScan.busy ? "Reading the phone's cameras…" : "⚠ " + root.cameraScanError
-    color: cameraScan.busy ? Util.alpha(Color.foreground, 0.7) : Color.urgent
+    color: cameraScan.busy ? Util.alpha(Commons.Color.foreground, 0.7) : Commons.Color.urgent
     wrapMode: Text.WordWrap
     font.pixelSize: Style.font.bodySmall
   }

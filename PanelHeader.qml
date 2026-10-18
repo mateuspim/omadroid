@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DeviceListModel.js" as DeviceList
 
@@ -56,7 +57,7 @@ RowLayout {
       Layout.fillWidth: true
       visible: root.subtitle !== ""
       text: root.subtitle
-      color: Util.alpha(Color.foreground, 0.6)
+      color: Util.alpha(Commons.Color.foreground, 0.6)
       font.pixelSize: Style.font.bodySmall
       wrapMode: Text.NoWrap
       elide: Text.ElideRight

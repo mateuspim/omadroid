@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import "ScreenPower.js" as ScreenPower
 
 ColumnLayout {
@@ -84,7 +85,7 @@ ColumnLayout {
     Layout.fillWidth: true
     visible: root.controlMessage !== ""
     text: (root.controlFailed ? "⚠ " : "") + root.controlMessage
-    color: root.controlFailed ? Color.urgent : Color.accent
+    color: root.controlFailed ? Commons.Color.urgent : Commons.Color.accent
     wrapMode: Text.WrapAnywhere
     font.pixelSize: Style.font.bodySmall
   }

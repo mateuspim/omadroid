@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "DeviceListModel.js" as DeviceList
@@ -61,19 +62,19 @@ ColumnLayout {
   StatusLine {
     visible: root.actions && root.actions.message !== ""
     text: root.actions ? (root.actions.failed ? "⚠ " : "") + root.actions.message : ""
-    color: root.actions && root.actions.failed ? Color.urgent : Color.accent
+    color: root.actions && root.actions.failed ? Commons.Color.urgent : Commons.Color.accent
   }
   StatusLine {
     visible: root.devicesError !== ""
     text: "⚠ ADB: " + root.devicesError
-    color: Color.urgent
+    color: Commons.Color.urgent
   }
   // A warning (a device didn't answer) is muted; a hard failure is urgent.
   // The raw Avahi output stays in the tooltip.
   StatusLine {
     visible: root.mdnsError !== ""
     text: root.mdnsLevel === "error" ? "⚠ Wireless discovery: " + root.mdnsError : root.mdnsError
-    color: root.mdnsLevel === "error" ? Color.urgent : Util.alpha(Color.foreground, 0.6)
+    color: root.mdnsLevel === "error" ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.6)
     tooltip: root.mdnsDetails
   }
 
@@ -83,7 +84,7 @@ ColumnLayout {
     Layout.leftMargin: Style.space(10)
     visible: root.groups.length === 0
     text: root.busy || !root.initialized ? "Looking for devices…" : "No devices. Plug in USB or turn on Wireless debugging."
-    color: Util.alpha(Color.foreground, 0.6)
+    color: Util.alpha(Commons.Color.foreground, 0.6)
     Accessible.role: Accessible.StaticText
   }
 
@@ -155,7 +156,7 @@ ColumnLayout {
         horizontalAlignment: Text.AlignHCenter
         textFormat: Text.PlainText
         text: "+"
-        color: Color.accent
+        color: Commons.Color.accent
         font.family: Style.font.family
         font.pixelSize: Style.font.heading
       }
@@ -163,7 +164,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredWidth: 1
         text: "Add device"
-        color: addRow.hasCursor ? Color.foreground : Util.alpha(Color.foreground, 0.75)
+        color: addRow.hasCursor ? Commons.Color.foreground : Util.alpha(Commons.Color.foreground, 0.75)
         wrapMode: Text.NoWrap
         elide: Text.ElideRight
       }

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import "SendText.js" as SendText
 
 // The Send text prompt's line: typed text as text, recorded keys as chips,
@@ -9,7 +10,7 @@ Flow {
 
   property var steps: []
   property string placeholder: ""
-  property color foreground: Color.menu.text
+  property color foreground: Commons.Color.menu.text
   // After Ctrl+K: a dashed chip shows where the next key goes.
   property bool waiting: false
   readonly property int lineHeight: Math.ceil(metrics.height)
@@ -60,16 +61,16 @@ Flow {
         width: chipLabel.implicitWidth + Style.space(12)
         height: chipLabel.implicitHeight + Style.space(6)
         radius: Style.space(4)
-        color: Color.menu.selectedBackground
+        color: Commons.Color.menu.selectedBackground
         border.width: 1
-        border.color: Qt.alpha(Color.menu.selectedText, 0.5)
+        border.color: Qt.alpha(Commons.Color.menu.selectedText, 0.5)
 
         Text {
           id: chipLabel
           anchors.centerIn: parent
           textFormat: Text.PlainText
           text: step.isKey ? SendText.keyLabel(step.modelData.key) : ""
-          color: Color.menu.selectedText
+          color: Commons.Color.menu.selectedText
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
         }
@@ -84,14 +85,14 @@ Flow {
     radius: Style.space(4)
     color: "transparent"
     border.width: 1
-    border.color: Color.menu.selectedText
+    border.color: Commons.Color.menu.selectedText
 
     Text {
       id: waitingLabel
       anchors.centerIn: parent
       textFormat: Text.PlainText
       text: "press a key…"
-      color: Color.menu.selectedText
+      color: Commons.Color.menu.selectedText
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.body
     }

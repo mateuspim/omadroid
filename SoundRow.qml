@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "SoundVolume.js" as SoundVolume
 
@@ -33,7 +34,7 @@ ColumnLayout {
       Layout.preferredWidth: Style.space(22)
       textFormat: Text.PlainText
       text: root.muted ? "󰝟" : "󰕾"
-      color: Color.foreground
+      color: Commons.Color.foreground
       opacity: root.canMute ? (root.muted ? 0.5 : 1) : 0.3
       font.family: Style.font.family
       font.pixelSize: Style.font.title
@@ -59,7 +60,7 @@ ColumnLayout {
       text: SoundVolume.volumeText(root.volume, root.maximum, root.muted)
       wrapMode: Text.NoWrap
       font.pixelSize: Style.font.bodySmall
-      color: Util.alpha(Color.foreground, 0.7)
+      color: Util.alpha(Commons.Color.foreground, 0.7)
       visible: root.hasSlider || root.muted
     }
   }
@@ -72,9 +73,9 @@ ColumnLayout {
     step: root.maximum > 20 ? 5 : 1
     value: root.volume
     opacity: root.muted ? 0.5 : 1
-    trackColor: Util.alpha(Color.foreground, 0.15)
-    fillColor: Color.accent
-    knobColor: Color.foreground
+    trackColor: Util.alpha(Commons.Color.foreground, 0.15)
+    fillColor: Commons.Color.accent
+    knobColor: Commons.Color.foreground
     onMoved: value => root.volumeChosen(Math.round(value), false)
     onReleased: value => root.volumeChosen(Math.round(value), true)
     onRightClicked: if (root.canMute)

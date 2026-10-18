@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import "plugin" as OmaDroid
 
 // Offscreen visual review using the same fake backends as smoke.sh: one PNG
@@ -28,8 +29,8 @@ ShellRoot {
     property string position: "top"
     property bool vertical: false
     property int barSize: Style.bar.sizeHorizontal
-    property color barForeground: Color.foreground
-    property color urgent: Color.urgent
+    property color barForeground: Commons.Color.foreground
+    property color urgent: Commons.Color.urgent
     property string fontFamily: Style.font.family
     property bool foregroundAnimationEnabled: false
   }
@@ -42,13 +43,13 @@ ShellRoot {
     title: "OmaDroid · fixture preview"
     implicitWidth: 460
     implicitHeight: 900
-    color: Color.popups.background
+    color: Commons.Color.popups.background
     Rectangle {
       id: surface
       anchors.centerIn: parent
       width: 460
       height: 900
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       Item {
         id: mount
         anchors.fill: parent

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DeviceActions.js" as DeviceActions
 
@@ -182,7 +183,7 @@ ColumnLayout {
     radius: Style.cornerRadius
     color: "transparent"
     border.width: Math.max(1, Style.normalBorderWidth)
-    border.color: Util.alpha(Color.foreground, 0.15)
+    border.color: Util.alpha(Commons.Color.foreground, 0.15)
     ColumnLayout {
       id: optionsColumn
       anchors {
@@ -229,7 +230,7 @@ ColumnLayout {
       // that could widen the popup.
       Layout.preferredWidth: 1
       text: (root.session.failed ? "⚠ " : "") + root.session.message
-      color: root.session.failed ? Color.urgent : Util.alpha(Color.foreground, 0.7)
+      color: root.session.failed ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.7)
       wrapMode: Text.WrapAnywhere
       maximumLineCount: 3
       elide: Text.ElideRight

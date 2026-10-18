@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import "Model.js" as Model
 
 // v4l2loopback setup guidance, shown while no loopback output exists: what is
@@ -34,8 +35,8 @@ Rectangle {
   visible: !outputsFound
   implicitHeight: setupContent.implicitHeight + Style.space(24)
   radius: Style.cornerRadius
-  color: Util.alpha(Color.urgent, 0.06)
-  border.color: Util.alpha(Color.urgent, 0.4)
+  color: Util.alpha(Commons.Color.urgent, 0.06)
+  border.color: Util.alpha(Commons.Color.urgent, 0.4)
 
   onOutputsFoundChanged: if (outputsFound) {
     setupPending = false;
@@ -94,7 +95,7 @@ Rectangle {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
       text: "⚠ " + root.guidance.title
-      color: Color.urgent
+      color: Commons.Color.urgent
       font.bold: true
       Accessible.name: text
     }
@@ -103,7 +104,7 @@ Rectangle {
       Layout.preferredWidth: 1
       text: root.guidance.detail + (root.scanError ? " " + root.scanError : "")
       wrapMode: Text.WordWrap
-      color: Util.alpha(Color.foreground, 0.8)
+      color: Util.alpha(Commons.Color.foreground, 0.8)
       font.pixelSize: Style.font.bodySmall
     }
     RowLayout {
@@ -130,7 +131,7 @@ Rectangle {
       visible: root.setupMessage !== ""
       text: root.setupMessage
       wrapMode: Text.WordWrap
-      color: root.setupMessage.indexOf("⚠") === 0 ? Color.urgent : Util.alpha(Color.foreground, 0.8)
+      color: root.setupMessage.indexOf("⚠") === 0 ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.8)
       font.pixelSize: Style.font.bodySmall
     }
   }

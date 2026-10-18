@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DeviceListModel.js" as DeviceList
 
@@ -22,9 +23,9 @@ Rectangle {
   visible: active
   implicitHeight: active ? content.implicitHeight + Style.space(10) : 0
   radius: Style.cornerRadius
-  color: Util.alpha(Color.accent, bannerMouse.containsMouse || activeFocus ? 0.16 : 0.09)
+  color: Util.alpha(Commons.Color.accent, bannerMouse.containsMouse || activeFocus ? 0.16 : 0.09)
   border.width: Style.spacing.hairline
-  border.color: Util.alpha(Color.accent, 0.3)
+  border.color: Util.alpha(Commons.Color.accent, 0.3)
   activeFocusOnTab: active
   Accessible.role: Accessible.Button
   Accessible.name: DeviceList.sessionBannerText(kind, deviceName) + (stopping ? ", stopping" : "")
@@ -60,7 +61,7 @@ Rectangle {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
       text: root.switchingTo ? DeviceList.switchBannerText(root.switchingTo) : root.stopping ? "Stopping " + root.deviceName + "…" : DeviceList.sessionBannerText(root.kind, root.deviceName)
-      color: Color.accent
+      color: Commons.Color.accent
       font.pixelSize: Style.font.bodySmall
       font.bold: true
       wrapMode: Text.NoWrap
@@ -69,8 +70,8 @@ Rectangle {
     PanelActionButton {
       iconText: "■"
       fontSize: Style.font.bodySmall
-      foreground: Color.accent
-      hoverColor: Color.urgent
+      foreground: Commons.Color.accent
+      hoverColor: Commons.Color.urgent
       enabled: !root.stopping || root.switchingTo !== ""
       tooltipText: root.switchingTo ? "Cancel the switch" : "Stop session"
       Accessible.role: Accessible.Button

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.Commons
+import qs.Commons as Commons
 
 // Native rendering of icon.svg (24-unit grid): an Android head over a `>_`
 // prompt. Drawn with Shapes rather than an Image so it follows the bar
@@ -9,7 +10,7 @@ Item {
   id: root
 
   property real iconSize: Style.font.icon
-  property color color: Color.foreground
+  property color color: Commons.Color.foreground
   readonly property real unit: iconSize / 24
 
   width: iconSize

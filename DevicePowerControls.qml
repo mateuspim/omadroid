@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DevicePower.js" as DevicePower
 
@@ -81,6 +82,6 @@ ColumnLayout {
     visible: root.message !== ""
     text: (root.failed ? "⚠ " : "") + root.message
     wrapMode: Text.WordWrap
-    color: root.failed ? Color.urgent : Util.alpha(Color.foreground, 0.7)
+    color: root.failed ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.7)
   }
 }

@@ -4,6 +4,7 @@ import QtQuick.Controls as Controls
 import QtCore as Core
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -134,7 +135,7 @@ ColumnLayout {
     Layout.preferredWidth: 1
     visible: !root.ready
     text: "Connect and authorize this device to mirror it."
-    color: Util.alpha(Color.foreground, 0.7)
+    color: Util.alpha(Commons.Color.foreground, 0.7)
   }
   // Every cell has the same preferred width, so a long option label can
   // never widen the grid past the popup.

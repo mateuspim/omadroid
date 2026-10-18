@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "DevicePage.js" as DevicePage
@@ -90,7 +91,7 @@ ColumnLayout {
           horizontalAlignment: Text.AlignHCenter
           textFormat: Text.PlainText
           text: "󰄜"
-          color: root.ready ? Color.accent : Util.alpha(Color.foreground, 0.5)
+          color: root.ready ? Commons.Color.accent : Util.alpha(Commons.Color.foreground, 0.5)
           font.family: Style.font.family
           font.pixelSize: Style.font.display
         }
@@ -106,7 +107,7 @@ ColumnLayout {
       text: root.ready ? DevicePage.heroStats(root.device.info) : Model.statusHint(root.device)
       wrapMode: root.ready ? Text.NoWrap : Text.WordWrap
       elide: Text.ElideRight
-      color: Util.alpha(Color.foreground, 0.7)
+      color: Util.alpha(Commons.Color.foreground, 0.7)
     }
   }
 
@@ -136,7 +137,7 @@ ColumnLayout {
       Layout.preferredWidth: 1
       text: (modelData.failed ? "⚠ " : "") + modelData.text
       wrapMode: Text.WordWrap
-      color: modelData.failed ? Color.urgent : Util.alpha(Color.foreground, 0.7)
+      color: modelData.failed ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.7)
     }
   }
 

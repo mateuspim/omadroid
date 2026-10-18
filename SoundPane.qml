@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "SoundVolume.js" as SoundVolume
@@ -118,7 +119,7 @@ ColumnLayout {
     Layout.fillWidth: true
     visible: root.target !== "" && root.volume === null && status.busy
     text: "Reading sound settings… The first time on a device takes a few seconds."
-    color: Util.alpha(Color.foreground, 0.7)
+    color: Util.alpha(Commons.Color.foreground, 0.7)
   }
 
   ColumnLayout {
@@ -183,14 +184,14 @@ ColumnLayout {
       Layout.fillWidth: true
       visible: root.apps.length === 0
       text: "No app is playing sound."
-      color: Util.alpha(Color.foreground, 0.7)
+      color: Util.alpha(Commons.Color.foreground, 0.7)
     }
     Label {
       Layout.fillWidth: true
       visible: root.volume !== null && root.volume.mode === "appops" && root.apps.length > 0
       text: "This device has no per-app volume, so apps can only be muted."
       font.pixelSize: Style.font.bodySmall
-      color: Util.alpha(Color.foreground, 0.7)
+      color: Util.alpha(Commons.Color.foreground, 0.7)
     }
     Repeater {
       model: root.appKeys
@@ -243,7 +244,7 @@ ColumnLayout {
       Layout.fillWidth: true
       text: "⚠ " + modelData
       wrapMode: Text.WordWrap
-      color: Color.urgent
+      color: Commons.Color.urgent
     }
   }
 

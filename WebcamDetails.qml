@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -36,7 +37,7 @@ ColumnLayout {
       text: Model.webcamSummary(root.webcam)
       wrapMode: Text.NoWrap
       elide: Text.ElideRight
-      color: Util.alpha(Color.foreground, 0.6)
+      color: Util.alpha(Commons.Color.foreground, 0.6)
       font.pixelSize: Style.font.bodySmall
       Accessible.name: "Current settings: " + text
     }

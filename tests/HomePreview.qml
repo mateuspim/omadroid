@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import "plugin" as OmaDroid
 import "plugin/DeviceListModel.js" as OmaDroidHome
 
@@ -33,12 +34,12 @@ ShellRoot {
   FloatingWindow {
     implicitWidth: 460
     implicitHeight: 720
-    color: Color.popups.background
+    color: Commons.Color.popups.background
     Rectangle {
       id: surface
       width: 460
       height: Math.max(220, layout.implicitHeight + 32)
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       ColumnLayout {
         id: layout
         x: 16

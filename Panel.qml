@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DeviceListModel.js" as DeviceList
 
@@ -120,7 +121,7 @@ Panel {
       Item {
         DroidPromptIcon {
           anchors.centerIn: parent
-          color: discovery.devicesError || root.missingTools ? Color.urgent : root.barForeground
+          color: discovery.devicesError || root.missingTools ? Commons.Color.urgent : root.barForeground
         }
         Text {
           anchors {
@@ -139,7 +140,7 @@ Panel {
           anchors.bottom: parent.bottom
           visible: mirrorSession.sessionPid > 0
           text: mirrorSession.sessionType === "webcam" ? "●" : "▶"
-          color: Color.accent
+          color: Commons.Color.accent
           font.pixelSize: Style.font.caption
         }
       }
@@ -193,7 +194,7 @@ Panel {
         Layout.fillWidth: true
         visible: root.missingTools !== ""
         text: "⚠ Missing: " + root.missingTools
-        color: Color.urgent
+        color: Commons.Color.urgent
         elide: Text.ElideRight
       }
       SessionBanner {
@@ -223,7 +224,7 @@ Panel {
             Layout.fillWidth: true
             visible: root.view === "home" && root.notice !== ""
             text: root.notice
-            color: Util.alpha(Color.foreground, 0.7)
+            color: Util.alpha(Commons.Color.foreground, 0.7)
             elide: Text.ElideRight
           }
           DeviceList {
