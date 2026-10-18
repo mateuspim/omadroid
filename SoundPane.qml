@@ -11,13 +11,17 @@ import "SoundVolume.js" as SoundVolume
 // device every 2 s, and only while it is shown.
 ColumnLayout {
   id: root
-  required property var devices
+  // The discovery's devices, for the picker; unused when `serial` is set.
+  property var devices: []
+  // A fixed device (the device page): no picker, and only this device is read.
+  property string serial: ""
   // The page is shown and the popup is open.
   property bool active: false
   property string chosen: ""
   readonly property var readyDevices: devices.filter(row => row.status === "device")
-  readonly property string serial: SoundVolume.pickVolumeTarget(devices, chosen)
-  // Parsed `device-volume.sh status` of `serial`; null until read.
+  // The device being shown: the fixed `serial`, else the picker's choice.
+  readonly property string target: serial || SoundVolume.pickVolumeTarget(devices, chosen)
+  // Parsed `device-volume.sh status` of `target`; null until read.
   property var volume: null
   readonly property var apps: volume ? SoundVolume.visibleApps(volume.apps) : []
   // The rows' keys (app uids, stream keys). They change only when a row comes
@@ -49,7 +53,7 @@ ColumnLayout {
     if (JSON.stringify(streams) !== JSON.stringify(streamKeys))
       streamKeys = streams;
   }
-  onSerialChanged: {
+  onTargetChanged: {
     volume = null;
     changeError = "";
     readError = "";
@@ -57,17 +61,17 @@ ColumnLayout {
   }
 
   function refresh() {
-    if (!active || !serial || status.busy)
+    if (!active || !target || status.busy)
       return;
     readStartedAt = changes;
     // The first read of a firmware copies its framework (about 53 MB).
-    status.start(["bash", volumeScript, "status", serial], 120);
+    status.start(["bash", volumeScript, "status", target], 120);
   }
   // args: [command, …] without the serial; kind/id/change show the result at once.
   function send(args, kind, id, change) {
     if (kind)
       volume = SoundVolume.withChange(volume, kind, id, change);
-    queued = SoundVolume.queueChange(queued, ["bash", volumeScript, args[0], serial].concat(args.slice(1)));
+    queued = SoundVolume.queueChange(queued, ["bash", volumeScript, args[0], target].concat(args.slice(1)));
     sendQueued();
   }
   function sendQueued() {
@@ -111,27 +115,27 @@ ColumnLayout {
 
   Label {
     Layout.fillWidth: true
-    visible: root.readyDevices.length === 0
+    visible: root.serial === "" && root.readyDevices.length === 0
     text: "No device ready. Connect one on the Devices page."
     color: Util.alpha(Color.foreground, 0.7)
   }
   Flow {
     Layout.fillWidth: true
-    visible: root.readyDevices.length > 1
+    visible: root.serial === "" && root.readyDevices.length > 1
     spacing: Style.space(6)
     Repeater {
       model: root.readyDevices
       delegate: ActionButton {
         required property var modelData
         text: modelData.name || modelData.serial
-        selected: modelData.serial === root.serial
+        selected: modelData.serial === root.target
         onClicked: root.chosen = modelData.serial
       }
     }
   }
   Label {
     Layout.fillWidth: true
-    visible: root.serial !== "" && root.volume === null && status.busy
+    visible: root.target !== "" && root.volume === null && status.busy
     text: "Reading sound settings… The first time on a device takes a few seconds."
     color: Util.alpha(Color.foreground, 0.7)
   }
@@ -265,7 +269,7 @@ ColumnLayout {
   Timer {
     interval: 2000
     repeat: true
-    running: root.active && root.serial !== ""
+    running: root.active && root.target !== ""
     onTriggered: root.refresh()
   }
   Command {
