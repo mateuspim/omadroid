@@ -1,5 +1,21 @@
+# Editors
 *.swp
 *.swo
 *~
+.vscode/
+.idea/
+.DS_Store
+
+# Generated
 .qmlcache/
+*.qmlc
+*.jsc
+__pycache__/
+*.pyc
+node_modules/
+*.log
+# A local OMADROID_PREVIEW_DIR target, if one is made inside the checkout.
+/preview/
+
+# Local-only session notes
 HANDOFF.md
