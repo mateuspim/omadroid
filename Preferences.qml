@@ -1,13 +1,14 @@
 import QtQuick
 import QtCore as Core
 import Quickshell
+import "SettingsFile.js" as SettingsFile
 
 // OmaDroid's options, set on the popup's Settings page and kept in its own
 // omadroid.ini ([preferences]), never in Omarchy's configuration. Owned by
 // the shared discovery service so every widget sees the same values.
 Item {
   id: root
-  readonly property string location: "file://" + encodeURI((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/omadroid.ini")
+  readonly property string location: SettingsFile.omadroidIniUrl(Quickshell.env("XDG_CONFIG_HOME") || "", Quickshell.env("HOME"))
   // Seconds between `adb devices -l` polls, used only while `adb track-devices` isn't running.
   readonly property int refreshIntervalSec: clampInterval(stored.refreshIntervalSec)
   readonly property bool wakeOnLaunch: stored.wakeOnLaunch

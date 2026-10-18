@@ -1,6 +1,8 @@
 import QtQuick
 import QtCore as Core
+import Quickshell
 import "AutoConnect.js" as AutoConnect
+import "SettingsFile.js" as SettingsFile
 
 // Connects devices that were ready over Wi-Fi here before, as soon as they
 // announce Wireless debugging. Devices are remembered by their mDNS service
@@ -10,8 +12,10 @@ import "AutoConnect.js" as AutoConnect
 Item {
   id: root
   readonly property bool enabled: remembered.enabled
-  // omadroid.ini, from Preferences.
-  required property string settingsLocation
+  // omadroid.ini, the same file as Preferences. Computed here rather than
+  // passed in: a passed-in value was still empty when the Settings below was
+  // constructed, which logged "Failed to initialize QSettings instance".
+  readonly property string settingsLocation: SettingsFile.omadroidIniUrl(Quickshell.env("XDG_CONFIG_HOME") || "", Quickshell.env("HOME"))
   property var devices: []
   property var services: []
   // Endpoints tried since they were announced; never retried while they stay.

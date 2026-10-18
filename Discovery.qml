@@ -302,7 +302,6 @@ Item {
   }
   AutoConnect {
     id: autoConnector
-    settingsLocation: preferences.location
     devices: root.adbDevices
     services: root.services
   }
