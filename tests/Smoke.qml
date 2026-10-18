@@ -47,7 +47,7 @@ ShellRoot {
   OmaDroid.SoundPane {
     id: soundPane
     width: 440
-    devices: discovery.devices
+    serial: "USB123"
     active: true
   }
   Timer {
@@ -71,9 +71,8 @@ ShellRoot {
       testRoot.check(soundPane.volume.master === true, "Mute all shows at once");
     }
   }
-  OmaDroid.DevicePowerControls {
+  OmaDroid.DevicePowerState {
     id: powerControls
-    width: 440
     serial: "USB123"
     ready: true
   }
@@ -280,7 +279,7 @@ ShellRoot {
       var hotkey = child(settingsPane, "omadroidHotkey");
       testRoot.check(hotkey.installed === "", "no Send text hotkey at first: " + hotkey.installed + " " + hotkey.message);
       hotkey.run(["set", "super+alt+d"]);
-      child(powerControls, "powerLock").clicked();
+      powerControls.lock();
       sendTextOverlay.open("");
       testRoot.check(sendTextOverlay.opened && sendTextOverlay.target === "USB123", "first ready phone targeted: " + sendTextOverlay.target);
       sendTextOverlay.chooseNext(1);
@@ -334,8 +333,6 @@ ShellRoot {
       testRoot.check(discovery.devices.find(row => row.serial === "adb-PHONE-random._adb-tls-connect._tcp").info === null, "a device that doesn't answer has no details");
       testRoot.check(discovery.devices.find(row => row.serial === "LOCKED").info === null, "unauthorized devices aren't queried");
       testRoot.check(powerControls.power && !powerControls.power.keepAwake && powerControls.power.secret === "none" && powerControls.canUnlock === false, "device power status is read: " + JSON.stringify(powerControls.power));
-      var powerRow = child(powerControls, "powerButtons");
-      testRoot.check(powerRow.implicitWidth <= powerControls.width, "power buttons fit the card: " + powerRow.implicitWidth + " > " + powerControls.width);
       testRoot.check(powerControls.message === "Device locked." && !powerControls.failed, "Lock reaches the device: " + powerControls.message);
       // The Settings page shows and flips the shared service's options.
       var wakeButton = child(settingsPane, "omadroidSetting-wakeOnLaunch");

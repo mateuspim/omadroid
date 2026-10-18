@@ -7,6 +7,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
+import "SettingsFile.js" as SettingsFile
 
 // Webcam settings for one device: camera, quality, v4l2 output, the folded
 // quality details and setup guidance when no v4l2loopback output exists. The
@@ -72,7 +73,7 @@ ColumnLayout {
 
   Core.Settings {
     id: saved
-    location: Util.fileUrl((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/omadroid.ini")
+    location: SettingsFile.omadroidIniUrl(Quickshell.env("XDG_CONFIG_HOME") || "", Quickshell.env("HOME"))
     property string webcamJson: ""
   }
   Component.onCompleted: {

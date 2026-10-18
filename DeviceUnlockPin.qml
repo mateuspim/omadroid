@@ -5,7 +5,7 @@ import qs.Commons as Commons
 import qs.Ui
 
 // The unlock PIN editor: a password field with Save and Forget, shown while
-// `editing`. Shared by DevicePowerControls and the device page's Info section.
+// `editing`. Used by the device page's Info section.
 ColumnLayout {
   id: root
   required property var powerState

@@ -7,6 +7,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
+import "SettingsFile.js" as SettingsFile
 
 // Mirror options for one device: profile, video settings, option chips and
 // saved profiles. The device page's Mirror and Audio cards start sessions
@@ -39,7 +40,7 @@ ColumnLayout {
 
   Core.Settings {
     id: saved
-    location: Util.fileUrl((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/omadroid.ini")
+    location: SettingsFile.omadroidIniUrl(Quickshell.env("XDG_CONFIG_HOME") || "", Quickshell.env("HOME"))
     property string profilesJson: "[]"
     property string lastProfile: "Balanced"
     property string recordingFolder: Quickshell.env("HOME")

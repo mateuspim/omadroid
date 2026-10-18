@@ -180,7 +180,7 @@ trusted_identity() {
 
 unlock_device() {
   local serial="$1" id state secret dir identity
-  id="$(device_id "$serial")"
+  id="$(device_id "$serial")" || exit
   dir="$state_root/$id"
   # Wake first: a paused or missing PIN must still leave the screen on.
   wake_device "$serial"
@@ -205,7 +205,7 @@ save_secret() {
   secret="${secret%$'\n'}"
   valid_secret "$secret" || die 1 "Use 4-64 plain ASCII characters (letters, digits, symbols, inner spaces); accents and emoji can't be typed over adb."
   command -v secret-tool >/dev/null 2>&1 || die 5 "secret-tool (libsecret) isn't installed; the PIN is never stored in plain text."
-  id="$(device_id "$serial")"
+  id="$(device_id "$serial")" || exit
   identity="$(device_identity "$serial" "$id")" || exit
   dir="$state_root/$id"
   mkdir -p -m 700 -- "$dir"
@@ -222,7 +222,7 @@ save_secret() {
 
 clear_secret() {
   local id
-  id="$(device_id "$1")"
+  id="$(device_id "$1")" || exit
   secret-tool clear app omadroid device "$id" 2>/dev/null
   rm -f -- "$state_root/$id/secret" "$state_root/$id/blocked"
   echo 'Unlock PIN removed.'
@@ -232,7 +232,7 @@ clear_secret() {
 
 print_status() {
   local id dir keep=off running=0 secret=none
-  id="$(device_id "$1")"
+  id="$(device_id "$1")" || exit
   dir="$state_root/$id"
   [[ -e "$dir/keep-awake" ]] && keep=on
   keeper_running "$id" && running=1
@@ -244,7 +244,7 @@ print_status() {
 set_keep_awake() {
   local id
   [[ "$1" == on || "$1" == off ]] || die 1 "keep-awake takes on|off, got '$1'."
-  id="$(device_id "$2")"
+  id="$(device_id "$2")" || exit
   mkdir -p -m 700 -- "$state_root/$id"
   if [[ "$1" == on ]]; then
     touch -- "$state_root/$id/keep-awake"
@@ -260,7 +260,7 @@ set_keep_awake() {
 # Unlocking a device without a saved PIN falls back to waking it.
 on_connect() {
   local serial="$1" wake="$2" unlock="$3" id
-  id="$(device_id "$serial")"
+  id="$(device_id "$serial")" || exit
   [[ -e "$state_root/$id/keep-awake" ]] && start_keeper "$serial" "$id"
   if [[ "$unlock" == 1 && -e "$state_root/$id/secret" ]]; then
     unlock_device "$serial"

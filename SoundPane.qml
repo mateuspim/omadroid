@@ -14,12 +14,9 @@ ColumnLayout {
   id: root
   // The device whose sound is shown; only this device is read.
   property string serial: ""
-  // Deprecated: tests/Smoke.qml still passes the discovery's devices instead
-  // of a `serial`; then the first ready one is shown. Remove with that use.
-  property var devices: []
   // The section is shown and the popup is open.
   property bool active: false
-  readonly property string target: serial || (devices.find(row => row.status === "device") || { serial: "" }).serial
+  readonly property string target: serial
   // Parsed `device-volume.sh status` of `target`; null until read.
   property var volume: null
   readonly property var apps: volume ? SoundVolume.visibleApps(volume.apps) : []
