@@ -4,12 +4,16 @@ import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
+// Pair with a pairing code (`pairing`) or connect to an address. The mode is
+// switched by AddDevicePage through beginPair / beginManualPair / showConnect.
 ColumnLayout {
   id: root
   required property var actions
   property bool pairing: false
   property bool fixedPairingHost: false
   spacing: Style.space(8)
+  // A pair or connect from this form started; AddDevicePage waits for its result.
+  signal submitted
 
   function focusPairingInput(hostKnown) {
     Qt.callLater(function() {
@@ -43,37 +47,15 @@ ColumnLayout {
   }
   function submit() {
     var target = pairing ? Model.pairingEndpoint(pairingHostField.text, pairingPortField.text) : endpointField.text;
-    if (actions.run(pairing ? "pair" : "connect", target, codeField.text))
-      codeField.text = "";
+    if (!actions.run(pairing ? "pair" : "connect", target, codeField.text))
+      return;
+    codeField.text = "";
+    submitted();
   }
 
-  RowLayout {
-    Layout.fillWidth: true
-    Label {
-      text: "Wireless connection"
-      font.bold: true
-      Layout.fillWidth: true
-    }
-    ActionButton {
-      text: root.pairing ? "Connect instead" : "Pair a device"
-      onClicked: root.pairing ? root.showConnect() : root.beginManualPair()
-    }
-  }
-  Label {
-    Layout.fillWidth: true
-    text: root.pairing ? (root.fixedPairingHost ? "Open “Pair device with pairing code” on Android, then enter only its pairing port and code." : "Use the host, pairing port, and code from “Pair device with pairing code”. The connection port is different.") : "Enter the IP and port shown on Android's Wireless debugging page. Pair first for a new device."
-    color: Util.alpha(Color.foreground, 0.7)
-    font.pixelSize: Style.font.bodySmall
-  }
-  TextField {
-    id: endpointField
-    Layout.fillWidth: true
-    visible: !root.pairing
-    placeholderText: "Connection address · 192.168.1.42:37001"
-    maximumLength: 260
-    enabled: !root.actions.busy
-    Accessible.name: "Connection address"
-    onAccepted: root.submit()
+  HintLabel {
+    text: !root.pairing ? "Address and port from Wireless debugging" : root.fixedPairingHost ? "Port and code from “Pair device with pairing code”" : "Wireless debugging › Pair device with pairing code"
+    detail: root.pairing ? "Enter the IP address, pairing port and six-digit code that Android\nshows under “Pair device with pairing code”. The pairing port is\nnot the connection port." : "For a device paired with this computer before.\nPair a new device with a QR code or pairing code first."
   }
   RowLayout {
     Layout.fillWidth: true
@@ -81,7 +63,8 @@ ColumnLayout {
     Label {
       Layout.fillWidth: true
       visible: root.fixedPairingHost
-      text: "Device · " + pairingHostField.text
+      Layout.preferredWidth: 1
+      text: "󰄜  " + pairingHostField.text
       wrapMode: Text.WrapAnywhere
       color: Util.alpha(Color.foreground, 0.8)
       Accessible.name: "Pairing device " + pairingHostField.text
@@ -89,8 +72,9 @@ ColumnLayout {
     TextField {
       id: pairingHostField
       Layout.fillWidth: true
+      Layout.preferredWidth: 1
       visible: !root.fixedPairingHost
-      placeholderText: "Host/IP · 192.168.1.42"
+      placeholderText: "Host · 192.168.1.42"
       maximumLength: 240
       enabled: !root.actions.busy
       Accessible.name: "Pairing host or IP"
@@ -98,8 +82,8 @@ ColumnLayout {
     }
     TextField {
       id: pairingPortField
-      Layout.preferredWidth: Style.space(125)
-      placeholderText: "Pairing port"
+      Layout.preferredWidth: Style.space(96)
+      placeholderText: "Port"
       maximumLength: 5
       inputMethodHints: Qt.ImhDigitsOnly
       validator: RegularExpressionValidator {
@@ -113,10 +97,22 @@ ColumnLayout {
   RowLayout {
     Layout.fillWidth: true
     TextField {
+      id: endpointField
+      Layout.fillWidth: true
+      Layout.preferredWidth: 1
+      visible: !root.pairing
+      placeholderText: "192.168.1.42:37001"
+      maximumLength: 260
+      enabled: !root.actions.busy
+      Accessible.name: "Connection address"
+      onAccepted: root.submit()
+    }
+    TextField {
       id: codeField
       visible: root.pairing
       Layout.fillWidth: true
-      placeholderText: "Six-digit pairing code"
+      Layout.preferredWidth: 1
+      placeholderText: "Six-digit code"
       password: true
       maximumLength: 6
       inputMethodHints: Qt.ImhDigitsOnly | Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
@@ -128,6 +124,7 @@ ColumnLayout {
       onAccepted: root.submit()
     }
     ActionButton {
+      objectName: "omadroidConnectionSubmit"
       text: root.actions.busy ? "Working…" : root.pairing ? "Pair" : "Connect"
       enabled: !root.actions.busy && (root.pairing ? Model.pairingEndpoint(pairingHostField.text, pairingPortField.text) !== "" && codeField.text.length === 6 : Model.endpoint(endpointField.text) !== "")
       onClicked: root.submit()

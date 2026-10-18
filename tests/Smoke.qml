@@ -99,6 +99,54 @@ ShellRoot {
     }
   }
   property string qrPassword: ""
+  // Add device against a fake Actions: a device-list Pair opens the
+  // pairing-code form prefilled, and only the connect that follows the pair
+  // reports done.
+  QtObject {
+    id: addActions
+    property bool busy: false
+    property bool failed: false
+    property string action: ""
+    property string message: ""
+    property string pairedAwaitingConnect: ""
+    property var discovery: null
+    property var calls: []
+    signal changed
+    function run(kind, address, secret) {
+      calls = calls.concat([[kind, address, secret]]);
+      return true;
+    }
+    function finish(kind, ok) {
+      action = kind;
+      failed = !ok;
+      changed();
+    }
+  }
+  OmaDroid.AddDevicePage {
+    id: addDevice
+    width: 440
+    actions: addActions
+    property int doneCount: 0
+    onDone: doneCount += 1
+    Component.onCompleted: {
+      beginPair({ endpoint: "192.168.1.5:41000", pair: true }, [], true);
+      var form = testRoot.child(addDevice, "omadroidConnectionForm");
+      testRoot.check(mode === "code" && form.pairing && form.fixedPairingHost, "Pair from the list opens the pairing-code form: " + mode);
+      form.submit();
+      testRoot.check(awaitingResult && addActions.calls[0][0] === "pair" && addActions.calls[0][1] === "192.168.1.5:41000", "the form pairs the prefilled host and port: " + JSON.stringify(addActions.calls));
+      cancel();
+      testRoot.check(!awaitingResult, "leaving the page stops waiting");
+      setMode("address");
+      testRoot.check(!form.pairing, "Address shows the connect form");
+      form.submitted();
+      addActions.finish("pair", true);
+      testRoot.check(awaitingResult && doneCount === 0, "a pair alone isn't done");
+      addActions.finish("connect", true);
+      testRoot.check(!awaitingResult && doneCount === 1, "the connect after it is done: " + doneCount);
+      addActions.finish("connect", true);
+      testRoot.check(doneCount === 1, "results of other actions don't count");
+    }
+  }
   OmaDroid.SettingsPane {
     id: settingsPane
     width: 440
@@ -409,9 +457,9 @@ ShellRoot {
       testRoot.check(powerControls.message === "Device locked." && !powerControls.failed, "Lock reaches the device: " + powerControls.message);
       // The Settings page shows and flips the shared service's options.
       var wakeButton = child(settingsPane, "omadroidSetting-wakeOnLaunch");
-      testRoot.check(wakeButton && wakeButton.text.indexOf("✓") === 0, "Settings page shows wake on launch on: " + (wakeButton ? wakeButton.text : "missing"));
+      testRoot.check(wakeButton && wakeButton.checked, "Settings page shows wake on launch on: " + (wakeButton ? wakeButton.checked : "missing"));
       settingsPane.toggle("wakeOnLaunch");
-      testRoot.check(!discovery.preferences.wakeOnLaunch && wakeButton.text.indexOf("○") === 0, "Settings page toggle saved: " + wakeButton.text);
+      testRoot.check(!discovery.preferences.wakeOnLaunch && !wakeButton.checked, "Settings page toggle saved: " + wakeButton.checked);
       settingsPane.toggle("wakeOnLaunch");
       // Settings page options: saved by the shared service, clamped and coerced.
       discovery.setPreference("refreshIntervalSec", "2");

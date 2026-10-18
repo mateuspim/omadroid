@@ -13,7 +13,7 @@ ColumnLayout {
   property var installed: null
   property string message: ""
   property bool failed: false
-  spacing: Style.space(5)
+  spacing: Style.space(4)
 
   function run(args) {
     if (!hotkeyCommand.start(["bash", hotkeyScript].concat(args), 15))
@@ -41,18 +41,14 @@ ColumnLayout {
     id: hotkeyCommand
     onFinished: (code, output, error) => root.finish(code, output, error)
   }
-  Label {
-    Layout.fillWidth: true
-    text: "Send text hotkey"
-    font.bold: true
-  }
   RowLayout {
     Layout.fillWidth: true
     spacing: Style.space(10)
     TextField {
       id: comboField
       objectName: "omadroidHotkeyCombo"
-      Layout.preferredWidth: Style.space(150)
+      Layout.fillWidth: true
+      Layout.preferredWidth: 1
       text: "SUPER + ALT + D"
       Accessible.name: "Send text key combination"
       onAccepted: root.run(["set", text])
@@ -60,7 +56,7 @@ ColumnLayout {
     ActionButton {
       objectName: "omadroidHotkeyInstall"
       text: root.installed ? "Update" : "Install"
-      enabled: !hotkeyCommand.busy && root.installed !== null && comboField.text.trim() !== ""
+      enabled: !hotkeyCommand.busy && root.installed !== null && comboField.text.trim() !== "" && comboField.text.trim() !== root.installed
       onClicked: root.run(["set", comboField.text])
     }
     ActionButton {
@@ -71,12 +67,10 @@ ColumnLayout {
       onClicked: root.run(["remove"])
     }
   }
-  Label {
+  HintLabel {
     objectName: "omadroidHotkeyStatus"
-    Layout.fillWidth: true
-    text: root.message || (root.installed ? root.installed + " opens the Send text prompt. Saved in ~/.config/hypr/bindings.lua." : "Adds a key binding to ~/.config/hypr/bindings.lua that opens a prompt for typing on a device.")
-    wrapMode: Text.WordWrap
-    color: root.failed ? Color.foreground : Util.alpha(Color.foreground, 0.7)
-    font.pixelSize: Style.font.bodySmall
+    text: root.message || (root.installed ? "Installed · opens the Send text prompt" : "Opens a prompt for typing on a device")
+    urgent: root.failed
+    detail: "Kept in a OmaDroid block of ~/.config/hypr/bindings.lua;\nnothing is written until Install."
   }
 }

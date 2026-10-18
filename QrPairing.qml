@@ -18,7 +18,9 @@ ColumnLayout {
   readonly property bool discoveryDown: actions.discovery !== null && actions.discovery.mdnsLevel === "error"
   readonly property string announcedEndpoint: code ? Pairing.qrPairingEndpoint(rows, code.service) : ""
   readonly property string qrScript: decodeURIComponent(Qt.resolvedUrl("qr-pair.sh").toString().replace(/^file:\/\//, ""))
-  spacing: Style.space(8)
+  spacing: Style.space(10)
+  // A scanned code's pair command started; AddDevicePage waits for its result.
+  signal pairingStarted
 
   function show() {
     error = "";
@@ -36,7 +38,8 @@ ColumnLayout {
     // Read both first: clearing `code` also clears announcedEndpoint.
     var endpoint = announcedEndpoint, password = code.password;
     code = null;
-    actions.run("pair", endpoint, password);
+    if (actions.run("pair", endpoint, password))
+      pairingStarted();
   }
 
   // Deferred: clearing `code` inside the change handler of a binding that
@@ -49,26 +52,10 @@ ColumnLayout {
     }
   }
 
-  RowLayout {
-    Layout.fillWidth: true
-    Label {
-      text: "Pair with QR code"
-      font.bold: true
-      Layout.fillWidth: true
-    }
-    ActionButton {
-      text: root.code ? "Cancel" : generator.busy ? "Making…" : "Show QR code"
-      enabled: root.code !== null || (!generator.busy && !root.discoveryDown)
-      tooltipText: root.discoveryDown ? "Needs wireless discovery (Avahi), which isn't running" : ""
-      onClicked: root.code ? root.cancel() : root.show()
-    }
-  }
-  Label {
-    Layout.fillWidth: true
-    text: root.code ? "On Android, open Developer options › Wireless debugging › Pair device with QR code, and scan this. The phone must be on the same network." : "Android 11 or later: scan a code instead of typing a pairing port and code."
-    wrapMode: Text.WordWrap
-    color: Util.alpha(Color.foreground, 0.7)
-    font.pixelSize: Style.font.bodySmall
+  HintLabel {
+    horizontalAlignment: Text.AlignHCenter
+    text: root.code ? "Wireless debugging › Pair device with QR code, then scan" : "Pair a new device by scanning a code"
+    detail: "Android 11 or later: Developer options › Wireless debugging ›\nPair device with QR code. The phone must be on the same network."
   }
   // Dark on white with a four-module quiet zone, whatever the theme, so the
   // phone's scanner reads it.
@@ -81,6 +68,7 @@ ColumnLayout {
     implicitWidth: root.code ? (root.code.size + quiet * 2) * moduleSize : 0
     implicitHeight: implicitWidth
     color: "#ffffff"
+    radius: Style.cornerRadius
     Accessible.role: Accessible.Graphic
     Accessible.name: "Wireless debugging pairing QR code"
     Canvas {
@@ -104,17 +92,26 @@ ColumnLayout {
   }
   Label {
     Layout.fillWidth: true
+    Layout.preferredWidth: 1
     visible: root.code !== null
-    text: "Waiting for Android to scan the code…"
+    text: "Waiting for the scan…"
     color: Color.accent
+    font.pixelSize: Style.font.bodySmall
     horizontalAlignment: Text.AlignHCenter
   }
-  Label {
-    Layout.fillWidth: true
-    visible: root.error !== ""
-    text: "⚠ " + root.error
-    wrapMode: Text.WordWrap
-    color: Color.urgent
+  ActionButton {
+    objectName: "omadroidQrToggle"
+    Layout.alignment: Qt.AlignHCenter
+    text: root.code ? "Cancel" : generator.busy ? "Making…" : "Show QR code"
+    iconText: root.code ? "" : "󰐲"
+    enabled: root.code !== null || (!generator.busy && !root.discoveryDown)
+    onClicked: root.code ? root.cancel() : root.show()
+  }
+  HintLabel {
+    horizontalAlignment: Text.AlignHCenter
+    visible: root.discoveryDown || root.error !== ""
+    urgent: true
+    text: "⚠ " + (root.error || "Needs wireless discovery (Avahi), which isn't running.")
   }
 
   onCodeChanged: qrCanvas.requestPaint()
