@@ -344,6 +344,9 @@ Item {
           merged[serial] = found[serial] || "";
       });
       root.deviceNames = merged;
+      // refreshNames skips devices that arrive while a read runs; read them
+      // now. Requested devices have a name entry by here, so this stops.
+      Qt.callLater(root.refreshNames);
     }
   }
   Command {

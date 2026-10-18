@@ -142,7 +142,7 @@ ShellRoot {
     onChanged: {
       if (action === "pair" && testRoot.actionStep < 4) {
         testRoot.check(!failed && message.indexOf("Looking for its connection port") >= 0, "pair without a known port did not wait for discovery: " + message);
-      } else if (action === "connect" && target === "192.168.1.5:37002") {
+      } else if (action === "connect" && target === "192.168.1.5:37002" && testRoot.actionStep < 4) {
         testRoot.check(!failed && message === "Connected to 192.168.1.5:37002.", "paired device was not connected: " + message);
         Qt.callLater(() => pairActions.run("pair", "192.168.1.5:42000", "123456"));
         testRoot.actionStep = 4;
@@ -165,9 +165,37 @@ ShellRoot {
     function onBusyChanged() {
       if (testRoot.actionStep === 5 && !pairActions.busy && pairActions.action === "connect") {
         testRoot.check(!pairActions.failed, "immediate connect after pairing failed: " + pairActions.message);
-        console.log("OMADROID_SHARED_TEST_OK");
-        Qt.quit();
+        testRoot.actionStep = 6;
+        testRoot.startNamesRetryCheck();
       }
+    }
+  }
+
+  // A device that turns ready while a name read runs is read right after it,
+  // instead of staying unnamed until the next device change.
+  function startNamesRetryCheck() {
+    var ready = sharedDiscovery.adbDevices.filter(row => row.status === "device");
+    testRoot.check(ready.length === 2, "names retry check needs 2 ready devices: " + JSON.stringify(ready));
+    sharedDiscovery.deviceNames = {};
+    sharedDiscovery.setDevices([ready[0]]);
+    sharedDiscovery.setDevices(ready);
+    testRoot.check(!(ready[1].serial in sharedDiscovery.deviceNames), "second device was named before the busy read ended");
+    namesRetryWait.serials = ready.map(row => row.serial);
+    namesRetryWait.running = true;
+  }
+
+  Timer {
+    id: namesRetryWait
+    property var serials: []
+    interval: 50
+    repeat: true
+    onTriggered: {
+      if (!serials.every(serial => serial in sharedDiscovery.deviceNames))
+        return;
+      running = false;
+      testRoot.check(sharedDiscovery.deviceNames[serials[0]] === "Desk phone", "first device name not read: " + JSON.stringify(sharedDiscovery.deviceNames));
+      console.log("OMADROID_SHARED_TEST_OK");
+      Qt.quit();
     }
   }
 
