@@ -48,17 +48,25 @@ function audioSummary(profile) {
  *   [{ id: "1", facing: "front" }]) → "Front · 1080p · 30 fps" */
 function webcamCardSummary(webcam, cameras) {
   if (!webcam) return "";
-  var size = webcam.size === "auto" ? "Auto" : cameraSizeNames[webcam.size] || webcam.size.replace("x", "×");
-  return [cameraShortName(webcam.camera, cameras), size, webcam.fps + " fps"].join(" · ");
+  return [cameraShortName(webcam.camera, cameras), shortSize(webcam.size), webcam.fps + " fps"].join(" · ");
 }
 
-/** Example: cameraShortName("back", null) → "Back"; cameraShortName("id:2", null) → "Camera 2" */
+/** A card-sized resolution: named sizes keep their name, others their short
+ * side, so "2032x1144" fits the card. Example: shortSize("2032x1144") → "1144p" */
+function shortSize(size) {
+  if (size === "auto") return "Auto";
+  if (cameraSizeNames[size]) return cameraSizeNames[size];
+  var sides = String(size).split("x").map(Number);
+  return sides.length === 2 && sides.every(side => side > 0) ? Math.min(sides[0], sides[1]) + "p" : String(size);
+}
+
+/** Example: cameraShortName("back", null) → "Back"; cameraShortName("id:2", null) → "Cam 2" */
 function cameraShortName(choice, cameras) {
   var camera = Webcam.chosenCamera(cameras, choice);
   var facing = camera ? camera.facing : choice;
   if (facing === "front" || facing === "back" || facing === "external")
     return facing.charAt(0).toUpperCase() + facing.slice(1);
-  return "Camera " + String(choice).replace(/^id:/, "");
+  return "Cam " + String(choice).replace(/^id:/, "");
 }
 
 /** The session cards for one ready device.

@@ -6,6 +6,7 @@ import qs.Ui
 import "Model.js" as Model
 import "DevicePage.js" as DevicePage
 import "DeviceActions.js" as DeviceActions
+import "DevicePower.js" as DevicePower
 
 // One device's page: hero, the session cards (Mirror · Audio · Webcam) with
 // their options and the running session's controls, a compact row of device
@@ -60,10 +61,14 @@ ColumnLayout {
       throw new Error("No handler for device control '" + key + "'; expected one of " + Object.keys(controlHandlers).join(", "));
     handler();
   }
+  // A PIN that can't be used is fixed here, where the warning shows, rather
+  // than in the Info section.
+  readonly property bool pinNeedsSaving: devicePower.power !== null && (devicePower.power.secret === "stale" || devicePower.power.secret === "blocked")
   // Results of this device's own commands; Actions.qml is shared by every page.
   function feedback() {
     var lines = [];
-    if (devicePower.message)
+    // The PIN prompt below already says what's wrong with the PIN.
+    if (devicePower.message && !(devicePower.failed && root.pinNeedsSaving))
       lines.push({ text: devicePower.message, failed: devicePower.failed });
     if (actions && actions.message && actions.target === serial)
       lines.push({ text: actions.message, failed: actions.failed });
@@ -139,6 +144,30 @@ ColumnLayout {
       wrapMode: Text.WordWrap
       color: modelData.failed ? Commons.Color.urgent : Util.alpha(Commons.Color.foreground, 0.7)
     }
+  }
+
+  RowLayout {
+    objectName: "devicePinPrompt"
+    Layout.fillWidth: true
+    visible: root.ready && root.pinNeedsSaving && !pinFix.editing
+    Label {
+      Layout.fillWidth: true
+      Layout.preferredWidth: 1
+      text: DevicePower.secretLabel(devicePower.power ? devicePower.power.secret : "")
+      wrapMode: Text.WordWrap
+      color: Commons.Color.urgent
+    }
+    ActionButton {
+      objectName: "devicePinSave"
+      text: "Save PIN…"
+      onClicked: pinFix.editing = true
+    }
+  }
+  DeviceUnlockPin {
+    id: pinFix
+    objectName: "devicePinEditor"
+    Layout.fillWidth: true
+    powerState: devicePower
   }
 
   PanelSeparator {

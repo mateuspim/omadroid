@@ -6,7 +6,8 @@
 # also bound to a hash of `ro.serialno` and `android_id`, checked before every
 # unlock, because the serial alone is advertised over mDNS.
 #
-#   status SERIAL            → "keep=on|off running=1|0 secret=none|saved|blocked"
+#   status SERIAL            → "keep=on|off running=1|0 secret=none|saved|stale|blocked"
+#                              (stale: saved without the device identity; save it again)
 #   keep-awake on|off SERIAL   remember the choice and start/stop the keeper
 #   connected WAKE UNLOCK SERIAL...   restart wanted keepers, then wake/unlock (0|1)
 #   wake SERIAL | unlock SERIAL | lock SERIAL
@@ -237,6 +238,8 @@ print_status() {
   [[ -e "$dir/keep-awake" ]] && keep=on
   keeper_running "$id" && running=1
   [[ -e "$dir/secret" ]] && secret=saved
+  # Without an identity the PIN can't be used, so Wake isn't offered as Unlock.
+  [[ "$secret" == saved && ! "$(<"$dir/secret")" =~ ^[0-9a-f]{64}$ ]] && secret=stale
   [[ -e "$dir/blocked" ]] && secret=blocked
   printf 'keep=%s running=%s secret=%s\n' "$keep" "$running" "$secret"
 }

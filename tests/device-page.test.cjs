@@ -141,12 +141,12 @@ test('session summaries describe profile, audio and camera', () => {
   assert.equal(registry.mirrorSummary('Balanced', null), '');
   assert.equal(registry.audioSummary({ record: true }), 'Opus · records MKA');
   assert.equal(registry.webcamCardSummary({ camera: 'back', size: 'auto', fps: '24' }, null), 'Back · Auto · 24 fps');
-  assert.equal(registry.webcamCardSummary({ camera: 'id:2', size: '2032x1144', fps: '30' }, null), 'Camera 2 · 2032×1144 · 30 fps');
+  assert.equal(registry.webcamCardSummary({ camera: 'id:2', size: '2032x1144', fps: '30' }, null), 'Cam 2 · 1144p · 30 fps');
 });
 
 test('cameraShortName and runningName name a camera and a session kind', () => {
   assert.equal(registry.cameraShortName('id:0', [{ id: '0', facing: 'back' }]), 'Back');
-  assert.equal(registry.cameraShortName('id:7', [{ id: '0', facing: 'back' }]), 'Camera 7');
+  assert.equal(registry.cameraShortName('id:7', [{ id: '0', facing: 'back' }]), 'Cam 7');
   assert.equal(registry.runningName('audio'), 'audio');
   assert.equal(registry.runningName('bogus'), 'the session');
   assert.deepEqual(plain(registry.sessionRegistry().map(entry => entry.key)), ['mirror', 'audio', 'webcam']);
@@ -182,4 +182,10 @@ test('identityRows lists the serial and a differing address', () => {
   assert.deepEqual(plain(page.identityRows(usb)), [{ label: 'Serial', value: 'USB123' }]);
   assert.deepEqual(plain(page.identityRows(wifi)), [{ label: 'Serial', value: wifi.serial }, { label: 'Address', value: '192.168.1.4:5555' }]);
   assert.equal(page.identityRows({ serial: 'adb-X', source: 'mdns', endpoint: 'adb-X' })[0].label, 'Service');
+});
+
+test('shortSize keeps named sizes and shortens the rest to their short side', () => {
+  assert.equal(registry.shortSize('1920x1080'), '1080p');
+  assert.equal(registry.shortSize('2032x1144'), '1144p');
+  assert.equal(registry.shortSize('auto'), 'Auto');
 });

@@ -8,6 +8,7 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 test('parsePowerStatus reads the status line', () => {
   assert.deepEqual(plain(power.parsePowerStatus('keep=on running=1 secret=saved\n')), { keepAwake: true, running: true, secret: 'saved' });
   assert.deepEqual(plain(power.parsePowerStatus('keep=off running=0 secret=blocked')), { keepAwake: false, running: false, secret: 'blocked' });
+  assert.equal(power.parsePowerStatus('keep=off running=0 secret=stale').secret, 'stale');
 });
 
 test('parsePowerStatus rejects anything else', () => {
@@ -30,6 +31,6 @@ test('connectedCommand acts only on real connects', () => {
 });
 
 test('secretLabel describes every state', () => {
-  for (const secret of ['none', 'saved', 'blocked'])
+  for (const secret of ['none', 'saved', 'stale', 'blocked'])
     assert.notEqual(power.secretLabel(secret), power.secretLabel('unknown'), secret);
 });

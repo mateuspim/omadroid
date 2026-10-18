@@ -4,7 +4,7 @@
  * @returns {{keepAwake: boolean, running: boolean, secret: string}|null} null for anything else
  */
 function parsePowerStatus(output) {
-  var match = /^keep=(on|off) running=([01]) secret=(none|saved|blocked)$/.exec(String(output).trim());
+  var match = /^keep=(on|off) running=([01]) secret=(none|saved|stale|blocked)$/.exec(String(output).trim());
   if (!match) return null;
   return { keepAwake: match[1] === "on", running: match[2] === "1", secret: match[3] };
 }
@@ -34,6 +34,7 @@ function secretLabel(secret) {
   return ({
     none: "No unlock PIN saved",
     saved: "Unlock PIN saved in the keyring; entered once per unlock",
+    stale: "Saved without this device's identity; save the PIN again",
     blocked: "Unlock paused after a failed try; save the PIN again"
   })[secret] || "Unlock PIN state unknown";
 }

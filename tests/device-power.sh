@@ -78,6 +78,7 @@ saved_identity="$(cat "$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret")"
 : >"$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret"
 [[ "$(power unlock USB123 2>&1)" == *'Save the PIN again.' ]] || fail "missing identity hash not refused"
 [[ ! -e "$OMADROID_POWER_DIR/typed" ]] || fail "typed without an identity hash"
+[[ "$(power status USB123)" == *secret=stale ]] || fail "a PIN without an identity is reported stale"
 printf '%s\n' "$saved_identity" >"$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret"
 
 # Pattern lock or no bouncer: nothing typed, attempt not spent.
