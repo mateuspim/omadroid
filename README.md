@@ -1,80 +1,102 @@
 # <img src="icon.svg" alt="" width="32" height="32" align="top"> OmaDroid
 
 An Omarchy bar widget for discovering Android Debug Bridge (ADB) devices over
-USB and wireless mDNS, then launching scrcpy with chosen video and audio
-settings.
+USB and wireless mDNS, then mirroring them, playing their audio or using their
+camera as a webcam with scrcpy. See [CHANGELOG.md](CHANGELOG.md) for what each
+release changed.
+
+## Quick start
+
+1. Install the tools and the plugin (see [Install](#install)):
+   `omarchy pkg add android-tools scrcpy qrencode`, then
+   `omarchy plugin add https://github.com/mateuspim/omadroid --enable`.
+2. On Android, enable Developer options › USB debugging (or Wireless
+   debugging), then plug in the cable and accept the prompt, or pair from
+   **+ Add device** › **QR code**.
+3. Click the OmaDroid icon in the bar and choose the device under
+   **CONNECTED**.
+4. Click **Mirror**, **Audio** or **Webcam** on its page. ⚙ on a card changes
+   its options; ■ on the session banner stops the session.
 
 ## Features
 
 The popup opens on a device list grouped into **CONNECTED**, **NEEDS
-ATTENTION** and **NEARBY**. Click a ready device to open its page: a summary
-(model, Android version, connection, battery, storage and memory), quick
-actions, and the **Mirror**, **Webcam**, **Sound** and **Info** sections, all
-for that device. **+ Add device** at the bottom of the list pairs or connects a
-wireless device, and ⚙ in the header opens **Settings**. A running mirror,
-audio or webcam session shows as a banner on every view; click it to open that
+ATTENTION** and **NEARBY**. Click a ready device to open its page:
+
+1. a hero with its name, model, Android version, connection, battery, storage
+   and memory;
+2. three **session cards**, **Mirror**, **Audio** and **Webcam**, each with a
+   live summary of what a click starts (for example "Balanced · 1080p · 8
+   Mbps", "Opus · no video", "Front · 1080p · 30 fps");
+3. one compact row of device controls: **Wake** (**Unlock** once a PIN is
+   saved), **Lock**, **Awake**, **Text**, and **Wireless** for a USB device or
+   **Disconnect** for a Wi-Fi one;
+4. the **Sound** and **Info** tabs.
+
+**+ Add device** at the bottom of the list pairs or connects a wireless
+device, and ⚙ in the header opens **Settings**. A running mirror, audio or
+webcam session shows as a banner on every view; click it to open that
 device's page, or ■ to stop it.
 
 - **Devices:** one process-wide discovery service follows `adb track-devices -l`
   for every monitor, so plugging in, authorizing or losing a device shows at
   once without polling, plus Avahi-based mDNS discovery that follows the network
-  while the popup is open. Each row shows the
-  device name with its model and battery, or what it needs (accept the USB
-  debugging prompt, offline, …); the serial or service identity and address
-  are in its tooltip. A row that needs you has one inline action:
-  **Reconnect** for a wireless device that went offline, **Connect** for a
-  discovered one, **Pair** for an advertised pairing service. The name
-  is the one set on Android (Settings › About › Device name), read once per
-  connection; devices without one show their model. A device's page shows
-  battery, Android version, connection, storage used and memory; its **Info**
-  section adds temperature, SD card or USB drive storage, and screen size with
-  its aspect ratio, plus the serial and address with copy buttons.
-  Sizes use 1000-based units (GB, TB), as Android's Settings does.
-  These are read with one `adb shell` per device while the popup is open and
-  refreshed once they are a minute old; nothing is read while it is closed. The
-  session card shows the mirrored device's battery. The bar
-  badge counts authorized, ready transports. ↻ in the header (or F5) re-reads ADB and
-  restarts the Avahi browsers; its tooltip says how fresh the list is. If the ADB tracker stops (adb missing, its server
-  restarting), OmaDroid polls `adb devices -l` every 15 seconds by default
-  (**Scan interval** in Settings accepts 5–3600 seconds) and retries the tracker with a growing
-  delay of up to a minute.
+  while the popup is open. Each row shows the device name with its model and
+  battery, or what it needs (accept the USB debugging prompt, offline, …); the
+  serial or service identity and address are in its tooltip. A row that needs
+  you has one inline action: **Reconnect** for a wireless device that went
+  offline, **Connect** for a discovered one, **Pair** for an advertised pairing
+  service. The name is the one set on Android (Settings › About › Device name),
+  read once per connection; devices without one show their model. The **Info**
+  tab adds temperature, SD card or USB drive storage, and screen size with its
+  aspect ratio, plus the serial and address with copy buttons. Sizes use
+  1000-based units (GB, TB), as Android's Settings does. Details are read with
+  one `adb shell` per device while the popup is open and refreshed once they
+  are a minute old; nothing is read while it is closed. The bar badge counts
+  authorized, ready transports. ↻ in the header (or F5) re-reads ADB and
+  restarts the Avahi browsers; its tooltip says how fresh the list is. If the
+  ADB tracker stops (adb missing, its server restarting), OmaDroid polls
+  `adb devices -l` every 15 seconds by default (**Scan interval** in Settings
+  accepts 5–3600 seconds) and retries the tracker with a growing delay of up
+  to a minute.
 - **Wireless:** **Add device** pairs by scanning a QR code with Android
   (**QR code**), by six-digit code (**Pairing code**, prefilled from
   discovered services) or connects to a paired device by manual `IP:port` /
-  `hostname:port` / `[IPv6]:port` entry (**Address**). A USB device's page has
-  **Go wireless** to move it to Wi-Fi so the cable can be unplugged, and a
-  wireless device's page has **Disconnect**. See [Pair with a QR code](#pair-with-a-qr-code) and
-  [Go wireless](#go-wireless).
-- **Mirror:** open an authorized device, choose a built-in or saved profile in
-  its **Mirror** section, and launch scrcpy (the **Mirror** quick action
-  launches with the section's current options). Change resolution, FPS, H.264/H.265/AV1 codec, video bitrate,
-  and the **Audio**, **Record**, **Screen off**, **Stay awake** and
-  **Fullscreen** options independently. Launch
-  **Audio only** (or the **Audio** quick action) to listen in the background without a scrcpy window
-  (`--no-video --no-window`); optional audio-only recordings are saved as `.mka`.
-  Use the four orientation buttons during a video session to lock the device to
-  portrait, landscape, or either inverted orientation. **Auto rotate / reset**
-  restores Android's sensor rotation. A lock set from OmaDroid is released when
-  the session ends; a lock set on the phone is kept. Use **Stop** on the session card, or ■ on the
-  session banner, to end an audio-only session. While a session runs, its controls (Stop, phone screen,
-  rotation) come first and the options for the next launch fold under
-  **Next session options**.
-- **Webcam:** from a device's **Webcam** section, send its front or back
-  camera to a selected v4l2loopback output. Choose capture orientation and an
-  automatic or explicit camera size. The bar and every popup show a running
-  webcam session separately from mirroring.
-  While a session runs, any other device's Mirror or Webcam section, or the
-  same device's other one, shows a one-line notice with **Stop** and keeps its own settings visible while
-  Start waits for the current session to end.
-- **Keep awake, wake, unlock and lock:** each ready device's page has the
-  quick actions **Keep awake**, **Wake** (**Unlock** once a PIN is saved) and
-  **Lock**; the PIN is saved under **Unlock PIN** in its **Info** section. See
-  [Keep awake and unlock](#keep-awake-and-unlock).
-- **Sound:** a device's **Sound** section has its volume keys, mute all, ringer mode, per-app volume
-  and mute for the apps playing sound, and the system sound streams. See
-  [Sound](#sound).
-- **Send text:** a hotkey, or the **Send text** quick action, opens a centered prompt; what you type there is typed
-  on the device. See [Send text](#send-text).
+  `hostname:port` / `[IPv6]:port` entry (**Address**). A USB device's
+  **Wireless** control moves it to Wi-Fi so the cable can be unplugged, and a
+  wireless device's **Disconnect** drops the connection. See
+  [Pair with a QR code](#pair-with-a-qr-code) and [Go wireless](#go-wireless).
+- **Session cards:** a click starts that session with the options shown in its
+  summary. ⚙ on a card opens its options under the cards, one panel at a
+  time: **Mirror** and **Audio** share the **Mirror & Audio profile**
+  (resolution, FPS, H.264/H.265/AV1 codec, video bitrate, and the **Audio**,
+  **Record**, **Screen off**, **Stay awake** and **Fullscreen** options);
+  **Webcam** has its camera settings. **Audio** plays the device's sound
+  without a scrcpy window (`--no-video --no-window`); its optional recordings
+  are saved as `.mka`. While a session runs on the device, its controls
+  (Preview, Log, Stop, battery, recording, phone screen and rotation) show
+  under the cards. See [Mirroring and profiles](#mirroring-and-profiles) and
+  [Android webcam setup](#android-webcam-setup).
+- **One-click switching:** only one session runs at a time. Starting any
+  session while another runs, of another kind or on another phone, stops it
+  and starts the new one: the cards read "Switch · stops …" and the banner
+  "Switching to …" until it starts, and ■ cancels the switch. A mirror that
+  records asks first ("Stop recording & switch?"): click again within about 4
+  seconds to finalize the recording and switch. A session that is still
+  starting can't be switched; the other cards wait until it runs. The running
+  session's card reads "● Running", and clicking it stops the session.
+- **Rotation:** the four orientation buttons during a video session lock the
+  device to portrait, landscape, or either inverted orientation. **Auto
+  rotate / reset** restores Android's sensor rotation. A lock set from
+  OmaDroid is released when the session ends; a lock set on the phone is kept.
+- **Keep awake, wake, unlock and lock:** **Awake**, **Wake** (**Unlock** once
+  a PIN is saved) and **Lock** in the control row; the PIN is saved under
+  **Unlock PIN** in the **Info** tab. See [Keep awake and unlock](#keep-awake-and-unlock).
+- **Sound:** the **Sound** tab has the device's volume keys, mute all, ringer
+  mode, per-app volume and mute for the apps playing sound, and the system
+  sound streams. See [Sound](#sound).
+- **Send text:** a hotkey, or the **Text** control, opens a centered prompt;
+  what you type there is typed on the device. See [Send text](#send-text).
 
 The popup follows the active Omarchy theme and uses its native buttons, inputs,
 dropdowns, typography, and keyboard focus styles. Tab moves between controls;
@@ -92,24 +114,39 @@ omarchy plugin add https://github.com/mateuspim/omadroid --enable
 
 ## Requirements and enabling
 
+Install the ADB tools, scrcpy, and `qrencode` for QR pairing:
+
+```bash
+omarchy pkg add android-tools scrcpy qrencode
+```
+
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
-(`timeout`), util-linux (`flock`, `setsid`, `waitpid`), `secret-tool` (libsecret, only to save an unlock PIN), foot (preferred for the hidden session terminal) or an Omarchy default terminal, Avahi
-(`avahi-browse` and a running `avahi-daemon`), and scrcpy 4.1+ for mirroring and
-idle prevention. `qrencode` is only needed to pair with a QR code. The Android
-webcam also needs `v4l2loopback` (see below); its in-panel preview needs
-`ffmpeg` (with `ffprobe`), **Copy commands**
-needs `wl-copy` (wl-clipboard), and `fuser` (psmisc), when present, lets
-OmaDroid refuse an output another app is holding. The bar and popup warn when `adb`, `scrcpy`, or a configured
-default terminal is missing. This implementation was checked against the installed
-scrcpy 4.1 command-line options. Python 3 (standard library only) is only
-needed for per-app volume and **Mute all** in a device's Sound section. Node is only
-needed for development tests; there are no npm packages.
+(`timeout`), util-linux (`flock`, `setsid`, `setpriv`, `waitpid`), Avahi
+(`avahi-browse` and a running `avahi-daemon`), foot (preferred for the hidden
+session terminal) or an Omarchy default terminal, and scrcpy 4.1+ for
+mirroring, audio, the webcam and idle prevention. This implementation was
+checked against the installed scrcpy 4.1 command-line options. The bar and
+popup warn when `adb`, `scrcpy`, or a configured default terminal is missing.
+
+Optional, each only for the feature named:
+
+- `qrencode`: pairing with a QR code.
+- `secret-tool` (libsecret): saving an unlock PIN.
+- `v4l2loopback-dkms`: the Android webcam (see below); `ffmpeg` (with
+  `ffprobe`): its in-panel preview; `wl-copy` (wl-clipboard): **Copy
+  commands** and the Info tab's copy buttons; `fuser` (psmisc), when present,
+  lets OmaDroid refuse an output another app is holding.
+- Python 3 (standard library only): per-app volume and **Mute all** in the
+  Sound tab.
+- `jq`: closing the finished sessions' hidden terminals before a new launch.
+- Node: development tests only; there are no npm packages.
 
 ### Android webcam setup
 
 Camera capture requires Android 12 or later, scrcpy 4.1+, and a Linux
-`v4l2loopback` output. A device's Webcam section reports whether the package is missing,
-the kernel module is unavailable or unloaded, or no output is visible. **Set up
+`v4l2loopback` output. Until one is usable, the **Webcam** card reads "Needs
+setup", and its options (⚙) say whether the package is missing, the kernel
+module is unavailable or unloaded, or no output is visible. **Set up
 webcam** or **Enable output** opens a visible terminal after you click it;
 Omarchy's package helper and `sudo` ask for a password there. It loads one
 output now and at every boot, by writing
@@ -141,14 +178,13 @@ for other distributions and module options.
 after scrcpy starts writing. If you already have loopback devices, use their
 existing numbers and labels; OmaDroid lists detected loopback outputs so you
 can choose the right one and checks write access before launch. Opening the
-Webcam section never installs or loads anything. Other USB cameras are never listed
-as outputs.
+popup or the webcam options never installs or loads anything. Other USB cameras
+are never listed as outputs.
 
-Open a ready phone, choose its **Webcam** section, select a V4L2 output, then
-press **Start webcam**. The Mirror section keeps its mirroring and audio-only
-options.
+Open a ready phone, pick the camera and V4L2 **Output** under the **Webcam**
+card's ⚙ if the defaults don't suit, then click the card.
 
-Opening the section asks the phone for its cameras (`scrcpy --list-camera-sizes`)
+Opening the webcam options asks the phone for its cameras (`scrcpy --list-camera-sizes`)
 once per device; **Refresh** asks again and also finds V4L2 outputs. Every camera is listed by its id,
 so a phone with two front cameras offers both, and Resolution, Frame rate and
 Zoom only offer what the chosen camera reports. Until the list arrives, Front
@@ -179,14 +215,17 @@ does not forward the phone microphone. Start the webcam before opening OBS or a
 video call, then select the chosen `/dev/videoN` or its card label as a **Video
 Capture Device** in OBS or as the camera in the call. A consumer that stays
 open across a size or orientation change can keep the old V4L2 format and show
-garbled video; the Preview detects that and says so. **Stop** on the session card, or ■ on the
-session banner, ends the shared scrcpy session from any OmaDroid bar instance.
+garbled video; the preview detects that and says so. **Stop** on the session
+controls, a click on the "● Running" card, or ■ on the session banner ends the
+shared scrcpy session from any OmaDroid bar instance.
 
-While the webcam runs, **Preview** in its session card shows the output inside
-the popup, read the same way OBS or a call reads it, so a working preview means
-other apps receive the camera. An Omarchy loading screen covers it until frames
-arrive. The preview opens only once scrcpy is streaming, follows the session's
-own output, and closes when the popup closes or you leave the Webcam section. It
+While the webcam runs, its preview shows the output inside the popup, read the
+same way OBS or a call reads it, so a working preview means other apps receive
+the camera. A webcam started from the popup opens its preview by itself once
+scrcpy is streaming, if the popup is still open; **Preview** / **Hide** in the
+session controls toggles it. An Omarchy loading screen covers it until frames
+arrive. It follows the session's own output, and closes when the popup closes
+or you leave the device's page. It
 runs `ffmpeg`, which reads the output at its current size and writes a small
 JPEG (480 px wide, about 12 per second) to OmaDroid's runtime folder; ffmpeg
 also exits if the shell does. If apps reading the output receive a different
@@ -206,12 +245,10 @@ If the widget is not already in the bar, enable it with:
 omarchy plugin enable pym.omadroid --section right
 ```
 
-The plugin ID is `pym.omadroid` (it was called DroidLink, `pym.droidlink`,
-before 0.10). It does not modify packaged Omarchy files or Omarchy's configuration:
+OmaDroid does not modify packaged Omarchy files or Omarchy's configuration:
 every option is in the popup's **Settings** (⚙) and saved in OmaDroid's own
 `~/.config/omarchy/omadroid.ini`, under `[preferences]` and `[autoConnect]`.
-Settings from 0.7.0 kept in `shell.json` are no longer read; set them again in
-Settings (the defaults are unchanged). Omarchy watches the user plugin directory for updates.
+Omarchy watches the user plugin directory for updates.
 
 Before each launch, OmaDroid registers a named Hyprland window rule with
 `hyprctl eval`. The rule sends its diagnostic terminal straight to the hidden
@@ -274,7 +311,7 @@ reports the error and keeps USB and manual wireless controls available. The
 script does not start or configure the daemon. Some networks block multicast.
 No automatic ADB server restart, package installation, or broad disconnect is
 performed. Wireless debugging and TCP mode are only switched on by an explicit
-**Go wireless**.
+click on **Wireless** ([Go wireless](#go-wireless)).
 
 ### Pair with a QR code
 
@@ -297,7 +334,8 @@ needs wireless discovery; the button is disabled while Avahi is unavailable.
 
 ### Go wireless
 
-A ready USB device's page has the **Go wireless** quick action. With the cable still in, `go-wireless.sh`:
+A ready USB device's control row has **Wireless**. With the cable still in,
+clicking it runs `go-wireless.sh`, which:
 
 1. Reads the device's Wi-Fi IPv4 address (`wlan*`; mobile data doesn't count).
 2. On Android 11+, turns on Wireless debugging (`settings put global
@@ -334,6 +372,9 @@ connects it without a click, even with the popup closed.
   closed. Device details are still only read while the popup is open.
 
 ## Mirroring and profiles
+
+⚙ on the **Mirror** or **Audio** card opens the **Mirror & Audio profile**
+they share; the cards' summaries follow it.
 
 | Profile | Maximum edge | FPS | Codec | Video bitrate | Audio |
 | --- | --- | --- | --- | --- | --- |
@@ -404,21 +445,24 @@ Recording creates a unique timestamped `.mkv` file in the selected existing,
 writable folder; the default is your home directory. Audio-only sessions instead
 create `.mka` files. A missing or read-only folder stops the launch with a
 message saying so. The session displays its exact path. Audio is included only
-when forwarding is enabled and supported.
-Use **Stop** on the session card (its tooltip says **Stop mirroring**), ■ on
-the session banner, or close the scrcpy window to finalize a recording.
+when forwarding is enabled and supported. Use **Stop** in the session controls
+(its tooltip says **Stop mirroring**), the "● Running" card, ■ on the session
+banner, or close the scrcpy window to finalize a recording. Switching to
+another session finalizes it too, after the confirm described under
+[Features](#features).
 Scrcpy runs in foot when it is installed, otherwise in Omarchy's configured
 default terminal, on a hidden `special:omadroid` workspace, leaving only the
 scrcpy video window visible. Foot is preferred because each of its windows is a
 separate process, so OmaDroid never shares a process with your own terminals.
-Press **Log** in a device's Mirror section or on the session card (or run
+Press **Log** in the session controls, or beside the last session message on
+the device page once it has ended (or run
 `hyprctl dispatch 'hl.dsp.workspace.toggle_special("omadroid")'`) to show or hide its
 diagnostic terminal. The terminal is asked to stay open after scrcpy exits if
 the configured terminal supports that option; the next launch closes the
 previous session's terminal. Closing the popup, switching
 views or devices, or restarting the Omarchy shell leaves the session running. Every monitor's
 widget reads the same session state and can stop it; only one OmaDroid session
-runs at a time. Nothing polls the session: widgets watch its state file, and
+runs at a time, and starting another switches to it. Nothing polls the session: widgets watch its state file, and
 while a session runs `session.sh wait` sleeps on the scrcpy process (util-linux
 `waitpid`) and ends the session, releasing a rotation lock OmaDroid set, as soon
 as scrcpy exits, even with the popup closed. Closing the terminal also ends the session. A device that
@@ -438,7 +482,7 @@ open. ADB's failure messages are checked even when it exits with code 0.
 
 ## Keep awake and unlock
 
-**Keep awake** keeps the screen on without mirroring, also on battery (scrcpy's
+**Awake** (Keep awake) keeps the screen on without mirroring, also on battery (scrcpy's
 `--stay-awake` only works while charging). It wakes the device, then runs a
 window-less `scrcpy --no-video --no-audio --no-window --keep-active` in its own
 session. scrcpy changes no Android setting, so nothing is left behind if
@@ -452,39 +496,51 @@ locks at once when "Power button instantly locks" is on (its default); otherwise
 the device page says the screen is off and the keyguard follows after the device's own
 lock delay. A screen that stays on is reported as an error.
 
-**Set…** (or **Change…**) under **Unlock PIN** in a device's **Info** section
+**Set…** (or **Change…**) under **Unlock PIN** in a device's **Info** tab
 stores the device's PIN or password in the desktop keyring with
 `secret-tool` (libsecret: gnome-keyring, KWallet, …), never in OmaDroid's
 settings, logs or command arguments. It is keyed by the device's hardware serial
-(`ro.serialno`) as reported live, never by its adb address, so a different
-device on a reused address can't receive it. Unlocking:
+(`ro.serialno`) as reported live, never by its adb address, and bound to the
+device's identity: saving also stores a sha256 of `ro.serialno` and
+`android_id`. The serial alone isn't enough, since Wireless debugging
+advertises it over mDNS (`adb-<serial>-…`); `android_id` isn't advertised,
+and only its hash is kept on this computer. Unlocking:
 
-1. wakes the device and does nothing more if no lock screen is showing;
-2. opens the bouncer (`wm dismiss-keyguard`) and types only once a PIN or
+1. wakes the device, then reads both values again and refuses, before
+   anything is typed and without spending the one attempt, if the identity
+   differs from the one the PIN was saved for (after a factory reset, save the
+   PIN again);
+2. does nothing more if no lock screen is showing;
+3. opens the bouncer (`wm dismiss-keyguard`) and types only once a PIN or
    password field is on screen (`uiautomator`), so a pattern lock or a missing
    bouncer costs no attempt;
-3. types the secret through `adb shell` stdin and presses Enter, **once**. If the
+4. types the secret through `adb shell` stdin and presses Enter, **once**. If the
    lock screen is still showing, unlocking is paused for that device until the
    secret is saved again, so a wrong or outdated PIN never runs into Android's
    lockout or wipe limits.
 
 Passwords may use printable ASCII (4–64 characters, inner spaces allowed);
 `input text` can't type accents or emoji, so those are refused when saving.
-Pattern locks aren't supported. While it is typed, the secret is briefly visible
-to processes on the device itself, which anything with adb access controls
-anyway.
+Pattern locks aren't supported. While it is typed, the secret briefly
+appears in the arguments of the device's own `input` command, visible to
+processes on the device itself.
+
+The identity check keeps the PIN from a different device that turns up on a
+reused address or advertises a copied serial. It is not a defence against
+someone who already has adb access to your device: they can read the same
+`android_id`, and they already control the device fully without the PIN.
 
 Settings (⚙) chooses when this happens: **Wake** under **When mirroring
 starts** (on by default), **Unlock** under **When mirroring starts**, and
 **Wake** and **Unlock** under **When a device connects** (off). A device without a saved PIN is only woken. Devices already
 connected when the shell starts are not woken or unlocked; only their keepers
 return. A failed wake or unlock is reported and never blocks the mirror launch.
-Preferences live under `$XDG_STATE_HOME/omadroid/devices` (marker files, no
-secrets); keepers are tracked under `$XDG_RUNTIME_DIR/omadroid-$UID/keepers`.
+Preferences live under `$XDG_STATE_HOME/omadroid/devices` (marker files and
+the identity hash, no secrets); keepers are tracked under `$XDG_RUNTIME_DIR/omadroid-$UID/keepers`.
 
 ## Sound
 
-A ready device's **Sound** section controls that device:
+A ready device's **Sound** tab controls that device:
 
 - **− / +** press the device's own volume keys, so they change whatever
   Android would change (usually media) and show its volume panel.
@@ -501,7 +557,7 @@ A ready device's **Sound** section controls that device:
   (Bixby on Samsung). Ringtone, notifications and system follow the ringer mode, so they
   read as muted on Vibrate and Silent.
 
-Right-click a slider to mute it; the wheel scrolls the page. The section reads the device
+Right-click a slider to mute it; the wheel scrolls the page. The tab reads the device
 every 2 seconds while it is shown (Android has no volume change events for
 the shell), and nothing while it is hidden or the popup is closed. While you
 drag, only the latest value is sent.
@@ -527,8 +583,8 @@ up|down|mute`.
 
 A centered prompt, like Omarchy's reminder prompt, that types on a device with
 `adb shell input text`. Focus a text field on the device, open the prompt, type,
-and press Enter. A device page's **Send text** quick action opens the
-prompt on that device.
+and press Enter. A device page's **Text** control opens the prompt on that
+device.
 
 Omarchy has no way for a plugin to bind keys, so the **Send text hotkey** row
 in Settings (⚙) writes the binding into `~/.config/hypr/bindings.lua`. Pick a
@@ -542,7 +598,10 @@ o.bind("SUPER + ALT + D", "OmaDroid send text", "omarchy-shell shell toggle pym.
 ```
 
 **Update** replaces that block, and **Remove** deletes it. Each change keeps a
-`bindings.lua.bak.<time>` copy and reloads Hyprland. A combination that
+`bindings.lua.bak.<epoch>` copy (only the 2 newest are kept) and reloads
+Hyprland. If the start marker is there without its end marker (the block was
+edited by hand), the file is left untouched and OmaDroid asks you to restore
+or delete the block yourself. A combination that
 `omarchy menu keybindings --print` already lists is refused with the name of
 its binding. A symlinked `bindings.lua` (dotfiles) is written through and stays
 a symlink. Without the plugin's UI: `hotkey.sh set "SUPER + ALT + D"`,
@@ -593,35 +652,23 @@ names: a letter, digit or `f1`–`f12`; `enter`, `tab`, `space`, `backspace`,
 
 ## Development
 
-Validate the plugin:
+Validate the manifest, then run every test suite:
 
 ```bash
 omarchy plugin validate "$PWD"
-node tests/model.test.cjs
-node tests/mdns.test.cjs
-node tests/screen-power.test.cjs
-node tests/screen-rotation.test.cjs
-node tests/profiles.test.cjs
-node tests/device-power.test.cjs
-node tests/pairing.test.cjs
-node tests/auto-connect.test.cjs
-node tests/send-text.test.cjs
-node tests/sound-volume.test.cjs
-bash tests/session.sh
-bash tests/device-power.sh
-bash tests/go-wireless.sh
-bash tests/send-text.sh
-bash tests/hotkey.sh
-bash tests/audio-codes.sh
-bash tests/device-volume.sh
-bash tests/shared-discovery.sh
-OMADROID_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
-OMADROID_TEST_CASE=no_track bash tests/shared-discovery.sh
-bash tests/smoke.sh
-OMADROID_TEST_CASE=avahi_unavailable bash tests/smoke.sh
+bash tests/run-all.sh
 ```
 
-All Node suites run offline (`node --test tests/*.test.cjs`); the shell-helper suite uses a fake Avahi command
+`tests/run-all.sh` runs the Node suites (`node --test tests/*.test.cjs`), then
+each shell suite in `tests/`, including the `OMADROID_TEST_CASE` variants
+(`shared-discovery.sh no_track`, `smoke.sh avahi_unavailable`). It stops at the
+first failure, naming it, and prints `OMADROID_ALL_OK` when everything passed;
+a shell suite missing from its list fails the run. Any suite can also be run on
+its own, for example `bash tests/session.sh` or
+`OMADROID_TEST_CASE=avahi_unavailable bash tests/smoke.sh`. The user-facing
+scripts at the top level are executable and can be run directly.
+
+All Node suites run offline; the shell-helper suite uses a fake Avahi command
 and covers streamed removals, a browser that stops, and that no browser outlives the helper.
 Ask before running live discovery or desktop tests in an active user session.
 Screen-power tests execute the command builder and QML method bodies with fake
@@ -631,8 +678,9 @@ require an approved real-device test.
 
 The device-power test runs `device-power.sh` against a fake keyring and a
 simulated lock screen: odd passwords (quotes, spaces, `%s`, `$`, backticks) are
-typed exactly, the secret never appears in any argv, another device never gets
-it, a pattern lock costs no attempt, a wrong secret is tried once then paused,
+typed exactly, the secret never appears in any argv, a device with another
+serial or `android_id` never gets it (and the refusal keeps the attempt), the
+raw `android_id` is never stored, a pattern lock costs no attempt, a wrong secret is tried once then paused,
 Lock reports an instant lock, a lock delay and an ignored sleep key, and one keeper runs per device and returns on connect.
 
 The go-wireless test runs `go-wireless.sh` against a fake adb that simulates
@@ -673,9 +721,11 @@ For a visual review, create a temporary directory and run
 This renders the popup offscreen with fake devices, opens no window, writes one
 PNG per view into that directory, and exits. `OMADROID_PREVIEW_PAGES` picks the
 views, comma-separated and in order (`home`, `add`, `settings`,
-`device-<section>` for the USB phone or `wifi-<section>` for the wireless one,
-where the section is `mirror`, `webcam`, `sound` or `info`; see
-`tests/Preview.qml` for the full list and default). `OMADROID_PREVIEW_QML`
+`device` or `device-<part>` for the USB phone, `wifi` or `wifi-<part>` for the
+wireless one, where the part is a tab (`sound`, `info`) or a session card whose
+options are open (`mirror`, `audio`, `webcam`), plus session steps such as
+`click-<kind>`, `start`, `record` and `stopped`; see `tests/Preview.qml` for
+the full list and default). `OMADROID_PREVIEW_QML`
 swaps in another capture script: `tests/HomePreview.qml` captures the device
 list, header and session banner, and `tests/DevicePreview.qml` captures a
 device page per device and section. Preview requires the QtTest QML module.
