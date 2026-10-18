@@ -5,7 +5,7 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 test_dir="$(mktemp -d /tmp/omadroid-power.XXXXXX)"
 cleanup() {
-  bash "$repo_dir/device-power.sh" keep-awake off USB123 >/dev/null 2>&1 || true
+  bash "$repo_dir/scripts/device-power.sh" keep-awake off USB123 >/dev/null 2>&1 || true
   [[ "$test_dir" == /tmp/omadroid-power.* ]] && rm -rf -- "$test_dir"
 }
 trap cleanup EXIT
@@ -16,7 +16,7 @@ cp "$repo_dir/tests/mock-secret-tool.sh" "$test_dir/bin/secret-tool"
 chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH" XDG_RUNTIME_DIR="$test_dir/runtime" XDG_STATE_HOME="$test_dir/state"
 export OMADROID_KEYRING="$test_dir/keyring" OMADROID_POWER_DIR="$test_dir/device" OMADROID_TEST_ARGS="$test_dir/scrcpy-args"
-power() { bash "$repo_dir/device-power.sh" "$@"; }
+power() { bash "$repo_dir/scripts/device-power.sh" "$@"; }
 fail() {
   echo "OMADROID_POWER_FAILED: $*" >&2
   exit 1

@@ -18,7 +18,7 @@ ColumnLayout {
   readonly property var rows: actions.discovery ? actions.discovery.rows : []
   readonly property bool discoveryDown: actions.discovery !== null && actions.discovery.mdnsLevel === "error"
   readonly property string announcedEndpoint: code ? Pairing.qrPairingEndpoint(rows, code.service) : ""
-  readonly property string qrScript: decodeURIComponent(Qt.resolvedUrl("qr-pair.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string qrScript: decodeURIComponent(Qt.resolvedUrl("scripts/qr-pair.sh").toString().replace(/^file:\/\//, ""))
   spacing: Style.space(10)
   // A scanned code's pair command started; AddDevicePage waits for its result.
   signal pairingStarted

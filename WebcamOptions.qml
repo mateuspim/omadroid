@@ -69,7 +69,7 @@ ColumnLayout {
     }
   }
   readonly property bool webcamChanged: webcamRunning && !session.stopping && session.sessionArgs.length > 0 && nextWebcamArgs !== null && JSON.stringify(nextWebcamArgs) !== JSON.stringify(session.sessionArgs)
-  readonly property string webcamScript: decodeURIComponent(Qt.resolvedUrl("webcam-devices.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string webcamScript: decodeURIComponent(Qt.resolvedUrl("scripts/webcam-devices.sh").toString().replace(/^file:\/\//, ""))
   spacing: Style.space(6)
 
   Core.Settings {

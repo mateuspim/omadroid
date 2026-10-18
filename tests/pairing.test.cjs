@@ -21,7 +21,7 @@ function runQrPair(withQrencode) {
       fs.copyFileSync(`${__dirname}/mock-qrencode.sh`, path.join(dir, 'qrencode'));
       fs.chmodSync(path.join(dir, 'qrencode'), 0o700);
     }
-    const result = spawnSync(path.join(dir, 'bash'), [`${__dirname}/../qr-pair.sh`], {
+    const result = spawnSync(path.join(dir, 'bash'), [`${__dirname}/../scripts/qr-pair.sh`], {
       encoding: 'utf8', timeout: 10000, env: { PATH: dir, OMADROID_QR_LOG: log } });
     return { ...result, log: fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '' };
   } finally {

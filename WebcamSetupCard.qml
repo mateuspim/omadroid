@@ -30,7 +30,7 @@ Rectangle {
   property bool setupPending: false
   property double setupStartedAt: 0
   readonly property var guidance: Webcam.webcamSetup(issue)
-  readonly property string setupScript: decodeURIComponent(Qt.resolvedUrl("webcam-setup.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string setupScript: decodeURIComponent(Qt.resolvedUrl("scripts/webcam-setup.sh").toString().replace(/^file:\/\//, ""))
   signal refreshRequested
 
   visible: !outputsFound

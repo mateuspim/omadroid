@@ -22,7 +22,7 @@ mkdir -p "$etc/modules-load.d" "$etc/modprobe.d"
 export PATH="$test_dir/bin:$PATH" OMADROID_SETUP_LOG="$test_dir/log" OMADROID_FOOT="$test_dir/no-foot" OMADROID_ETC="$etc"
 modprobe_line='sudo:modprobe v4l2loopback devices=1 exclusive_caps=1'
 persist_lines="sudo:tee $etc/modules-load.d/v4l2loopback.conf"$'\n'"sudo:tee $etc/modprobe.d/v4l2loopback.conf"
-bash "$repo_dir/webcam-setup.sh" install > "$test_dir/output"
+bash "$repo_dir/scripts/webcam-setup.sh" install > "$test_dir/output"
 [[ "$(cat "$test_dir/log")" == "omarchy:pkg add v4l2loopback-dkms"$'\n'"$modprobe_line"$'\n'"$persist_lines" ]]
 [[ "$(cat "$etc/modules-load.d/v4l2loopback.conf")" == v4l2loopback ]]
 [[ "$(cat "$etc/modprobe.d/v4l2loopback.conf")" == 'options v4l2loopback devices=1 exclusive_caps=1' ]]
@@ -30,21 +30,21 @@ bash "$repo_dir/webcam-setup.sh" install > "$test_dir/output"
 printf 'options v4l2loopback video_nr=10\n' > "$etc/modprobe.d/v4l2loopback.conf"
 rm "$etc/modules-load.d/v4l2loopback.conf"
 : > "$test_dir/log"
-bash "$repo_dir/webcam-setup.sh" load > "$test_dir/output"
+bash "$repo_dir/scripts/webcam-setup.sh" load > "$test_dir/output"
 [[ "$(cat "$test_dir/log")" == "$modprobe_line" ]]
 [[ "$(cat "$etc/modprobe.d/v4l2loopback.conf")" == 'options v4l2loopback video_nr=10' ]]
 [[ ! -e "$etc/modules-load.d/v4l2loopback.conf" ]]
 grep -q 'Kept your existing' "$test_dir/output"
 rm "$etc/modprobe.d/v4l2loopback.conf"
 : > "$test_dir/log"
-bash "$repo_dir/webcam-setup.sh" open install
+bash "$repo_dir/scripts/webcam-setup.sh" open install
 for ((attempt=0; attempt<20; attempt++)); do
   [[ -s "$test_dir/log" ]] && break
   sleep 0.1
 done
 [[ "$(cat "$test_dir/log")" == *'launch terminal --app-id=org.omarchy.terminal --title=OmaDroid webcam setup -- bash '*'/webcam-setup.sh install' ]]
 : > "$test_dir/log"
-OMADROID_FOOT="$test_dir/mock-foot" OMADROID_FOOT_LOG="$test_dir/log" bash "$repo_dir/webcam-setup.sh" open load
+OMADROID_FOOT="$test_dir/mock-foot" OMADROID_FOOT_LOG="$test_dir/log" bash "$repo_dir/scripts/webcam-setup.sh" open load
 for ((attempt=0; attempt<20; attempt++)); do
   [[ "$(wc -l < "$test_dir/log")" -ge 4 ]] && break
   sleep 0.1

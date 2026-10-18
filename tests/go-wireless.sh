@@ -27,7 +27,7 @@ reset_device() {
 # go EXPECTED_CODE SERIAL → stdout and stderr of the run in $out.
 go() {
   local expected="$1" code=0
-  out="$(bash "$repo_dir/go-wireless.sh" "$2" 2>&1)" || code=$?
+  out="$(bash "$repo_dir/scripts/go-wireless.sh" "$2" 2>&1)" || code=$?
   [[ "$code" == "$expected" ]] || fail "go-wireless $2 exited $code; expected $expected: $out"
 }
 

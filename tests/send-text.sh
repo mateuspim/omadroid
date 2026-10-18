@@ -19,7 +19,7 @@ send() {
   local expected="$1" code=0
   shift
   rm -f "$device/"*
-  out="$(bash "$repo_dir/send-text.sh" "$@" 2>&1)" || code=$?
+  out="$(bash "$repo_dir/scripts/send-text.sh" "$@" 2>&1)" || code=$?
   typed="$(cat "$device/typed" 2>/dev/null || true)"
   [[ "$code" == "$expected" ]] || fail "send-text $* exited $code; expected $expected: $out"
 }

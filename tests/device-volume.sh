@@ -12,7 +12,7 @@ chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH" XDG_CACHE_HOME="$test_dir/cache" OMADROID_TEST_ARGS="$test_dir/scrcpy-args"
 export OMADROID_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" OMADROID_VOLUME_DIR="$test_dir/device"
 dev="$test_dir/device"
-volume() { bash "$repo_dir/device-volume.sh" "$@"; }
+volume() { bash "$repo_dir/scripts/device-volume.sh" "$@"; }
 fail() {
   echo "OMADROID_VOLUME_FAILED: $*" >&2
   exit 1

@@ -12,7 +12,7 @@ test('device-info.sh reads only the current battery state and finds external vol
   try {
     fs.copyFileSync(`${__dirname}/mock-adb.sh`, path.join(dir, 'adb'));
     fs.chmodSync(path.join(dir, 'adb'), 0o700);
-    const result = spawnSync('bash', [`${__dirname}/../device-info.sh`, 'USB123', 'SILENT'], {
+    const result = spawnSync('bash', [`${__dirname}/../scripts/device-info.sh`, 'USB123', 'SILENT'], {
       encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: dir + path.delimiter + process.env.PATH } });
     assert.equal(result.status, 0, result.stderr);
     const info = deviceInfo.parseDeviceInfo(result.stdout);

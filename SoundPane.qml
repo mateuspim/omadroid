@@ -39,7 +39,7 @@ ColumnLayout {
   property int readStartedAt: 0
   // The device the running read asked for; `target` can change meanwhile.
   property string readSerial: ""
-  readonly property string volumeScript: decodeURIComponent(Qt.resolvedUrl("device-volume.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string volumeScript: decodeURIComponent(Qt.resolvedUrl("scripts/device-volume.sh").toString().replace(/^file:\/\//, ""))
   spacing: Style.space(10)
 
   onActiveChanged: active ? refresh() : queued = []

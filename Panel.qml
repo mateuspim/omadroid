@@ -31,7 +31,7 @@ Panel {
   readonly property var sessionDevice: discovery.rows.find(row => row.serial === mirrorSession.sessionSerial) || null
   readonly property string sessionKind: mirrorSession.sessionType === "webcam" ? "webcam" : mirrorSession.sessionAudioOnly ? "audio" : "mirror"
   property string missingTools: ""
-  readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("session.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string sessionScript: decodeURIComponent(Qt.resolvedUrl("scripts/session.sh").toString().replace(/^file:\/\//, ""))
 
   Component.onCompleted: prerequisites.start(["bash", sessionScript, "check"], 3)
   // Rechecked on open only while something is missing, so installing a tool

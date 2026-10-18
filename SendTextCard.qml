@@ -28,7 +28,7 @@ BorderSurface {
   readonly property var targetDevice: readyDevices.filter(row => row.serial === target)[0] || null
   readonly property string warning: SendText.unsupportedWarning(SendText.stepsText(steps))
   readonly property bool canSend: target !== "" && warning === "" && !sender.busy
-  readonly property string sendScript: decodeURIComponent(Qt.resolvedUrl("send-text.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string sendScript: decodeURIComponent(Qt.resolvedUrl("scripts/send-text.sh").toString().replace(/^file:\/\//, ""))
   property color foreground: Commons.Color.menu.text
   // Esc on an empty prompt, or a finished send.
   signal dismissed

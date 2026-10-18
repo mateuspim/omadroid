@@ -16,7 +16,7 @@ Item {
   property var known: []
   property var queued: []
   property bool queuedAtStartup: false
-  readonly property string powerScript: decodeURIComponent(Qt.resolvedUrl("device-power.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string powerScript: decodeURIComponent(Qt.resolvedUrl("scripts/device-power.sh").toString().replace(/^file:\/\//, ""))
 
   onReadySerialsChanged: {
     var fresh = DevicePower.newlyReady(known, readySerials);

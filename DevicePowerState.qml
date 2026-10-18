@@ -21,7 +21,7 @@ Item {
   readonly property bool busy: action.busy
   readonly property bool canUnlock: power !== null && power.secret === "saved"
   readonly property bool keepAwake: power !== null && power.keepAwake
-  readonly property string powerScript: decodeURIComponent(Qt.resolvedUrl("device-power.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string powerScript: decodeURIComponent(Qt.resolvedUrl("scripts/device-power.sh").toString().replace(/^file:\/\//, ""))
 
   Component.onCompleted: refresh()
   // Bindings may set `ready` before `serial` while the page is created.

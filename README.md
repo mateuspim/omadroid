@@ -295,7 +295,7 @@ keeps for a host that is ready again on another port are hidden. USB and Wi-Fi
 remain separate transports, and pairing ports remain distinct. mDNS does not supply a reliable hardware serial or model name,
 so unconnected entries explicitly show a service identity instead.
 
-The plugin invokes `bash discover-mdns.sh` using its resolved plugin path. The
+The plugin invokes `bash scripts/discover-mdns.sh` using its resolved plugin path. The
 script keeps one `avahi-browse` open per Android service type while the popup is
 open, and stops them when it closes. Resolved records and removals stream to the
 plugin as Avahi sees them, so devices appear and leave without a rescan; the
@@ -320,7 +320,7 @@ On Android 11 or later, open **+ Add device**, choose **QR code** and
 open Developer options › Wireless debugging › **Pair device with QR code** and
 scan it. Nothing needs to be typed or installed on the phone.
 
-`qr-pair.sh` makes a one-time service name (`omadroid-` and 8 random
+`scripts/qr-pair.sh` makes a one-time service name (`omadroid-` and 8 random
 characters) and a 16-character password from `/dev/urandom`, and encodes
 `WIFI:T:ADB;S:<name>;P:<password>;;`, the payload Android Studio uses. The
 payload reaches `qrencode` on stdin, never in a process's arguments. Once
@@ -335,7 +335,7 @@ needs wireless discovery; the button is disabled while Avahi is unavailable.
 ### Go wireless
 
 A ready USB device's control row has **Wireless**. With the cable still in,
-clicking it runs `go-wireless.sh`, which:
+clicking it runs `scripts/go-wireless.sh`, which:
 
 1. Reads the device's Wi-Fi IPv4 address (`wlan*`; mobile data doesn't count).
 2. On Android 11+, turns on Wireless debugging (`settings put global
@@ -413,7 +413,7 @@ If dispatch fails, use those shortcuts directly in the scrcpy window.
 The four orientation buttons use `adb shell wm user-rotation lock` with Android's
 four rotation values. Each one disables auto-rotate and locks the device to the
 chosen orientation. **Auto rotate / reset** uses `adb shell wm user-rotation free`
-to release the lock and restore sensor-based rotation. `session.sh rotate` runs
+to release the lock and restore sensor-based rotation. `scripts/session.sh rotate` runs
 these commands against the active session's device and does not restart scrcpy.
 
 When the controls appear, including after an Omarchy shell restart, they read
@@ -463,7 +463,7 @@ previous session's terminal. Closing the popup, switching
 views or devices, or restarting the Omarchy shell leaves the session running. Every monitor's
 widget reads the same session state and can stop it; only one OmaDroid session
 runs at a time, and starting another switches to it. Nothing polls the session: widgets watch its state file, and
-while a session runs `session.sh wait` sleeps on the scrcpy process (util-linux
+while a session runs `scripts/session.sh wait` sleeps on the scrcpy process (util-linux
 `waitpid`) and ends the session, releasing a rotation lock OmaDroid set, as soon
 as scrcpy exits, even with the popup closed. Closing the terminal also ends the session. A device that
 disappears while its page is open returns the popup to the device list with a
@@ -565,8 +565,8 @@ drag, only the latest value is sent.
 Streams and the ringer use Android's `cmd audio`. Per-app volume and master
 mute have no shell command: they are binder calls (`service call audio CODE`)
 whose codes change with every firmware. The first time a firmware is seen,
-`device-volume.sh` copies the device's `/system/framework/framework.jar`
-(about 50 MB) and `audio-codes.py` reads the codes from it, which takes a few
+`scripts/device-volume.sh` copies the device's `/system/framework/framework.jar`
+(about 50 MB) and `scripts/audio-codes.py` reads the codes from it, which takes a few
 seconds. They are cached in `~/.cache/omadroid/audio-codes/`. The parser
 refuses a table it can't fully check, and before any code is used the device
 is asked for the media volume both through that code and through
@@ -574,7 +574,7 @@ is asked for the media volume both through that code and through
 nothing is called. App names come from `scrcpy --list-apps` and are cached per
 device in `~/.cache/omadroid/apps/`.
 
-Without the UI: `device-volume.sh status SERIAL`, `stream SERIAL media
+Without the UI: `scripts/device-volume.sh status SERIAL`, `stream SERIAL media
 set 10|raise|lower|mute|unmute`, `app SERIAL UID set 40|mute|unmute`, `master
 SERIAL mute|unmute`, `ringer SERIAL normal|vibrate|silent`, `key SERIAL
 up|down|mute`.
@@ -604,8 +604,8 @@ edited by hand), the file is left untouched and OmaDroid asks you to restore
 or delete the block yourself. A combination that
 `omarchy menu keybindings --print` already lists is refused with the name of
 its binding. A symlinked `bindings.lua` (dotfiles) is written through and stays
-a symlink. Without the plugin's UI: `hotkey.sh set "SUPER + ALT + D"`,
-`hotkey.sh status`, `hotkey.sh remove`. Running the bound command again closes
+a symlink. Without the plugin's UI: `scripts/hotkey.sh set "SUPER + ALT + D"`,
+`scripts/hotkey.sh status`, `scripts/hotkey.sh remove`. Running the bound command again closes
 the prompt.
 
 - **Typing:** letters, digits and symbols are typed as text. Other keys you
@@ -641,8 +641,8 @@ the prompt.
 
 The overlay is `SendText.qml` (window), `SendTextCard.qml` (prompt and keys)
 and `SendTextSteps.qml` (text and chips);
-`send-text.sh` does the typing and can be run on its own:
-`send-text.sh SERIAL key:ctrl+a key:backspace "text:hello world" key:enter`. It
+`scripts/send-text.sh` does the typing and can be run on its own:
+`scripts/send-text.sh SERIAL key:ctrl+a key:backspace "text:hello world" key:enter`. It
 checks every step first, then sends them all in one `adb shell` call. Key
 names: a letter, digit or `f1`–`f12`; `enter`, `tab`, `space`, `backspace`,
 `del`, `esc`, `home`, `end`, `up`, `down`, `left`, `right`, `pageup`,
@@ -666,7 +666,7 @@ first failure, naming it, and prints `OMADROID_ALL_OK` when everything passed;
 a shell suite missing from its list fails the run. Any suite can also be run on
 its own, for example `bash tests/session.sh` or
 `OMADROID_TEST_CASE=avahi_unavailable bash tests/smoke.sh`. The user-facing
-scripts at the top level are executable and can be run directly.
+scripts in `scripts/` are executable and can be run directly.
 
 All Node suites run offline; the shell-helper suite uses a fake Avahi command
 and covers streamed removals, a browser that stops, and that no browser outlives the helper.
@@ -676,18 +676,18 @@ commands/timers; they do not exercise QML bindings or deliver real compositor
 shortcuts. Physical authentication, screen-power changes, and idle behavior still
 require an approved real-device test.
 
-The device-power test runs `device-power.sh` against a fake keyring and a
+The device-power test runs `scripts/device-power.sh` against a fake keyring and a
 simulated lock screen: odd passwords (quotes, spaces, `%s`, `$`, backticks) are
 typed exactly, the secret never appears in any argv, a device with another
 serial or `android_id` never gets it (and the refusal keeps the attempt), the
 raw `android_id` is never stored, a pattern lock costs no attempt, a wrong secret is tried once then paused,
 Lock reports an instant lock, a lock delay and an ignored sleep key, and one keeper runs per device and returns on connect.
 
-The go-wireless test runs `go-wireless.sh` against a fake adb that simulates
+The go-wireless test runs `scripts/go-wireless.sh` against a fake adb that simulates
 Wireless debugging: Android 11+ connects over TLS and never switches to TCP,
 an already-enabled device is left alone, a stale port is skipped, Android 10
 falls back to `adb tcpip`, mobile data alone is refused, and an untrusted host
-is pointed to QR pairing. The pairing test runs `qr-pair.sh` against a fake
+is pointed to QR pairing. The pairing test runs `scripts/qr-pair.sh` against a fake
 qrencode and checks the payload format, that the password stays out of argv,
 and that each code is new; the smoke test checks that a shown code pairs only
 once its own service is announced, and that auto-connect remembers ready
@@ -697,7 +697,7 @@ endpoint once.
 The audio-codes test builds fixture dex files (`tests/make-audio-dex.py`):
 the Tab S11's codes, a phone without Samsung's app volume, payload-free
 statics before the codes, an overloaded method and a table with a gap; the
-last two must be refused. The device-volume test runs `device-volume.sh`
+last two must be refused. The device-volume test runs `scripts/device-volume.sh`
 against a fake device (`tests/mock-volume-adb.sh`) that evaluates its real
 device scripts: framework.jar is copied once per firmware, app names once,
 only known codes are called, codes that don't verify are never used for a

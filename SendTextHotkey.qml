@@ -8,7 +8,7 @@ import qs.Ui
 // Install is pressed.
 ColumnLayout {
   id: root
-  readonly property string hotkeyScript: decodeURIComponent(Qt.resolvedUrl("hotkey.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string hotkeyScript: decodeURIComponent(Qt.resolvedUrl("scripts/hotkey.sh").toString().replace(/^file:\/\//, ""))
   // The combination in bindings.lua, "" when none; null until read.
   property var installed: null
   property string message: ""

@@ -19,7 +19,7 @@ fail() {
 hotkey() {
   local expected="$1" code=0
   shift
-  out="$(bash "$repo_dir/hotkey.sh" "$@" 2>&1)" || code=$?
+  out="$(bash "$repo_dir/scripts/hotkey.sh" "$@" 2>&1)" || code=$?
   [[ "$code" == "$expected" ]] || fail "hotkey $* exited $code; expected $expected: $out"
 }
 user_lines=$'-- my binds\no.bind("SUPER + SHIFT + G", "ZapFast", { launch = "zapfast" })'

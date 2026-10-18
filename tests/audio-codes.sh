@@ -11,7 +11,7 @@ fail() {
 }
 codes() {
   python3 -I "$repo_dir/tests/make-audio-dex.py" "$test_dir/$1.jar" "$1"
-  python3 -I "$repo_dir/audio-codes.py" "$test_dir/$1.jar"
+  python3 -I "$repo_dir/scripts/audio-codes.py" "$test_dir/$1.jar"
 }
 refused() {
   local output code=0
@@ -29,7 +29,7 @@ expected=$'getAppVolume=294\ngetStreamVolume=27\nisAppMute=296\nisMasterMute=25\
 refused gap "aren't exactly 1..300"
 printf 'not a jar' >"$test_dir/broken.jar"
 code=0
-python3 -I "$repo_dir/audio-codes.py" "$test_dir/broken.jar" >/dev/null 2>&1 || code=$?
+python3 -I "$repo_dir/scripts/audio-codes.py" "$test_dir/broken.jar" >/dev/null 2>&1 || code=$?
 [[ "$code" == 2 ]] || fail "broken jar exited $code"
 
 echo OMADROID_CODES_OK

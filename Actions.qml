@@ -12,7 +12,7 @@ Item {
   // Set when a pair succeeded before Avahi reported the device's connect port.
   property string pairedAwaitingConnect: ""
   readonly property bool busy: command.busy
-  readonly property string wirelessScript: decodeURIComponent(Qt.resolvedUrl("go-wireless.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string wirelessScript: decodeURIComponent(Qt.resolvedUrl("scripts/go-wireless.sh").toString().replace(/^file:\/\//, ""))
   signal changed
 
   // `code` is the six-digit code typed from Android, or a QR code's password.

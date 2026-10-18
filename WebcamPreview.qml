@@ -29,7 +29,7 @@ Item {
   property int run: 0
   readonly property string framePath: runtimeDir ? runtimeDir + "/preview-" + token + run + ".jpg" : ""
   readonly property string sysfs: "/sys/class/video4linux/" + device.replace(/^\/dev\//, "")
-  readonly property string script: decodeURIComponent(Qt.resolvedUrl("webcam-preview.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string script: decodeURIComponent(Qt.resolvedUrl("scripts/webcam-preview.sh").toString().replace(/^file:\/\//, ""))
   property int tick: 0
   // Set while a restart waits for the previous ffmpeg to exit.
   property bool reopen: false

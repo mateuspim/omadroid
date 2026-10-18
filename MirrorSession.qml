@@ -75,8 +75,8 @@ Item {
   property string powerWarning: ""
   readonly property bool busy: sessionPid > 0 || launcher.busy || preparer.busy
   readonly property string runtimeDir: stateFile.path.replace(/\/session$/, "")
-  readonly property string sessionScript: scriptPath("session.sh")
-  readonly property string powerScript: scriptPath("device-power.sh")
+  readonly property string sessionScript: scriptPath("scripts/session.sh")
+  readonly property string powerScript: scriptPath("scripts/device-power.sh")
   readonly property string kindLabel: sessionType === "webcam" ? "Webcam" : sessionAudioOnly ? "Audio only" : "Mirroring"
   // "Mirroring", "Starting"… for headers and the global banner.
   readonly property string sessionTitle: sessionPid > 0 ? kindLabel : "Starting"

@@ -16,7 +16,7 @@ function follow(scenario, settleMs, signal = 'SIGTERM') {
   const fake = path.join(dir, 'avahi-browse');
   fs.copyFileSync(path.join(__dirname, 'mock-avahi-browse.sh'), fake);
   fs.chmodSync(fake, 0o700);
-  const helper = spawn('bash', [path.join(repo, 'discover-mdns.sh')], {
+  const helper = spawn('bash', [path.join(repo, 'scripts', 'discover-mdns.sh')], {
     env: { ...process.env, PATH: dir + path.delimiter + process.env.PATH, OMADROID_TEST_CASE: scenario }
   });
   let stdout = '', stderr = '';

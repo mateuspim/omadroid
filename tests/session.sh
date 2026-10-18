@@ -3,7 +3,7 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 test_dir="$(mktemp -d /tmp/omadroid-session.XXXXXX)"
 cleanup() {
-  XDG_RUNTIME_DIR="$test_dir/runtime" bash "$repo_dir/session.sh" stop >/dev/null 2>&1 || true
+  XDG_RUNTIME_DIR="$test_dir/runtime" bash "$repo_dir/scripts/session.sh" stop >/dev/null 2>&1 || true
   [[ "$test_dir" == /tmp/omadroid-session.* ]] && rm -rf -- "$test_dir"
 }
 trap cleanup EXIT
@@ -20,7 +20,7 @@ export OMADROID_FOOT="$test_dir/no-foot"
 export PATH="$test_dir/bin:$PATH" XDG_RUNTIME_DIR="$test_dir/runtime" OMADROID_TEST_ARGS="$test_dir/args"
 export OMADROID_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt"
 export OMADROID_ADB_ROTATION="$test_dir/rotation" OMADROID_HYPRCTL_LOG="$test_dir/hyprctl"
-session() { bash "$repo_dir/session.sh" "$@"; }
+session() { bash "$repo_dir/scripts/session.sh" "$@"; }
 launch_long_session() {
   session launch USB123 0 '' -- scrcpy --serial=USB123 --max-size=3840 --max-fps=60 --video-bit-rate=60M --no-audio --max-fps=120
 }
@@ -40,15 +40,15 @@ wait_for_inactive() {
   done
   return 1
 }
-test -z "$(bash "$repo_dir/session.sh" check)"
+test -z "$(bash "$repo_dir/scripts/session.sh" check)"
 if session rotate query 2>/dev/null; then
   echo 'Rotation query without a session unexpectedly succeeded.' >&2
   exit 1
 fi
 launch_long_session
-status="$(bash "$repo_dir/session.sh" status)"
+status="$(bash "$repo_dir/scripts/session.sh" status)"
 [[ "$status" == $'active\nUSB123\nmirror\n'* ]]
-if bash "$repo_dir/session.sh" launch USB123 0 '' -- scrcpy --serial=USB123 2>/dev/null; then
+if bash "$repo_dir/scripts/session.sh" launch USB123 0 '' -- scrcpy --serial=USB123 2>/dev/null; then
   echo 'Duplicate launch unexpectedly succeeded.' >&2
   exit 1
 fi
@@ -154,20 +154,20 @@ cat > "$test_dir/bin/modinfo" <<'EOF'
 EOF
 chmod +x "$test_dir/bin/pacman" "$test_dir/bin/modinfo"
 export OMADROID_VIDEO_SYSFS="$test_dir/sys" OMADROID_VIDEO_DEV="$test_dir/dev" OMADROID_VIDEO_MODULE_SYSFS="$test_dir/module"
-[[ "$(bash "$repo_dir/webcam-devices.sh" list 2>&1)" == missing-package ]]
-[[ "$(OMADROID_TEST_PACKAGE=1 bash "$repo_dir/webcam-devices.sh" list 2>&1)" == module-unavailable ]]
-[[ "$(OMADROID_TEST_PACKAGE=1 OMADROID_TEST_MODULE=1 bash "$repo_dir/webcam-devices.sh" list 2>&1)" == module-not-loaded ]]
+[[ "$(bash "$repo_dir/scripts/webcam-devices.sh" list 2>&1)" == missing-package ]]
+[[ "$(OMADROID_TEST_PACKAGE=1 bash "$repo_dir/scripts/webcam-devices.sh" list 2>&1)" == module-unavailable ]]
+[[ "$(OMADROID_TEST_PACKAGE=1 OMADROID_TEST_MODULE=1 bash "$repo_dir/scripts/webcam-devices.sh" list 2>&1)" == module-not-loaded ]]
 mkdir "$test_dir/module"
-[[ "$(OMADROID_TEST_PACKAGE=1 OMADROID_TEST_MODULE=1 bash "$repo_dir/webcam-devices.sh" list 2>&1)" == no-output ]]
+[[ "$(OMADROID_TEST_PACKAGE=1 OMADROID_TEST_MODULE=1 bash "$repo_dir/scripts/webcam-devices.sh" list 2>&1)" == no-output ]]
 # A module from another package (a -git build) is not a missing package.
-[[ "$(OMADROID_TEST_MODULE=1 bash "$repo_dir/webcam-devices.sh" list 2>&1)" == no-output ]]
+[[ "$(OMADROID_TEST_MODULE=1 bash "$repo_dir/scripts/webcam-devices.sh" list 2>&1)" == no-output ]]
 rmdir "$test_dir/module"
-[[ "$(OMADROID_TEST_MODULE=1 bash "$repo_dir/webcam-devices.sh" list 2>&1)" == module-not-loaded ]]
+[[ "$(OMADROID_TEST_MODULE=1 bash "$repo_dir/scripts/webcam-devices.sh" list 2>&1)" == module-not-loaded ]]
 mkdir "$test_dir/module"
 printf 'OmaDroid camera\n' > "$test_dir/devices/virtual/video4linux/video12/name"
 touch "$test_dir/devices/virtual/video4linux/video12/max_openers" "$test_dir/dev/video12"
 ln -s "$test_dir/devices/virtual/video4linux/video12" "$test_dir/sys/video12"
-[[ "$(bash "$repo_dir/webcam-devices.sh" list)" == /dev/video12$'\tOmaDroid camera' ]]
+[[ "$(bash "$repo_dir/scripts/webcam-devices.sh" list)" == /dev/video12$'\tOmaDroid camera' ]]
 if error="$(session launch USB123 webcam '' -- scrcpy --serial=USB123 --video-source=camera --no-window --v4l2-sink=/dev/video11 2>&1)"; then
   echo 'Missing V4L2 output unexpectedly succeeded.' >&2; exit 1
 fi
@@ -182,11 +182,11 @@ session launch USB123 webcam '' -- scrcpy --serial=USB123 --video-source=camera 
 mkdir -p "$test_dir/busy-bin"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$test_dir/busy-bin/fuser"
 chmod +x "$test_dir/busy-bin/fuser"
-if error="$(PATH="$test_dir/busy-bin:$PATH" bash "$repo_dir/webcam-devices.sh" check /dev/video12 2>&1)"; then
+if error="$(PATH="$test_dir/busy-bin:$PATH" bash "$repo_dir/scripts/webcam-devices.sh" check /dev/video12 2>&1)"; then
   echo 'An occupied output was accepted.' >&2; exit 1
 fi
 [[ "$error" == *'is occupied'* ]]
-PATH="$test_dir/busy-bin:$PATH" OMADROID_KEEP_READERS=1 bash "$repo_dir/webcam-devices.sh" check /dev/video12
+PATH="$test_dir/busy-bin:$PATH" OMADROID_KEEP_READERS=1 bash "$repo_dir/scripts/webcam-devices.sh" check /dev/video12
 # The preview refuses an output whose readers get another size than scrcpy
 # writes, and otherwise runs ffmpeg tied to the shell's lifetime.
 mkdir -p "$test_dir/preview-bin"
@@ -195,7 +195,7 @@ printf '#!/usr/bin/env bash\n[[ "$1 $2" == "--pdeathsig TERM" ]] || exit 9\nshif
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "$OMADROID_TEST_FFMPEG"\n' > "$test_dir/preview-bin/ffmpeg"
 chmod +x "$test_dir/preview-bin/"*
 printf 'YU12:1080x1920@30\n' > "$test_dir/devices/virtual/video4linux/video12/format"
-preview() { PATH="$test_dir/preview-bin:$PATH" OMADROID_TEST_FFMPEG="$test_dir/ffmpeg-args" bash "$repo_dir/webcam-preview.sh" "$@"; }
+preview() { PATH="$test_dir/preview-bin:$PATH" OMADROID_TEST_FFMPEG="$test_dir/ffmpeg-args" bash "$repo_dir/scripts/webcam-preview.sh" "$@"; }
 frame="$XDG_RUNTIME_DIR/omadroid-$UID/preview-abc123.jpg"
 if error="$(OMADROID_TEST_PROBE=2032x1144 preview /dev/video12 "$frame" 2>&1)"; then
   echo 'A garbled output was previewed.' >&2; exit 1
@@ -215,8 +215,8 @@ if OMADROID_TEST_PROBE=1080x1920 preview '/dev/video12;x' "$frame" 2>/dev/null; 
   echo 'Preview accepted a bad device.' >&2; exit 1
 fi
 # The camera list comes from the phone through scrcpy, even mid-session.
-[[ "$(bash "$repo_dir/webcam-devices.sh" cameras USB123)" == *'--camera-id=2    (front, 4000x3000'* ]]
-if bash "$repo_dir/webcam-devices.sh" cameras --help >/dev/null 2>&1; then
+[[ "$(bash "$repo_dir/scripts/webcam-devices.sh" cameras USB123)" == *'--camera-id=2    (front, 4000x3000'* ]]
+if bash "$repo_dir/scripts/webcam-devices.sh" cameras --help >/dev/null 2>&1; then
   echo 'An option as the camera serial was accepted.' >&2; exit 1
 fi
 # The webcam's sink travels in the session state for every widget's preview.
@@ -251,7 +251,7 @@ printf 'ERROR: camera size 1920x1080 is not supported\n' > "$XDG_RUNTIME_DIR/oma
 # first one's terminal as stale.
 sleep 30 &
 starting=$!
-printf '%s\n%s\n' "$starting" "$(XDG_RUNTIME_DIR="$test_dir/runtime" bash -c 'source "$1/proc-lib.sh"; start_time "$2"' _ "$repo_dir" "$starting")" > "$XDG_RUNTIME_DIR/omadroid-$UID/launching"
+printf '%s\n%s\n' "$starting" "$(XDG_RUNTIME_DIR="$test_dir/runtime" bash -c 'source "$1/scripts/proc-lib.sh"; start_time "$2"' _ "$repo_dir" "$starting")" > "$XDG_RUNTIME_DIR/omadroid-$UID/launching"
 if error="$(session launch USB123 mirror '' -- scrcpy --serial=USB123 2>&1)"; then
   echo 'A second launch unexpectedly succeeded.' >&2; exit 1
 fi

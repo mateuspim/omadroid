@@ -61,9 +61,9 @@ Item {
   // Briefly true after the browsers (re)start. The previous services stay
   // shown until then, so reopening the popup doesn't flicker the rows.
   property bool mdnsSettling: false
-  readonly property string namesScript: decodeURIComponent(Qt.resolvedUrl("device-names.sh").toString().replace(/^file:\/\//, ""))
-  readonly property string infoScript: decodeURIComponent(Qt.resolvedUrl("device-info.sh").toString().replace(/^file:\/\//, ""))
-  readonly property string mdnsScript: decodeURIComponent(Qt.resolvedUrl("discover-mdns.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string namesScript: decodeURIComponent(Qt.resolvedUrl("scripts/device-names.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string infoScript: decodeURIComponent(Qt.resolvedUrl("scripts/device-info.sh").toString().replace(/^file:\/\//, ""))
+  readonly property string mdnsScript: decodeURIComponent(Qt.resolvedUrl("scripts/discover-mdns.sh").toString().replace(/^file:\/\//, ""))
   readonly property bool busy: usb.busy || mdnsSettling
   readonly property var rows: Model.deviceRows(devices, services)
   readonly property int readyCount: devices.filter(row => row.status === "device").length
