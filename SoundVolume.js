@@ -84,14 +84,13 @@ function volumeText(volume, max, muted) {
   return max === 100 ? volume + "%" : volume + "/" + max;
 }
 
-/** The ready device to show: the chosen one while it's ready, else the first.
- * Example: pickVolumeTarget([{ serial: "A", status: "device" }], "gone") → "A"
+/** Whether a finished status read may be shown. A read for another device
+ * (the serial changed while it ran) or one older than a sent change is
+ * dropped, so a slider never shows another device's or a stale value.
+ * Example: statusReadApplies({ serial: "A", changes: 2 }, { serial: "B", changes: 2, changing: false }) → false
  */
-function pickVolumeTarget(devices, chosen) {
-  var ready = devices.filter(function(row) { return row.status === "device"; });
-  if (ready.some(function(row) { return row.serial === chosen; }))
-    return chosen;
-  return ready.length ? ready[0].serial : "";
+function statusReadApplies(read, current) {
+  return read.serial === current.serial && read.changes === current.changes && !current.changing;
 }
 
 /** Add a command to the waiting changes. A "set" replaces a waiting "set" of

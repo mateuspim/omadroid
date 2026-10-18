@@ -5,22 +5,20 @@ import qs.Ui
 import "Model.js" as Model
 import "SoundVolume.js" as SoundVolume
 
-// The Sound page: volume keys, mute all and ringer mode, per-app volume and
-// the system sound streams of one ready device, through device-volume.sh.
-// Android has no volume change events for the shell, so the page reads the
-// device every 2 s, and only while it is shown.
+// The device page's Sound section: volume keys, mute all and ringer mode,
+// per-app volume and the system sound streams of one ready device, through
+// device-volume.sh. Android has no volume change events for the shell, so the
+// section reads the device every 2 s, and only while it is shown.
 ColumnLayout {
   id: root
-  // The discovery's devices, for the picker; unused when `serial` is set.
-  property var devices: []
-  // A fixed device (the device page): no picker, and only this device is read.
+  // The device whose sound is shown; only this device is read.
   property string serial: ""
-  // The page is shown and the popup is open.
+  // Deprecated: tests/Smoke.qml still passes the discovery's devices instead
+  // of a `serial`; then the first ready one is shown. Remove with that use.
+  property var devices: []
+  // The section is shown and the popup is open.
   property bool active: false
-  property string chosen: ""
-  readonly property var readyDevices: devices.filter(row => row.status === "device")
-  // The device being shown: the fixed `serial`, else the picker's choice.
-  readonly property string target: serial || SoundVolume.pickVolumeTarget(devices, chosen)
+  readonly property string target: serial || (devices.find(row => row.status === "device") || { serial: "" }).serial
   // Parsed `device-volume.sh status` of `target`; null until read.
   property var volume: null
   readonly property var apps: volume ? SoundVolume.visibleApps(volume.apps) : []
@@ -41,6 +39,8 @@ ColumnLayout {
   // instead of moving the slider back.
   property int changes: 0
   property int readStartedAt: 0
+  // The device the running read asked for; `target` can change meanwhile.
+  property string readSerial: ""
   readonly property string volumeScript: decodeURIComponent(Qt.resolvedUrl("device-volume.sh").toString().replace(/^file:\/\//, ""))
   spacing: Style.space(10)
 
@@ -64,6 +64,7 @@ ColumnLayout {
     if (!active || !target || status.busy)
       return;
     readStartedAt = changes;
+    readSerial = target;
     // The first read of a firmware copies its framework (about 53 MB).
     status.start(["bash", volumeScript, "status", target], 120);
   }
@@ -113,26 +114,6 @@ ColumnLayout {
     send(["stream", stream.key, stream.muted ? "unmute" : "mute"], "stream", stream.key, { muted: !stream.muted });
   }
 
-  Label {
-    Layout.fillWidth: true
-    visible: root.serial === "" && root.readyDevices.length === 0
-    text: "No device ready. Connect one from the device list."
-    color: Util.alpha(Color.foreground, 0.7)
-  }
-  Flow {
-    Layout.fillWidth: true
-    visible: root.serial === "" && root.readyDevices.length > 1
-    spacing: Style.space(6)
-    Repeater {
-      model: root.readyDevices
-      delegate: ActionButton {
-        required property var modelData
-        text: modelData.name || modelData.serial
-        selected: modelData.serial === root.target
-        onClicked: root.chosen = modelData.serial
-      }
-    }
-  }
   Label {
     Layout.fillWidth: true
     visible: root.target !== "" && root.volume === null && status.busy
@@ -275,8 +256,15 @@ ColumnLayout {
   Command {
     id: status
     onFinished: (code, output, error) => {
-      if (root.readStartedAt !== root.changes || change.busy || root.queued.length)
+      var read = { serial: root.readSerial, changes: root.readStartedAt };
+      var current = { serial: root.target, changes: root.changes, changing: change.busy || root.queued.length > 0 };
+      if (!SoundVolume.statusReadApplies(read, current)) {
+        // The target changed while this read ran; read the new one now
+        // instead of waiting for the next tick.
+        if (read.serial !== current.serial)
+          Qt.callLater(root.refresh);
         return;
+      }
       var parsed = code === 0 ? SoundVolume.parseVolumeStatus(output) : null;
       if (parsed)
         root.volume = parsed;

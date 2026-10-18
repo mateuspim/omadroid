@@ -59,12 +59,12 @@ test('volumeText shows percent, steps or Muted', () => {
   assert.equal(sound.volumeText(40, 100, true), 'Muted');
 });
 
-test('pickVolumeTarget keeps a ready choice, else the first ready device', () => {
-  const devices = [{ serial: 'OFF', status: 'offline' }, { serial: 'A', status: 'device' }, { serial: 'B', status: 'device' }];
-  assert.equal(sound.pickVolumeTarget(devices, 'B'), 'B');
-  assert.equal(sound.pickVolumeTarget(devices, 'OFF'), 'A');
-  assert.equal(sound.pickVolumeTarget(devices, ''), 'A');
-  assert.equal(sound.pickVolumeTarget([], 'A'), '');
+test('statusReadApplies drops reads for another device or before a change', () => {
+  const now = { serial: 'A', changes: 2, changing: false };
+  assert.equal(sound.statusReadApplies({ serial: 'A', changes: 2 }, now), true);
+  assert.equal(sound.statusReadApplies({ serial: 'B', changes: 2 }, now), false);
+  assert.equal(sound.statusReadApplies({ serial: 'A', changes: 1 }, now), false);
+  assert.equal(sound.statusReadApplies({ serial: 'A', changes: 2 }, { serial: 'A', changes: 2, changing: true }), false);
 });
 
 test('queueChange replaces a waiting volume of the same target only', () => {
