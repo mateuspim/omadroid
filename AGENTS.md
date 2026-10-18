@@ -26,6 +26,8 @@ is the user manual; read its section before changing a feature.
 - Shell scripts: bash, `set -uo pipefail` (or `-euo`), plain-text results on
   stdout for QML to parse, errors on stderr with a non-zero exit. Keep the
   user-facing scripts executable.
+  When running `scripts/session.sh` by hand, use an absolute path: it re-execs
+  `bash "$0" run` inside a new terminal.
 
 ## Code style
 
