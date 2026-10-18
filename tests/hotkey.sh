@@ -70,6 +70,29 @@ hotkey 0 remove
 [[ "$out" == none && "$(cat "$bindings")" == "$user_lines" ]] || fail "removed: $(cat "$bindings")"
 hotkey 0 remove
 
+# A start marker without its end marker is refused, and the file kept whole.
+unclosed=$'-- my binds\n-- >>> OmaDroid send text (managed by OmaDroid; change it on its Settings page)\no.bind("SUPER + ALT + D", "OmaDroid send text", "x")\n-- a user line after the broken block'
+printf '%s\n' "$unclosed" >"$bindings"
+for args in 'set|SUPER + ALT + E' 'remove'; do
+  IFS='|' read -ra argv <<<"$args"
+  hotkey 1 "${argv[@]}"
+  [[ "$out" == *"without '-- <<< OmaDroid send text'"* ]] || fail "unclosed block message ($args): $out"
+  [[ "$(cat "$bindings")" == "$unclosed" ]] || fail "unclosed block rewrote the file ($args): $(cat "$bindings")"
+done
+printf '%s\n' "$user_lines" >"$bindings"
+
+# Only the 2 newest bindings.lua.bak.<epoch> backups are kept; other files stay.
+rm -f "$bindings".bak.*
+for epoch in 100 2000 30000; do : >"$bindings.bak.$epoch"; done
+: >"$bindings.bak.mine"
+: >"$test_dir/hypr/other.lua.bak.5"
+hotkey 0 set 'SUPER + ALT + D'
+backups="$(cd "$test_dir/hypr" && ls -1 bindings.lua.bak.* | sort)"
+[[ "$(wc -l <<<"$backups")" == 3 && "$backups" == *bindings.lua.bak.mine* && "$backups" == *bindings.lua.bak.30000* && "$backups" != *bak.2000* ]] ||
+  fail "backups pruned to the 2 newest: $backups"
+[[ -e "$test_dir/hypr/other.lua.bak.5" ]] || fail "unrelated backup kept"
+hotkey 0 remove
+
 # A symlinked bindings.lua (dotfiles) stays a symlink.
 mv "$bindings" "$test_dir/hypr/real.lua"
 ln -s real.lua "$bindings"

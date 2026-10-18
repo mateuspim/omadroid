@@ -62,10 +62,34 @@ current_combo() {
   ' "$bindings"
 }
 
+# A start marker without its end marker after it means the block was edited
+# by hand; rewriting would drop every line after the start marker.
+check_block_closed() {
+  [[ -f "$bindings" ]] || return 0
+  awk -v start="$block_start" -v end="$block_end" '
+    $0 == start { open = 1 }
+    open && $0 == end { open = 0 }
+    END { exit open }
+  ' "$bindings" || die 1 "$bindings has the line '$block_start' without '$block_end' after it. Restore or delete OmaDroid's block by hand; nothing was changed."
+}
+
+# Keeps the 2 newest bindings.lua.bak.<epoch> backups so each change doesn't
+# leave one more file in the config folder forever.
+prune_backups() {
+  local backup epoch
+  for backup in "$bindings".bak.*; do
+    epoch="${backup#"$bindings".bak.}"
+    [[ "$epoch" =~ ^[0-9]+$ && -f "$backup" ]] && printf '%s\n' "$epoch"
+  done | sort -n | head -n -2 | while IFS= read -r epoch; do
+    rm -f -- "$bindings.bak.$epoch"
+  done
+}
+
 # The file without OmaDroid's block, then the block for COMBO ("" for none).
 # Written in place so a bindings.lua symlinked from dotfiles stays a symlink.
 write_bindings() {
   local combo="$1" next
+  check_block_closed
   next="$(mktemp)"
   [[ -f "$bindings" ]] && awk -v start="$block_start" -v end="$block_end" '
     $0 == start { inside = 1; next }
@@ -78,7 +102,7 @@ write_bindings() {
     rm -f -- "$next"
     return 0
   fi
-  [[ -f "$bindings" ]] && cp -- "$bindings" "$bindings.bak.$(date +%s)"
+  [[ -f "$bindings" ]] && cp -- "$bindings" "$bindings.bak.$(date +%s)" && prune_backups
   cat -- "$next" >"$bindings" || { rm -f -- "$next"; die 1 "Couldn't write $bindings."; }
   rm -f -- "$next"
   # Hyprland reloads on its own when autoreload is on; this covers it being off.
