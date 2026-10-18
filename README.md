@@ -650,6 +650,14 @@ names: a letter, digit or `f1`–`f12`; `enter`, `tab`, `space`, `backspace`,
 `shift+`, `alt+` or `meta+` for a combination (Android 13+, sent with
 `input keycombination`).
 
+## Documentation
+
+- [Architecture](docs/architecture.md): what runs where, how data flows, where
+  state is kept, and how it is tested.
+- [Architecture Decision Records](docs/adr/README.md): the main design
+  decisions and why they were made.
+- [CHANGELOG.md](CHANGELOG.md): what each release changed.
+
 ## Development
 
 Validate the manifest, then run every test suite:
