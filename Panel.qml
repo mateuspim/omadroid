@@ -72,12 +72,9 @@ Panel {
     tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (scrcpyPane.sessionPid > 0 ? " · " + (scrcpyPane.sessionType === "webcam" ? "Webcam" : scrcpyPane.sessionType === "audio" ? "Audio" : "Mirroring") + " active" : "") + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsLevel === "error" ? " · wireless discovery unavailable" : "")
     iconComponent: Component {
       Item {
-        Text {
+        DroidPromptIcon {
           anchors.centerIn: parent
-          text: "󰄜"
           color: discovery.devicesError || root.missingTools ? Color.urgent : root.barForeground
-          font.family: Style.font.family
-          font.pixelSize: Style.font.icon
         }
         Text {
           anchors {

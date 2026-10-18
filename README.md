@@ -1,4 +1,4 @@
-# DroidLink
+# <img src="icon.svg" alt="" width="32" height="32" align="top"> DroidLink
 
 An Omarchy bar widget for discovering Android Debug Bridge (ADB) devices over
 USB and wireless mDNS, then launching scrcpy with chosen video and audio
