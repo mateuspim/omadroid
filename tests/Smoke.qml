@@ -13,13 +13,19 @@ ShellRoot {
       Qt.exit(1);
     }
   }
+  // The pane holds a Mirror and a Webcam section with the same objectNames;
+  // the one on screen wins, else the first (hidden) match.
   function child(item, name) {
+    var all = [];
+    collect(item, name, all);
+    return all.find(found => found.visible) || all[0] || null;
+  }
+  function collect(item, name, all) {
     for (var i = 0; i < item.children.length; i++) {
-      var found = item.children[i].objectName === name ? item.children[i] : child(item.children[i], name);
-      if (found)
-        return found;
+      if (item.children[i].objectName === name)
+        all.push(item.children[i]);
+      collect(item.children[i], name, all);
     }
-    return null;
   }
   OmaDroid.ScrcpyPane {
     id: mirroring
@@ -308,7 +314,7 @@ ShellRoot {
     repeat: true
     onTriggered: {
       // Opening the Webcam page reads the phone's cameras; wait for them.
-      if (testRoot.step === 10 && !mirroring.cameras) {
+      if (testRoot.step === 10 && !mirroring.webcamOptions.cameras) {
         mirroring.chooseDevice("USB123");
         mirroring.pageMode = "webcam";
         return;
@@ -316,30 +322,30 @@ ShellRoot {
       if (testRoot.step === 10) {
         mirroring.pageMode = "webcam";
         testRoot.check(child(mirroring, "omadroidWebcamOptions").visible && !child(mirroring, "omadroidMirrorResolution").visible && !child(mirroring, "omadroidMirrorLaunch").visible, "webcam page shows only camera settings");
-        var outputs = mirroring.webcamOutputs;
-        mirroring.webcamOutputs = [];
-        mirroring.webcamIssue = "missing-package";
+        var outputs = mirroring.webcamOptions.webcamOutputs;
+        mirroring.webcamOptions.webcamOutputs = [];
+        mirroring.webcamOptions.webcamIssue = "missing-package";
         testRoot.check(child(mirroring, "omadroidWebcamSetup").visible, "missing driver shows setup card");
-        mirroring.copyWebcamCommands();
-        mirroring.webcamOutputs = outputs;
+        mirroring.webcamOptions.copyWebcamCommands();
+        mirroring.webcamOptions.webcamOutputs = outputs;
         mirroring.chooseDevice("USB123");
-        testRoot.check(mirroring.webcamSink === "/dev/video12", "the first loopback output is selected: " + mirroring.webcamSink);
-        mirroring.webcamSink = "/dev/video12";
+        testRoot.check(mirroring.webcamOptions.webcamSink === "/dev/video12", "the first loopback output is selected: " + mirroring.webcamOptions.webcamSink);
+        mirroring.webcamOptions.webcamSink = "/dev/video12";
         // The fixture lists the Tab S11's cameras: front becomes camera 1 and
         // the Call preset's 1080p fits it.
         // Panes here sit outside a window, so layouts never re-measure and
         // widths cannot be checked; only that the folded section opens.
-        mirroring.webcamDetailsOpen = true;
+        mirroring.webcamOptions.webcamDetailsOpen = true;
         testRoot.check(child(mirroring, "omadroidWebcamDetails").visible, "quality and adjustments open");
-        testRoot.check(mirroring.cameras && mirroring.cameras.length === 3, "cameras read from the phone: " + JSON.stringify(mirroring.cameras));
-        testRoot.check(mirroring.webcam.camera === "id:1" && mirroring.webcam.size === "1920x1080" && mirroring.webcam.fps === "30", "webcam settings fit the camera: " + JSON.stringify(mirroring.webcam));
-        mirroring.applyPreset("sharp");
-        testRoot.check(mirroring.webcam.size === "2032x1144" && mirroring.webcam.bitRate === "24", "Sharp preset picks the camera's largest 16:9: " + JSON.stringify(mirroring.webcam));
-        mirroring.setWebcam({ camera: "id:2" }, true);
-        mirroring.applyPreset("sharp");
-        testRoot.check(mirroring.webcam.size === "3840x2160", "camera 2 reaches 4K");
-        mirroring.setWebcam({ camera: "id:1", zoom: "2", torch: true }, true);
-        mirroring.applyPreset("call");
+        testRoot.check(mirroring.webcamOptions.cameras && mirroring.webcamOptions.cameras.length === 3, "cameras read from the phone: " + JSON.stringify(mirroring.webcamOptions.cameras));
+        testRoot.check(mirroring.webcamOptions.webcam.camera === "id:1" && mirroring.webcamOptions.webcam.size === "1920x1080" && mirroring.webcamOptions.webcam.fps === "30", "webcam settings fit the camera: " + JSON.stringify(mirroring.webcamOptions.webcam));
+        mirroring.webcamOptions.applyPreset("sharp");
+        testRoot.check(mirroring.webcamOptions.webcam.size === "2032x1144" && mirroring.webcamOptions.webcam.bitRate === "24", "Sharp preset picks the camera's largest 16:9: " + JSON.stringify(mirroring.webcamOptions.webcam));
+        mirroring.webcamOptions.setWebcam({ camera: "id:2" }, true);
+        mirroring.webcamOptions.applyPreset("sharp");
+        testRoot.check(mirroring.webcamOptions.webcam.size === "3840x2160", "camera 2 reaches 4K");
+        mirroring.webcamOptions.setWebcam({ camera: "id:1", zoom: "2", torch: true }, true);
+        mirroring.webcamOptions.applyPreset("call");
         testRoot.step = 11;
         mirroring.launchWebcam();
       } else if (testRoot.webcamApplied && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && mirroring.sessionArgs.indexOf("--camera-fps=24") >= 0) {
@@ -358,11 +364,11 @@ ShellRoot {
         testRoot.check(otherMonitor.sessionType === "webcam" && mirroring.sessionType === "webcam", "webcam session type shared across widgets");
         testRoot.check(otherMonitor.sessionSink === "/dev/video12" && otherMonitor.sessionRecording === "", "webcam sink shared across widgets: " + otherMonitor.sessionSink);
         testRoot.check(mirroring.sessionArgs.indexOf("--camera-id=1") >= 0 && mirroring.sessionArgs.indexOf("--camera-zoom=2") >= 0 && mirroring.sessionArgs.indexOf("--camera-torch") >= 0, "webcam starts with the chosen camera and adjustments: " + JSON.stringify(mirroring.sessionArgs));
-        testRoot.check(!mirroring.webcamChanged && !otherMonitor.webcamChanged, "nothing to apply right after start, on either widget: " + JSON.stringify(otherMonitor.webcam));
+        testRoot.check(!mirroring.webcamChanged && !otherMonitor.webcamChanged, "nothing to apply right after start, on either widget: " + JSON.stringify(otherMonitor.webcamOptions.webcam));
         mirroring.webcamPreview = true;
         testRoot.check(child(mirroring, "omadroidWebcamPreview").visible, "Preview shows during a webcam session");
         testRoot.check(!child(otherMonitor, "omadroidSessionCard").visible && child(otherMonitor, "omadroidOtherSession").visible && child(otherMonitor, "omadroidNextOptions").visible, "mirror page keeps its options visible during webcam capture");
-        mirroring.setWebcam({ fps: "24" });
+        mirroring.webcamOptions.setWebcam({ fps: "24" });
         testRoot.check(mirroring.webcamChanged && child(mirroring, "omadroidWebcamApply").visible, "a changed setting offers Apply");
         testRoot.webcamApplied = true;
         mirroring.applyWebcam();

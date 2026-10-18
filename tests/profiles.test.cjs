@@ -1,4 +1,4 @@
-// Execute ScrcpyPane's profile methods against a fake settings store, so the
+// Execute MirrorOptions' profile methods against a fake settings store, so the
 // confirm-before-overwrite and confirm-before-remove rules run without a shell.
 const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
@@ -6,7 +6,16 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const Model = vm.createContext({});
 vm.runInContext(readFileSync(`${__dirname}/../Model.js`, 'utf8'), Model);
-const paneSource = readFileSync(`${__dirname}/../ScrcpyPane.qml`, 'utf8');
+const paneSource = readFileSync(`${__dirname}/../MirrorOptions.qml`, 'utf8');
+
+/** Records report() into the fixture's message and failed, as the session does. */
+class FakeMirrorSession {
+  constructor(target) { this.target = target; }
+  report(text, isFailure) {
+    this.target.message = String(text || '');
+    this.target.failed = !!isFailure;
+  }
+}
 
 /** Pane state with QML's derived properties as getters. Example: paneFixture().saveProfile('Desk'). */
 function paneFixture() {
@@ -23,6 +32,8 @@ function paneFixture() {
     confirmOverwrite: '',
     confirmRemove: false
   };
+  // MirrorOptions reports through the shared MirrorSession's message line.
+  sandbox.session = new FakeMirrorSession(sandbox);
   Object.defineProperty(sandbox, 'customProfiles', { get: () => Model.savedProfiles(sandbox.saved.profilesJson) });
   Object.defineProperty(sandbox, 'profiles', { get: () => Model.builtInProfiles().concat(sandbox.customProfiles) });
   const context = vm.createContext(sandbox);

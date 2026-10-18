@@ -7,7 +7,7 @@ const { test } = require('node:test');
 const screenPowerModel = vm.createContext({});
 vm.runInContext(readFileSync(`${__dirname}/../ScreenPower.js`, 'utf8'), screenPowerModel);
 const controlsSource = readFileSync(`${__dirname}/../ScreenPowerControls.qml`, 'utf8');
-const paneSource = readFileSync(`${__dirname}/../ScrcpyPane.qml`, 'utf8');
+const paneSource = readFileSync(`${__dirname}/../MirrorOptions.qml`, 'utf8');
 
 class FakeScreenCommand {
   calls = [];
