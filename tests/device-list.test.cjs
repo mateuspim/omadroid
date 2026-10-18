@@ -100,3 +100,9 @@ test('sessionBannerText names the session kind and device', () => {
   assert.equal(list.sessionBannerText('audio', ''), '♪ Audio');
   assert.equal(list.sessionBannerText('unknown', 'X'), '▶ Mirroring · X');
 });
+
+test('switchBannerText names the kind a switch waits to start', () => {
+  assert.equal(list.switchBannerText('webcam'), 'Switching to webcam…');
+  assert.equal(list.switchBannerText('audio'), 'Switching to audio…');
+  assert.equal(list.switchBannerText('mirror'), 'Switching to mirroring…');
+});

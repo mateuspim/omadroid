@@ -134,3 +134,10 @@ function sessionBannerText(kind, deviceName) {
   var label = ({ webcam: "● Webcam", audio: "♪ Audio" })[kind] || "▶ Mirroring";
   return deviceName ? label + " · " + deviceName : label;
 }
+
+/** Banner line while a switch waits for the old session to stop.
+ * Example: switchBannerText("webcam") → "Switching to webcam…"
+ * @param {"mirror"|"webcam"|"audio"} kind @returns {string} */
+function switchBannerText(kind) {
+  return "Switching to " + (({ webcam: "webcam", audio: "audio" })[kind] || "mirroring") + "…";
+}

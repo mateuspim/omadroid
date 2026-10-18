@@ -14,6 +14,8 @@ Rectangle {
   property string kind: "mirror"
   property string deviceName: ""
   property bool stopping: false
+  // The kind a switch is waiting to start ("" = none); ■ then cancels it.
+  property string switchingTo: ""
   signal open
   signal stop
 
@@ -57,7 +59,7 @@ Rectangle {
     Label {
       Layout.fillWidth: true
       Layout.preferredWidth: 1
-      text: root.stopping ? "Stopping " + root.deviceName + "…" : DeviceList.sessionBannerText(root.kind, root.deviceName)
+      text: root.switchingTo ? DeviceList.switchBannerText(root.switchingTo) : root.stopping ? "Stopping " + root.deviceName + "…" : DeviceList.sessionBannerText(root.kind, root.deviceName)
       color: Color.accent
       font.pixelSize: Style.font.bodySmall
       font.bold: true
@@ -69,8 +71,8 @@ Rectangle {
       fontSize: Style.font.bodySmall
       foreground: Color.accent
       hoverColor: Color.urgent
-      enabled: !root.stopping
-      tooltipText: "Stop session"
+      enabled: !root.stopping || root.switchingTo !== ""
+      tooltipText: root.switchingTo ? "Cancel the switch" : "Stop session"
       Accessible.role: Accessible.Button
       Accessible.name: "Stop session"
       onClicked: root.stop()

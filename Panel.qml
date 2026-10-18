@@ -215,6 +215,7 @@ Panel {
         kind: root.sessionKind
         deviceName: root.sessionDevice ? root.sessionDevice.name : mirrorSession.sessionSerial
         stopping: mirrorSession.stopping
+        switchingTo: mirrorSession.pendingSwitch ? mirrorSession.pendingSwitch.kind : ""
         onOpen: root.openSession()
         onStop: root.stopSession()
       }

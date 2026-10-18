@@ -13,9 +13,11 @@ import "Model.js" as Model
 //             ("mirror" | "audio" | "webcam"), sessionAudioOnly,
 //             sessionRecording, sessionSink (webcam output), sessionArgs
 //             (running webcam command), busy (starting or running), stopping,
-//             restartPending, terminalLaunched, message, failed,
+//             pendingSwitch, restartPending, previewWanted,
+//             terminalLaunched, message, failed,
 //             runtimeDir, sessionScript, sessionTitle, stopLabel
-//   Launch:   launchMirror(serial, profile, folder, audioOnly)
+//   Launch:   launchMirror(serial, profile, folder, audioOnly) — while a
+//             session runs, any launch switches to it (switchTo)
 //             launchWebcam(serial, webcamSettings, sink)
 //             restartWebcam(webcamSettings)  — Apply: same phone and output
 //   Control:  stop(), toggleLog(), refreshSession(), report(text, isFailure, kind?)
@@ -54,10 +56,13 @@ Item {
   property int sessionPid: 0
   // The running webcam's command, to tell when the settings differ.
   property var sessionArgs: []
-  property bool restartPending: false
-  // The phone, output and settings an Apply restarts with: the running
-  // session's phone and output, the settings shown when Apply was pressed.
-  property var restartTarget: null
+  // A launch waiting for the running session to stop: {kind, serial, launch}.
+  // Starting anything while a session runs switches to it (one session at a
+  // time); Apply is a switch to the same webcam with new settings.
+  property var pendingSwitch: null
+  readonly property bool restartPending: pendingSwitch !== null
+  // Set when this instance starts a webcam, so its section opens the preview.
+  property bool previewWanted: false
   // A webcam this instance launched may fail before any status saw it run;
   // its camera error is then still worth showing. Old errors are not, on
   // every later panel open.
@@ -104,7 +109,7 @@ Item {
   // Example: launchMirror("USB123", Model.builtInProfiles()[0], "/home/me", false)
   function launchMirror(serial, profile, folder, audioOnly) {
     if (busy)
-      return;
+      return switchTo(audioOnly ? "audio" : "mirror", serial, () => launchMirror(serial, profile, folder, audioOnly));
     messageKind = "mirror";
     var blocked = missingToolsReason("launching scrcpy");
     if (blocked)
@@ -122,13 +127,14 @@ Item {
   // Example: launchWebcam("USB123", Model.webcamSettings(""), "/dev/video12")
   function launchWebcam(serial, settings, sink) {
     if (busy)
-      return;
+      return switchTo("webcam", serial, () => launchWebcam(serial, settings, sink));
     messageKind = "webcam";
     var blocked = missingToolsReason("starting a webcam");
     if (!blocked && !sink)
       blocked = "No v4l2loopback output selected. Create one, then press Refresh.";
     if (blocked)
       return report(blocked, true);
+    previewWanted = true;
     startWebcam(serial, settings, sink, false);
   }
   function startWebcam(serial, settings, sink, restarting) {
@@ -153,21 +159,29 @@ Item {
     sessionSink = sink;
     stopping = false;
   }
-  // Stops the running webcam; the status handler starts it again once the
-  // session has ended, with `settings`.
-  function restartWebcam(settings) {
-    if (sessionType !== "webcam" || sessionPid <= 0 || restartPending)
+  // Stops the running session; the status handler runs `launch` once it has
+  // ended. Example: switchTo("webcam", "USB123", () => launchWebcam(…)).
+  function switchTo(kind, serial, launch) {
+    if (stopping || pendingSwitch)
       return;
-    restartTarget = { serial: sessionSerial, sink: sessionSink, settings: settings };
-    restartPending = true;
-    report("Restarting the webcam with the new settings…", false);
+    pendingSwitch = { kind: kind, serial: serial, launch: launch };
+    report("Switching to " + (kind === "webcam" ? "the webcam" : kind === "audio" ? "audio" : "mirroring") + "…", false, kind === "webcam" ? "webcam" : "mirror");
     stop();
   }
-  function relaunchAfterRestart() {
-    var target = restartTarget;
-    restartTarget = null;
-    if (target && !missingTools)
-      startWebcam(target.serial, target.settings, target.sink, true);
+  // Apply: the same phone and output, the settings shown when it was pressed.
+  function restartWebcam(settings) {
+    if (sessionType !== "webcam" || sessionPid <= 0 || pendingSwitch)
+      return;
+    var serial = sessionSerial;
+    var sink = sessionSink;
+    switchTo("webcam", serial, () => startWebcam(serial, settings, sink, true));
+    report("Restarting the webcam with the new settings…", false, "webcam");
+  }
+  function runPendingSwitch() {
+    var next = pendingSwitch;
+    pendingSwitch = null;
+    if (next && !missingTools)
+      next.launch();
   }
 
   // A failed wake or unlock is reported but never blocks the session: the
@@ -181,7 +195,12 @@ Item {
     preparer.start(["bash", powerScript, "connected", wakeOnLaunch ? "1" : "0", unlockOnLaunch ? "1" : "0", serial], 30);
   }
 
+  // Stop during a switch cancels the launch waiting for it.
   function stop() {
+    if (pendingSwitch && stopping) {
+      pendingSwitch = null;
+      return report("Switch cancelled.", false);
+    }
     if (!busy || stopping)
       return;
     stopping = true;
@@ -219,11 +238,9 @@ Item {
     sessionArgs = [];
     // The stopper's own message would land on the new launch; it
     // refreshes once more when it returns.
-    if (restartPending) {
-      if (!stopper.busy) {
-        restartPending = false;
-        Qt.callLater(relaunchAfterRestart);
-      }
+    if (pendingSwitch) {
+      if (!stopper.busy)
+        Qt.callLater(runPendingSwitch);
     } else if (lines[1] && sessionType === "webcam" && !stopping && (wasActive || webcamReportDue)) {
       webcamReportDue = false;
       report(lines[1], true, "webcam");
@@ -330,8 +347,8 @@ Item {
     onFinished: (code, output, error) => {
       root.failed = code !== 0;
       if (root.failed)
-        root.restartPending = false;
-      if (!root.restartPending)
+        root.pendingSwitch = null;
+      if (!root.pendingSwitch)
         root.message = root.failed ? Model.commandError(code, output, error, "scrcpy stop") : output.trim();
       root.stopping = false;
       root.refreshSession();
