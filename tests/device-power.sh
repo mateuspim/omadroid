@@ -63,6 +63,23 @@ lock_device
 expect_code 3 unlock OTHER1
 [[ ! -e "$OMADROID_POWER_DIR/typed" ]] || fail "secret typed into another device"
 
+# An impostor reporting the right serial (it is broadcast over mDNS) but a
+# different android_id is refused before typing, without spending the attempt.
+lock_device
+printf '00000000deadbeef' >"$OMADROID_POWER_DIR/android_id"
+expect_code 6 unlock USB123
+[[ ! -e "$OMADROID_POWER_DIR/typed" ]] || fail "secret typed into a device with another android_id"
+[[ "$(power status USB123)" == *secret=saved ]] || fail "identity refusal spent the attempt"
+rm -f "$OMADROID_POWER_DIR/android_id"
+! grep -qF 9f3a61c2d4e5b708 "$OMADROID_KEYRING/argv" "$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret" || fail "raw android_id stored or passed in argv"
+
+# A secret saved without an identity hash is refused until saved again.
+saved_identity="$(cat "$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret")"
+: >"$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret"
+[[ "$(power unlock USB123 2>&1)" == *'Save the PIN again.' ]] || fail "missing identity hash not refused"
+[[ ! -e "$OMADROID_POWER_DIR/typed" ]] || fail "typed without an identity hash"
+printf '%s\n' "$saved_identity" >"$XDG_STATE_HOME/omadroid/devices/R5CR123ABC/secret"
+
 # Pattern lock or no bouncer: nothing typed, attempt not spent.
 OMADROID_TEST_CASE=pattern expect_code 1 unlock USB123
 [[ ! -e "$OMADROID_POWER_DIR/typed" ]] || fail "typed into a pattern lock"

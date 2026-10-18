@@ -2,7 +2,9 @@
 # Keep Android devices awake, wake them, and unlock them with a secret kept in
 # the desktop keyring. Every device is identified by its live `ro.serialno`,
 # never by its adb serial: wireless addresses change and can be reused by
-# another device, which must never receive this device's PIN.
+# another device, which must never receive this device's PIN. The secret is
+# also bound to a hash of `ro.serialno` and `android_id`, checked before every
+# unlock, because the serial alone is advertised over mDNS.
 #
 #   status SERIAL            → "keep=on|off running=1|0 secret=none|saved|blocked"
 #   keep-awake on|off SERIAL   remember the choice and start/stop the keeper
@@ -11,7 +13,8 @@
 #   secret-set SERIAL (secret on stdin) | secret-clear SERIAL
 #
 # Exit codes: 0 done, 1 adb or usage error, 3 no secret saved, 4 unlock paused
-# after a failed try, 5 keyring unavailable.
+# after a failed try, 5 keyring unavailable, 6 the device's identity doesn't
+# match the one the secret was saved for.
 set -uo pipefail
 export LC_ALL=C
 
@@ -27,6 +30,17 @@ device_id() {
   id="$(device_shell "$1" 4 getprop ro.serialno)" || die 1 "Couldn't reach $1 over adb."
   [[ "$id" =~ ^[A-Za-z0-9._-]{4,64}$ ]] || die 1 "$1 reported hardware serial '$id'; expected 4-64 letters, digits, . _ -."
   printf '%s' "$id"
+}
+
+# sha256 of the hardware serial and `android_id`. The serial alone is not
+# enough to trust a device with its PIN: it is broadcast over mDNS
+# (adb-<serial>-xxxx), so any LAN host could advertise it and report it back.
+# android_id is never advertised, and only its hash is kept on this computer.
+device_identity() {
+  local android_id
+  android_id="$(device_shell "$1" 4 settings get secure android_id)" || die 1 "Couldn't reach $1 over adb."
+  [[ "$android_id" =~ ^[0-9A-Fa-f]{8,64}$ ]] || die 1 "$1 reported android_id '$android_id'; expected 8-64 hex digits."
+  printf '%s\n%s' "$2" "$android_id" | sha256sum | cut -d' ' -f1
 }
 
 # Prints "awake|dozing|asleep locked|unlocked".
@@ -153,15 +167,27 @@ still_locked() {
   return 0
 }
 
+# Prints the identity the secret was saved for, after checking the device
+# still has it. Refuses before anything is typed, so the one attempt is kept.
+trusted_identity() {
+  local saved current
+  saved="$(<"$3/secret")"
+  [[ "$saved" =~ ^[0-9a-f]{64}$ ]] || die 3 "The unlock PIN was saved without this device's identity. Save the PIN again."
+  current="$(device_identity "$1" "$2")" || exit
+  [[ "$current" == "$saved" ]] || die 6 "This device's identity doesn't match the one the PIN was saved for, so the PIN wasn't sent. If it is the same device (after a factory reset), save the PIN again."
+  printf '%s' "$saved"
+}
+
 unlock_device() {
-  local serial="$1" id state secret dir
+  local serial="$1" id state secret dir identity
   id="$(device_id "$serial")"
   dir="$state_root/$id"
   # Wake first: a paused or missing PIN must still leave the screen on.
   wake_device "$serial"
   [[ ! -e "$dir/blocked" ]] || die 4 "Unlock is paused after a failed try. Unlock the device by hand, then save its PIN again."
   [[ -e "$dir/secret" ]] || die 3 "No unlock PIN saved for this device."
-  secret="$(secret-tool lookup app omadroid device "$id" 2>/dev/null)" || { rm -f -- "$dir/secret"; die 3 "The keyring has no unlock PIN for this device. Save it again."; }
+  identity="$(trusted_identity "$serial" "$id" "$dir")" || exit
+  secret="$(secret-tool lookup app omadroid device "$id" identity "$identity" 2>/dev/null)" || { rm -f -- "$dir/secret"; die 3 "The keyring has no unlock PIN for this device. Save it again."; }
   state="$(power_state "$serial")" || die 1 "Couldn't read the lock state of $serial."
   [[ "$state" == *' locked' ]] || { echo 'Device is awake and unlocked.'; return 0; }
   show_bouncer "$serial"
@@ -174,17 +200,22 @@ unlock_device() {
 }
 
 save_secret() {
-  local serial="$1" id secret dir
+  local serial="$1" id secret dir identity
   secret="$(cat)"
   secret="${secret%$'\n'}"
   valid_secret "$secret" || die 1 "Use 4-64 plain ASCII characters (letters, digits, symbols, inner spaces); accents and emoji can't be typed over adb."
   command -v secret-tool >/dev/null 2>&1 || die 5 "secret-tool (libsecret) isn't installed; the PIN is never stored in plain text."
   id="$(device_id "$serial")"
+  identity="$(device_identity "$serial" "$id")" || exit
   dir="$state_root/$id"
   mkdir -p -m 700 -- "$dir"
-  printf '%s' "$secret" | secret-tool store --label="OmaDroid unlock for $id" app omadroid device "$id" 2>/dev/null ||
+  # Clear first: an item saved under an older identity would otherwise stay.
+  secret-tool clear app omadroid device "$id" 2>/dev/null
+  # The identity is also a keyring attribute, so the secret can only be looked
+  # up for the device it was saved for even if the state file is edited.
+  printf '%s' "$secret" | secret-tool store --label="OmaDroid unlock for $id" app omadroid device "$id" identity "$identity" 2>/dev/null ||
     die 5 "The desktop keyring refused the PIN. Is a keyring (gnome-keyring, KWallet) running and unlocked?"
-  touch -- "$dir/secret"
+  printf '%s\n' "$identity" >"$dir/secret"
   rm -f -- "$dir/blocked"
   echo 'Unlock PIN saved in the keyring.'
 }

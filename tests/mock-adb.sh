@@ -8,7 +8,7 @@ device_rows() {
     'adb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9'
 }
 # device-power.sh fixture: OMADROID_POWER_DIR holds `awake` and `locked`
-# flags and the `password` that unlocks. Typed scripts are evaluated like the
+# flags, the `password` that unlocks and optionally USB123's `android_id`. Typed scripts are evaluated like the
 # device shell would, so quoting mistakes change what gets typed.
 mock_power() {
   local serial="$1" dir="$OMADROID_POWER_DIR" line typed=""
@@ -16,6 +16,11 @@ mock_power() {
   printf '%s\n' "$*" >>"$dir/argv"
   case "$*" in
     'getprop ro.serialno') [[ "$serial" == USB123 ]] && printf 'R5CR123ABC\r\n' || printf 'OTHERDEVICE\r\n' ;;
+    # `android_id` overrides USB123's id, modelling an impostor that reports
+    # the right serial (it is visible over mDNS) but can't know this id.
+    'settings get secure android_id')
+      [[ "$serial" == USB123 ]] && printf '%s\r\n' "$(cat "$dir/android_id" 2>/dev/null || echo 9f3a61c2d4e5b708)" || printf '0123456789abcdef\r\n'
+      ;;
     'input keyevent KEYCODE_WAKEUP') touch "$dir/awake" ;;
     'input keyevent KEYCODE_SLEEP')
       # lock_delay: keyguard comes later; sleep_ignored: screen stays on.
