@@ -158,3 +158,28 @@ test('a second launch while a switch waits is ignored', () => {
   assert.equal(session.launcher.calls.length, 1);
   assert.equal(session.launcher.calls[0][4], 'webcam');
 });
+
+test('a launch while a session is still starting does not stop it', () => {
+  const session = sessionFixture({ busy: true, sessionPid: 0, sessionSerial: 'USB123' });
+  session.preparer.busy = true;
+  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  assert.equal(session.stopper.calls.length, 0, 'the starting session is left alone');
+  assert.equal(session.pendingSwitch, null);
+  assert.match(session.message, /Wait until the current session has started/);
+});
+
+test('stop cancels a switch after the stopper returned, before the status re-read', () => {
+  const session = mirroringFixture();
+  session.launchWebcam('USB123', Model.webcamSettings(''), '/dev/video12');
+  session.stopping = false;
+  session.stop();
+  assert.equal(session.pendingSwitch, null);
+  endSession(session);
+  assert.equal(session.launcher.calls.length, 0);
+});
+
+test('the preview request ends with the session it was made for', () => {
+  const session = sessionFixture({ previewWanted: true, sessionType: 'webcam' });
+  session.applyEnded(['inactive'], true);
+  assert.equal(session.previewWanted, false);
+});

@@ -161,12 +161,18 @@ Item {
   }
   // Stops the running session; the status handler runs `launch` once it has
   // ended. Example: switchTo("webcam", "USB123", () => launchWebcam(…)).
+  // Only a running session is switched: one still starting (wake/unlock
+  // prep, or scrcpy not up yet) would be stopped before it exists, so its
+  // own launch would land after the switch and be killed by the next lap.
+  // The launcher may still be returning once the session runs; that's fine.
   function switchTo(kind, serial, launch) {
+    if (sessionPid <= 0 || preparer.busy)
+      return report("Wait until the current session has started.", false, kind === "webcam" ? "webcam" : "mirror");
     if (stopping || pendingSwitch)
-      return;
+      return report("A switch is already in progress.", false, kind === "webcam" ? "webcam" : "mirror");
     pendingSwitch = { kind: kind, serial: serial, launch: launch };
     report("Switching to " + (kind === "webcam" ? "the webcam" : kind === "audio" ? "audio" : "mirroring") + "…", false, kind === "webcam" ? "webcam" : "mirror");
-    stop();
+    stopRunning();
   }
   // Apply: the same phone and output, the settings shown when it was pressed.
   function restartWebcam(settings) {
@@ -180,8 +186,10 @@ Item {
   function runPendingSwitch() {
     var next = pendingSwitch;
     pendingSwitch = null;
-    if (next && !missingTools)
-      next.launch();
+    if (!next)
+      return;
+    // The launch itself reports missing tools, so the switch never hangs.
+    next.launch();
   }
 
   // A failed wake or unlock is reported but never blocks the session: the
@@ -195,12 +203,15 @@ Item {
     preparer.start(["bash", powerScript, "connected", wakeOnLaunch ? "1" : "0", unlockOnLaunch ? "1" : "0", serial], 30);
   }
 
-  // Stop during a switch cancels the launch waiting for it.
+  // The user's Stop: during a switch it cancels the launch waiting for it.
   function stop() {
-    if (pendingSwitch && stopping) {
+    if (pendingSwitch) {
       pendingSwitch = null;
       return report("Switch cancelled.", false);
     }
+    stopRunning();
+  }
+  function stopRunning() {
     if (!busy || stopping)
       return;
     stopping = true;
@@ -236,6 +247,9 @@ Item {
   function applyEnded(lines, wasActive) {
     sessionPid = 0;
     sessionArgs = [];
+    // Only the webcam this instance just started opens its preview.
+    if (!pendingSwitch)
+      previewWanted = false;
     // The stopper's own message would land on the new launch; it
     // refreshes once more when it returns.
     if (pendingSwitch) {
