@@ -212,7 +212,8 @@ case "${1:-}" in
     # fd 9 is closed so the terminal never holds the session lock.
     launch_terminal io.github.mateuspim.omadroid OmaDroid bash "$0" run "$request" 9>&-
     flock -u 9
-    for ((attempt=0; attempt<30; attempt++)); do
+    start_limit="$(terminal_start_limit)"
+    for ((attempt=0; attempt<start_limit*10; attempt++)); do
       if [[ -f "$started_file" ]]; then
         rm -f -- "$started_file"
         rm -f -- "$request"

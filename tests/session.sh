@@ -228,6 +228,12 @@ OMADROID_FOOT="$test_dir/mock-foot" OMADROID_FOOT_LOG="$test_dir/foot" session l
 [[ "$(session status)" == $'active\nUSB123\nmirror\n'* ]]
 session stop
 wait_for_inactive
+# A cold Omarchy default terminal (no foot) that needs 4 s still starts the
+# session instead of being reported as failed after 3 s.
+OMADROID_TERMINAL_DELAY=4 session launch USB123 mirror '' -- scrcpy --serial=USB123 --max-fps=120 | grep -qx 'Session started in the hidden OmaDroid terminal.'
+[[ "$(session status)" == $'active\nUSB123\nmirror\n'* ]]
+session stop
+wait_for_inactive
 # A real camera error is found even in a log longer than a pipe buffer.
 rm -f -- "$XDG_RUNTIME_DIR/omadroid-$UID/stopped"
 { echo 'ERROR: Camera 5 not found'; seq 200000; } > "$XDG_RUNTIME_DIR/omadroid-$UID/scrcpy.log"

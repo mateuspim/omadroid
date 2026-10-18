@@ -15,6 +15,9 @@ shift 2
 shift 3
 [[ "${1:-}" == -- ]] || exit 2
 shift
+# OMADROID_TERMINAL_DELAY models a cold Ghostty/Alacritty that takes seconds
+# to run its command.
+sleep "${OMADROID_TERMINAL_DELAY:-0}"
 # Ghostty's hold mode drops empty arguments; mimic it so launches must not
 # depend on them reaching the command.
 args=()
