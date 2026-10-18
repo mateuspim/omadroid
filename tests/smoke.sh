@@ -68,5 +68,7 @@ rg -qxF 'o.bind("SUPER + ALT + D", "DroidLink send text", "omarchy-shell shell t
 # Mute all muted rather than unmuted.
 [[ "$(cat "$test_dir/volume/master")" == 1 ]]
 ! grep -q 'unexpected' "$test_dir/volume/log"
-# "Wake on mirror launch" is on by default.
-test -e "$test_dir/device/awake"
+# "Wake on mirror launch" is on by default; the card's Lock ran after it.
+rg -qxF 'input keyevent KEYCODE_WAKEUP' "$test_dir/device/argv"
+rg -qxF 'input keyevent KEYCODE_SLEEP' "$test_dir/device/argv"
+test -e "$test_dir/device/locked"

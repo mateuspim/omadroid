@@ -48,8 +48,8 @@ settings.
   A session opened on the other page appears as a compact status card there;
   that page keeps its own settings visible while Start waits for the current
   session to end.
-- **Keep awake, wake and unlock:** each ready device card has **Keep awake**,
-  **Wake** (**Wake & unlock** once a PIN is saved) and **Unlock PIN…**. See
+- **Keep awake, wake, unlock and lock:** each ready device card has **Keep awake**,
+  **Wake** (**Wake & unlock** once a PIN is saved), **Lock** and **Unlock PIN…**. See
   [Keep awake and unlock](#keep-awake-and-unlock).
 - **Sound:** the device's volume keys, mute all, ringer mode, per-app volume
   and mute for the apps playing sound, and the system sound streams. See
@@ -415,6 +415,12 @@ DroidLink or the shell stops; turning it off stops that process. The choice is
 remembered per device and the keeper restarts when the device reconnects,
 including on a new wireless port.
 
+**Lock** turns the screen off with `input keyevent KEYCODE_SLEEP`, the off half
+of the power button, so it never wakes a screen that is already off. Android
+locks at once when "Power button instantly locks" is on (its default); otherwise
+the card says the screen is off and the keyguard follows after the device's own
+lock delay. A screen that stays on is reported as an error.
+
 **Unlock PIN…** stores the device's PIN or password in the desktop keyring with
 `secret-tool` (libsecret: gnome-keyring, KWallet, …), never in DroidLink's
 settings, logs or command arguments. It is keyed by the device's hardware serial
@@ -595,7 +601,7 @@ The device-power test runs `device-power.sh` against a fake keyring and a
 simulated lock screen: odd passwords (quotes, spaces, `%s`, `$`, backticks) are
 typed exactly, the secret never appears in any argv, another device never gets
 it, a pattern lock costs no attempt, a wrong secret is tried once then paused,
-and one keeper runs per device and returns on connect.
+Lock reports an instant lock, a lock delay and an ignored sleep key, and one keeper runs per device and returns on connect.
 
 The go-wireless test runs `go-wireless.sh` against a fake adb that simulates
 Wireless debugging: Android 11+ connects over TLS and never switches to TCP,

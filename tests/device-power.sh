@@ -96,6 +96,19 @@ lock_device
 power connected 0 1 USB123 >/dev/null
 [[ -e "$DROIDLINK_POWER_DIR/awake" && -e "$DROIDLINK_POWER_DIR/locked" ]] || fail "on-connect fallback wake"
 
+# Lock: screen off and keyguard up; a lock delay or an ignored key is reported.
+rm -f "$DROIDLINK_POWER_DIR/locked"
+touch "$DROIDLINK_POWER_DIR/awake"
+[[ "$(power lock USB123)" == 'Device locked.' ]] || fail "lock"
+[[ ! -e "$DROIDLINK_POWER_DIR/awake" && -e "$DROIDLINK_POWER_DIR/locked" ]] || fail "lock leaves the screen off and locked"
+[[ "$(power lock USB123)" == 'Device locked.' ]] || fail "locking an asleep device stays asleep"
+rm -f "$DROIDLINK_POWER_DIR/locked"
+touch "$DROIDLINK_POWER_DIR/awake"
+[[ "$(DROIDLINK_TEST_CASE=lock_delay power lock USB123)" == *'lock delay.' ]] || fail "lock delay reported"
+touch "$DROIDLINK_POWER_DIR/awake"
+DROIDLINK_TEST_CASE=sleep_ignored expect_code 1 lock USB123
+expect_code 1 lock 'bad serial;'
+
 # Keep awake: remembered per device, one keeper, restarted on connect.
 power keep-awake on USB123 >/dev/null
 power keep-awake on USB123 >/dev/null

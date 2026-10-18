@@ -17,6 +17,12 @@ mock_power() {
   case "$*" in
     'getprop ro.serialno') [[ "$serial" == USB123 ]] && printf 'R5CR123ABC\r\n' || printf 'OTHERDEVICE\r\n' ;;
     'input keyevent KEYCODE_WAKEUP') touch "$dir/awake" ;;
+    'input keyevent KEYCODE_SLEEP')
+      # lock_delay: keyguard comes later; sleep_ignored: screen stays on.
+      [[ "${DROIDLINK_TEST_CASE:-}" == sleep_ignored ]] && return 0
+      rm -f "$dir/awake"
+      [[ "${DROIDLINK_TEST_CASE:-}" == lock_delay ]] || touch "$dir/locked"
+      ;;
     'dumpsys power'*)
       [[ -e "$dir/awake" ]] && printf '  mWakefulness=Awake\r\n' || printf '  mWakefulness=Dozing\r\n'
       [[ -e "$dir/locked" ]] && printf '    isKeyguardShowing=true\r\n' || printf '    isKeyguardShowing=false\r\n'
@@ -189,7 +195,7 @@ case "${1:-}" in
         'tmpfs              5491156         0   5491156   0% /storage'
       exit 0
     fi
-    if [[ -n "${DROIDLINK_TEXT_DIR:-}" && ( "$*" == 'input text '* || "$*" == 'input key'* ) && "$*" != *KEYCODE_WAKEUP* ]]; then
+    if [[ -n "${DROIDLINK_TEXT_DIR:-}" && ( "$*" == 'input text '* || "$*" == 'input key'* ) && "$*" != *KEYCODE_WAKEUP* && "$*" != *KEYCODE_SLEEP* ]]; then
       mock_text "$@"
       exit $?
     fi

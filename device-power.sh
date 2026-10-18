@@ -7,7 +7,7 @@
 #   status SERIAL            → "keep=on|off running=1|0 secret=none|saved|blocked"
 #   keep-awake on|off SERIAL   remember the choice and start/stop the keeper
 #   connected WAKE UNLOCK SERIAL...   restart wanted keepers, then wake/unlock (0|1)
-#   wake SERIAL | unlock SERIAL
+#   wake SERIAL | unlock SERIAL | lock SERIAL
 #   secret-set SERIAL (secret on stdin) | secret-clear SERIAL
 #
 # Exit codes: 0 done, 1 adb or usage error, 3 no secret saved, 4 unlock paused
@@ -42,6 +42,34 @@ power_state() {
 
 wake_device() {
   device_shell "$1" 4 input keyevent KEYCODE_WAKEUP >/dev/null || die 1 "Couldn't wake $1 over adb."
+}
+
+# Polls until the screen is off and the keyguard is up, or 2 s pass, then
+# prints the last state read (empty if none could be read).
+state_after_sleep() {
+  local attempt state=""
+  for ((attempt = 0; attempt < 8; attempt++)); do
+    sleep 0.25
+    state="$(power_state "$1")" || continue
+    [[ "$state" != awake* && "$state" == *' locked' ]] && break
+  done
+  printf '%s' "$state"
+}
+
+# KEYCODE_SLEEP is the off half of the power button: it does nothing to a
+# screen that is already off, so it can never wake the device by accident.
+# Android locks at once only with "Power button instantly locks" on (the
+# default); otherwise the keyguard follows after the device's lock delay.
+lock_now() {
+  local state
+  device_shell "$1" 4 input keyevent KEYCODE_SLEEP >/dev/null || die 1 "Couldn't lock $1 over adb."
+  state="$(state_after_sleep "$1")"
+  case "$state" in
+    '') die 1 "Couldn't read the lock state of $1." ;;
+    awake*) die 1 "The screen of $1 is still on after the sleep key (state '$state')." ;;
+    *' locked') echo 'Device locked.' ;;
+    *) echo "Screen off; Android locks it after the device's lock delay." ;;
+  esac
 }
 
 # --- Keep awake --------------------------------------------------------------
@@ -247,6 +275,10 @@ case "$command" in
     valid_serial "${1:-}"
     unlock_device "$1"
     ;;
+  lock)
+    valid_serial "${1:-}"
+    lock_now "$1"
+    ;;
   secret-set)
     valid_serial "${1:-}"
     save_secret "$1"
@@ -256,6 +288,6 @@ case "$command" in
     clear_secret "$1"
     ;;
   *)
-    die 1 "Usage: device-power.sh status|keep-awake|connected|wake|unlock|secret-set|secret-clear …; got '$command'."
+    die 1 "Usage: device-power.sh status|keep-awake|connected|wake|unlock|lock|secret-set|secret-clear …; got '$command'."
     ;;
 esac

@@ -5,7 +5,7 @@ import qs.Ui
 import "Model.js" as Model
 import "DevicePower.js" as DevicePower
 
-// Keep awake, wake/unlock and the unlock secret for one ready device. Device
+// Keep awake, wake/unlock, lock and the unlock secret for one ready device. Device
 // and keyring access goes through device-power.sh; the secret only passes
 // through here on its way to the keyring, on stdin.
 ColumnLayout {
@@ -53,6 +53,7 @@ ColumnLayout {
   }
 
   RowLayout {
+    objectName: "powerButtons"
     Layout.fillWidth: true
     ActionButton {
       readonly property bool keepAwake: root.power !== null && root.power.keepAwake
@@ -70,6 +71,13 @@ ColumnLayout {
       enabled: !root.busy
       tooltipText: root.canUnlock ? "Turn the screen on and enter the saved PIN once" : "Turn the screen on"
       onClicked: root.run([root.canUnlock ? "unlock" : "wake", root.serial])
+    }
+    ActionButton {
+      objectName: "powerLock"
+      text: "Lock"
+      enabled: !root.busy
+      tooltipText: "Turn the screen off and lock the device, like its power button"
+      onClicked: root.run(["lock", root.serial])
     }
     ActionButton {
       text: "Unlock PIN…"
