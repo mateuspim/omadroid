@@ -1,8 +1,8 @@
 # Sourced by session.sh and webcam-setup.sh. Foot is preferred: each window is
 # its own process and empty arguments survive, so the hidden session terminal
-# stays separate from the user's own terminals. Without foot, DroidLink uses
-# the Omarchy default terminal. DROIDLINK_FOOT lets tests choose the binary.
-foot_bin="${DROIDLINK_FOOT:-foot}"
+# stays separate from the user's own terminals. Without foot, OmaDroid uses
+# the Omarchy default terminal. OMADROID_FOOT lets tests choose the binary.
+foot_bin="${OMADROID_FOOT:-foot}"
 
 terminal_available() {
   command -v "$foot_bin" >/dev/null 2>&1 && return 0

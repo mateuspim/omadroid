@@ -2,12 +2,12 @@ import QtQuick
 import QtCore as Core
 import Quickshell
 
-// DroidLink's options, set on the popup's Settings page and kept in its own
-// droidlink.ini ([preferences]), never in Omarchy's configuration. Owned by
+// OmaDroid's options, set on the popup's Settings page and kept in its own
+// omadroid.ini ([preferences]), never in Omarchy's configuration. Owned by
 // the shared discovery service so every widget sees the same values.
 Item {
   id: root
-  readonly property string location: "file://" + encodeURI((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/droidlink.ini")
+  readonly property string location: "file://" + encodeURI((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/omadroid.ini")
   // Seconds between `adb devices -l` polls, used only while `adb track-devices` isn't running.
   readonly property int refreshIntervalSec: clampInterval(stored.refreshIntervalSec)
   readonly property bool wakeOnLaunch: stored.wakeOnLaunch
@@ -29,7 +29,7 @@ Item {
     if (name === "lastTextTarget")
       return stored.lastTextTarget = String(value || "");
     if (["wakeOnLaunch", "unlockOnLaunch", "wakeOnConnect", "unlockOnConnect"].indexOf(name) < 0)
-      throw new Error("Unknown DroidLink preference '" + name + "'; expected refreshIntervalSec, lastTextTarget, wakeOnLaunch, unlockOnLaunch, wakeOnConnect or unlockOnConnect.");
+      throw new Error("Unknown OmaDroid preference '" + name + "'; expected refreshIntervalSec, lastTextTarget, wakeOnLaunch, unlockOnLaunch, wakeOnConnect or unlockOnConnect.");
     stored[name] = !!value;
   }
 

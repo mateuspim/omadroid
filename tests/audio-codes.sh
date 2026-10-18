@@ -3,10 +3,10 @@
 # without Samsung's app volume, and tables it must refuse.
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-test_dir="$(mktemp -d /tmp/droidlink-codes.XXXXXX)"
-trap '[[ "$test_dir" == /tmp/droidlink-codes.* ]] && rm -rf -- "$test_dir"' EXIT
+test_dir="$(mktemp -d /tmp/omadroid-codes.XXXXXX)"
+trap '[[ "$test_dir" == /tmp/omadroid-codes.* ]] && rm -rf -- "$test_dir"' EXIT
 fail() {
-  echo "DROIDLINK_CODES_FAILED: $*" >&2
+  echo "OMADROID_CODES_FAILED: $*" >&2
   exit 1
 }
 codes() {
@@ -32,4 +32,4 @@ code=0
 python3 -I "$repo_dir/audio-codes.py" "$test_dir/broken.jar" >/dev/null 2>&1 || code=$?
 [[ "$code" == 2 ]] || fail "broken jar exited $code"
 
-echo DROIDLINK_CODES_OK
+echo OMADROID_CODES_OK

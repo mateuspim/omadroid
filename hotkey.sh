@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Keep the Send text overlay's key binding in Hyprland's bindings.lua, so a new
-# setup gets it from DroidLink's Settings page instead of a hand edit. Omarchy
-# gives plugins no way to bind keys, so DroidLink owns one marked block at the
+# setup gets it from OmaDroid's Settings page instead of a hand edit. Omarchy
+# gives plugins no way to bind keys, so OmaDroid owns one marked block at the
 # end of the file and never touches anything outside it.
 #
 #   hotkey.sh status     → "installed SUPER + ALT + D" or "none"
-#   hotkey.sh set COMBO  → "installed COMBO" (replaces DroidLink's own bind)
+#   hotkey.sh set COMBO  → "installed COMBO" (replaces OmaDroid's own bind)
 #   hotkey.sh remove     → "none"
 #
 # Exit codes: 0 done, 1 usage or file error, 2 the combination is already bound.
@@ -13,10 +13,10 @@ set -uo pipefail
 export LC_ALL=C
 
 source "$(dirname -- "${BASH_SOURCE[0]}")/adb-lib.sh"
-bindings="${DROIDLINK_HYPR_BINDINGS:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua}"
-description="DroidLink send text"
-block_start="-- >>> DroidLink send text (managed by DroidLink; change it on its Settings page)"
-block_end="-- <<< DroidLink send text"
+bindings="${OMADROID_HYPR_BINDINGS:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua}"
+description="OmaDroid send text"
+block_start="-- >>> OmaDroid send text (managed by OmaDroid; change it on its Settings page)"
+block_end="-- <<< OmaDroid send text"
 modifiers=(SUPER CTRL ALT SHIFT)
 
 # "super+alt + d" → "SUPER + ALT + D": known modifiers in a fixed order, then one key.
@@ -62,7 +62,7 @@ current_combo() {
   ' "$bindings"
 }
 
-# The file without DroidLink's block, then the block for COMBO ("" for none).
+# The file without OmaDroid's block, then the block for COMBO ("" for none).
 # Written in place so a bindings.lua symlinked from dotfiles stays a symlink.
 write_bindings() {
   local combo="$1" next
@@ -72,7 +72,7 @@ write_bindings() {
     inside && $0 == end { inside = 0; next }
     !inside
   ' "$bindings" >"$next"
-  [[ -n "$combo" ]] && printf '%s\no.bind("%s", "%s", "omarchy-shell shell toggle pym.droidlink")\n%s\n' \
+  [[ -n "$combo" ]] && printf '%s\no.bind("%s", "%s", "omarchy-shell shell toggle pym.omadroid")\n%s\n' \
     "$block_start" "$combo" "$description" "$block_end" >>"$next"
   if [[ -f "$bindings" ]] && cmp -s "$next" "$bindings"; then
     rm -f -- "$next"

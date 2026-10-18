@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-test_dir="$(mktemp -d /tmp/droidlink-smoke.XXXXXX)"
-trap '[[ "$test_dir" == /tmp/droidlink-smoke.* ]] && rm -rf -- "$test_dir"' EXIT
-if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
+test_dir="$(mktemp -d /tmp/omadroid-smoke.XXXXXX)"
+trap '[[ "$test_dir" == /tmp/omadroid-smoke.* ]] && rm -rf -- "$test_dir"' EXIT
+if [[ -n "${OMADROID_PREVIEW_DIR:-}" ]]; then
   cp "$repo_dir/tests/Preview.qml" "$test_dir/shell.qml"
 else
   cp "$repo_dir/tests/Smoke.qml" "$test_dir/shell.qml"
 fi
 mkdir "$test_dir/bin" "$test_dir/text" "$test_dir/config" "$test_dir/runtime" "$test_dir/state" "$test_dir/keyring" "$test_dir/device" "$test_dir/home"
 mkdir -p "$test_dir/devices/virtual/video4linux/video12" "$test_dir/sys" "$test_dir/dev"
-printf 'DroidLink test camera\n' > "$test_dir/devices/virtual/video4linux/video12/name"
+printf 'OmaDroid test camera\n' > "$test_dir/devices/virtual/video4linux/video12/name"
 touch "$test_dir/devices/virtual/video4linux/video12/keep_format" "$test_dir/dev/video12"
 ln -s "$test_dir/devices/virtual/video4linux/video12" "$test_dir/sys/video12"
 cp "$repo_dir/tests/mock-adb.sh" "$test_dir/bin/adb"
@@ -34,35 +34,35 @@ printf 13 >"$test_dir/volume/stream-3"
 printf 10 >"$test_dir/volume/app-10360"
 printf '10360 started\n' >"$test_dir/volume/players"
 test_status=0
-if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
+if [[ -n "${OMADROID_PREVIEW_DIR:-}" ]]; then
   platform=wayland
 else
   unset DISPLAY WAYLAND_DISPLAY
   platform=offscreen
 fi
-DROIDLINK_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" DROIDLINK_VOLUME_DIR="$test_dir/volume" XDG_CACHE_HOME="$test_dir/cache" DROIDLINK_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt" DROIDLINK_FOOT="$test_dir/bin/foot" HOME="$test_dir/home" DROIDLINK_CLIPBOARD_LOG="$test_dir/clipboard" DROIDLINK_VIDEO_SYSFS="$test_dir/sys" DROIDLINK_VIDEO_DEV="$test_dir/dev" DROIDLINK_POWER_DIR="$test_dir/device" DROIDLINK_TEXT_DIR="$test_dir/text" DROIDLINK_HYPR_BINDINGS="$test_dir/bindings.lua" DROIDLINK_KEYRING="$test_dir/keyring" XDG_STATE_HOME="$test_dir/state" DROIDLINK_HYPRCTL_LOG="$test_dir/hyprctl" PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 20s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
+OMADROID_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" OMADROID_VOLUME_DIR="$test_dir/volume" XDG_CACHE_HOME="$test_dir/cache" OMADROID_TEST_CAMERAS="$repo_dir/tests/camera-sizes.txt" OMADROID_FOOT="$test_dir/bin/foot" HOME="$test_dir/home" OMADROID_CLIPBOARD_LOG="$test_dir/clipboard" OMADROID_VIDEO_SYSFS="$test_dir/sys" OMADROID_VIDEO_DEV="$test_dir/dev" OMADROID_POWER_DIR="$test_dir/device" OMADROID_TEXT_DIR="$test_dir/text" OMADROID_HYPR_BINDINGS="$test_dir/bindings.lua" OMADROID_KEYRING="$test_dir/keyring" XDG_STATE_HOME="$test_dir/state" OMADROID_HYPRCTL_LOG="$test_dir/hyprctl" PATH="$test_dir/bin:$PATH" XDG_CONFIG_HOME="$test_dir/config" XDG_RUNTIME_DIR="$test_dir/runtime" OMADROID_TEST_ARGS="$test_dir/scrcpy-args" QT_QPA_PLATFORM="$platform" QT_QPA_PLATFORMTHEME=xdgdesktopportal QT_STYLE_OVERRIDE=Fusion timeout 20s quickshell -p "$test_dir/shell.qml" --no-color >"$test_dir/output" 2>&1 || test_status=$?
 cat "$test_dir/output"
 test "$test_status" -eq 0
-if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|DROIDLINK_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
-if [[ -n "${DROIDLINK_PREVIEW_DIR:-}" ]]; then
-  rg -q DROIDLINK_PREVIEW_OK "$test_dir/output"
+if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|OMADROID_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
+if [[ -n "${OMADROID_PREVIEW_DIR:-}" ]]; then
+  rg -q OMADROID_PREVIEW_OK "$test_dir/output"
   exit 0
 fi
-rg -q DROIDLINK_SMOKE_OK "$test_dir/output"
+rg -q OMADROID_SMOKE_OK "$test_dir/output"
 rg -q -- '--no-audio' "$test_dir/scrcpy-args"
 rg -q -- '--turn-screen-off' "$test_dir/scrcpy-args"
 rg -q -- '--fullscreen' "$test_dir/scrcpy-args"
-rg -q -- '--record=.*/DroidLink-USB123-.*\.mkv' "$test_dir/scrcpy-args"
+rg -q -- '--record=.*/OmaDroid-USB123-.*\.mkv' "$test_dir/scrcpy-args"
 rg -q -- '--video-source=camera' "$test_dir/scrcpy-args"
 rg -q -- '--v4l2-sink=/dev/video12' "$test_dir/scrcpy-args"
 rg -q '^omarchy pkg add v4l2loopback-dkms$' "$test_dir/clipboard"
-rg -q 'Fixture profile' "$test_dir/config/omarchy/droidlink.ini"
-rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/droidlink.ini"
+rg -q 'Fixture profile' "$test_dir/config/omarchy/omadroid.ini"
+rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/omadroid.ini"
 # Send text pressed the recorded keys, typed on the chosen phone and pressed Enter.
 [[ "$(cat "$test_dir/text/typed")" == "<CTRL+A><DEL>it's {ok}<ENTER>" ]]
-rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/droidlink.ini"
+rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/omadroid.ini"
 # The Settings page installed the Send text hotkey.
-rg -qxF 'o.bind("SUPER + ALT + D", "DroidLink send text", "omarchy-shell shell toggle pym.droidlink")' "$test_dir/bindings.lua"
+rg -qxF 'o.bind("SUPER + ALT + D", "OmaDroid send text", "omarchy-shell shell toggle pym.omadroid")' "$test_dir/bindings.lua"
 # The Sound page sent only the drag's last value.
 [[ "$(cat "$test_dir/volume/app-10360")" == 40 ]]
 # Mute all muted rather than unmuted.

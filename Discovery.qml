@@ -3,7 +3,7 @@ import "Model.js" as Model
 
 Item {
   id: root
-  // DroidLink's options from the popup's Settings page, in droidlink.ini.
+  // OmaDroid's options from the popup's Settings page, in omadroid.ini.
   readonly property alias preferences: preferences
   // Poll interval for `adb devices -l`, used only while `adb track-devices`
   // isn't running (adb missing, server restarting).
@@ -112,7 +112,7 @@ Item {
       frames = Model.takeTrackFrames(trackBuffer + data);
     } catch (e) {
       // Out of step with the framing; a fresh tracker starts with a full list.
-      console.warn(JSON.stringify({ droidlink: "track-devices", error: e.message }));
+      console.warn(JSON.stringify({ omadroid: "track-devices", error: e.message }));
       tracker.stop();
       trackerStopped();
       return;

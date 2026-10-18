@@ -2,7 +2,7 @@
  * Rotation values match Android Surface rotation constants:
  * 0 portrait, 1 landscape, 2 inverted portrait and 3 inverted landscape.
  * session.sh resolves the serial from the active session and records that
- * DroidLink owns the lock, so it can release it when the session ends.
+ * OmaDroid owns the lock, so it can release it when the session ends.
  * Example: orientationCommand("/path/session.sh", 1)
  * @param {string} sessionScript
  * @param {number} rotation

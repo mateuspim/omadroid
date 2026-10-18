@@ -18,7 +18,7 @@ export LC_ALL=C
 source "$(dirname -- "${BASH_SOURCE[0]}")/proc-lib.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/adb-lib.sh"
 keeper_dir="$runtime_dir/keepers"
-state_root="${XDG_STATE_HOME:-$HOME/.local/state}/droidlink/devices"
+state_root="${XDG_STATE_HOME:-$HOME/.local/state}/omadroid/devices"
 mkdir -p -m 700 -- "$keeper_dir" "$state_root"
 
 # The hardware serial reported by the device right now.
@@ -129,8 +129,8 @@ typing_script() {
 # pattern lock or a missing bouncer would land elsewhere.
 show_bouncer() {
   local ui
-  ui="$(device_shell "$1" 8 'input keyevent KEYCODE_WAKEUP; sleep 0.3; wm dismiss-keyguard; sleep 0.8; uiautomator dump /data/local/tmp/droidlink-ui.xml >/dev/null 2>&1; cat /data/local/tmp/droidlink-ui.xml 2>/dev/null; rm -f /data/local/tmp/droidlink-ui.xml')"
-  [[ "$ui" != *'id/lockPatternView"'* ]] || die 1 "This device uses a pattern lock, which DroidLink can't enter. Nothing was typed."
+  ui="$(device_shell "$1" 8 'input keyevent KEYCODE_WAKEUP; sleep 0.3; wm dismiss-keyguard; sleep 0.8; uiautomator dump /data/local/tmp/omadroid-ui.xml >/dev/null 2>&1; cat /data/local/tmp/omadroid-ui.xml 2>/dev/null; rm -f /data/local/tmp/omadroid-ui.xml')"
+  [[ "$ui" != *'id/lockPatternView"'* ]] || die 1 "This device uses a pattern lock, which OmaDroid can't enter. Nothing was typed."
   [[ "$ui" == *'id/passwordEntry"'* || "$ui" == *'id/pinEntry"'* ]] || die 1 "The PIN or password field didn't appear on $1. Nothing was typed."
 }
 
@@ -161,7 +161,7 @@ unlock_device() {
   wake_device "$serial"
   [[ ! -e "$dir/blocked" ]] || die 4 "Unlock is paused after a failed try. Unlock the device by hand, then save its PIN again."
   [[ -e "$dir/secret" ]] || die 3 "No unlock PIN saved for this device."
-  secret="$(secret-tool lookup app droidlink device "$id" 2>/dev/null)" || { rm -f -- "$dir/secret"; die 3 "The keyring has no unlock PIN for this device. Save it again."; }
+  secret="$(secret-tool lookup app omadroid device "$id" 2>/dev/null)" || { rm -f -- "$dir/secret"; die 3 "The keyring has no unlock PIN for this device. Save it again."; }
   state="$(power_state "$serial")" || die 1 "Couldn't read the lock state of $serial."
   [[ "$state" == *' locked' ]] || { echo 'Device is awake and unlocked.'; return 0; }
   show_bouncer "$serial"
@@ -182,7 +182,7 @@ save_secret() {
   id="$(device_id "$serial")"
   dir="$state_root/$id"
   mkdir -p -m 700 -- "$dir"
-  printf '%s' "$secret" | secret-tool store --label="DroidLink unlock for $id" app droidlink device "$id" 2>/dev/null ||
+  printf '%s' "$secret" | secret-tool store --label="OmaDroid unlock for $id" app omadroid device "$id" 2>/dev/null ||
     die 5 "The desktop keyring refused the PIN. Is a keyring (gnome-keyring, KWallet) running and unlocked?"
   touch -- "$dir/secret"
   rm -f -- "$dir/blocked"
@@ -192,7 +192,7 @@ save_secret() {
 clear_secret() {
   local id
   id="$(device_id "$1")"
-  secret-tool clear app droidlink device "$id" 2>/dev/null
+  secret-tool clear app omadroid device "$id" 2>/dev/null
   rm -f -- "$state_root/$id/secret" "$state_root/$id/blocked"
   echo 'Unlock PIN removed.'
 }

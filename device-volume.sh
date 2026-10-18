@@ -22,7 +22,7 @@ export LC_ALL=C
 
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 source "$script_dir/adb-lib.sh"
-cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/droidlink"
+cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/omadroid"
 # Stream key → AudioManager.STREAM_* index. Aliased streams (TTS,
 # accessibility, DTMF) follow media or ringtone, so they aren't listed.
 declare -A stream_index=([call]=0 [system]=1 [ring]=2 [media]=3 [alarm]=4 [notification]=5 [assistant]=11)

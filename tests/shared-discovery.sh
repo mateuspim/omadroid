@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-test_dir="$(mktemp -d /tmp/droidlink-shared.XXXXXX)"
-trap '[[ "$test_dir" == /tmp/droidlink-shared.* ]] && rm -rf -- "$test_dir"' EXIT
+test_dir="$(mktemp -d /tmp/omadroid-shared.XXXXXX)"
+trap '[[ "$test_dir" == /tmp/omadroid-shared.* ]] && rm -rf -- "$test_dir"' EXIT
 
 mkdir "$test_dir/bin" "$test_dir/config" "$test_dir/runtime"
 chmod 700 "$test_dir/runtime"
@@ -21,8 +21,8 @@ PATH="$test_dir/bin:$PATH" \
   XDG_CONFIG_HOME="$test_dir/config" \
   XDG_RUNTIME_DIR="$test_dir/runtime" \
   XDG_STATE_HOME="$test_dir/state" \
-  DROIDLINK_ADB_LOG="$test_dir/adb.log" \
-  DROIDLINK_REFRESH_MARKER="$test_dir/refresh.started" \
+  OMADROID_ADB_LOG="$test_dir/adb.log" \
+  OMADROID_REFRESH_MARKER="$test_dir/refresh.started" \
   QT_QPA_PLATFORM=offscreen \
   QT_QPA_PLATFORMTHEME=xdgdesktopportal \
   QT_STYLE_OVERRIDE=Fusion \
@@ -30,11 +30,11 @@ PATH="$test_dir/bin:$PATH" \
 
 sed -n '1,240p' "$test_dir/output"
 test "$test_status" -eq 0
-if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|DROIDLINK_SHARED_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
-rg -q DROIDLINK_SHARED_TEST_OK "$test_dir/output"
+if rg -i '(TypeError|ReferenceError|SyntaxError|is not a type|Cannot assign|Unable to assign|Binding loop|Failed to load configuration|OMADROID_SHARED_TEST_FAILED)' "$test_dir/output"; then exit 1; fi
+rg -q OMADROID_SHARED_TEST_OK "$test_dir/output"
 # Two explicit refreshes (the second coalesced into a follow-up) poll adb;
 # with track-devices running nothing else does.
-if [[ "${DROIDLINK_TEST_CASE:-}" == no_track ]]; then
+if [[ "${OMADROID_TEST_CASE:-}" == no_track ]]; then
   test "$(rg -c '^track ' "$test_dir/adb.log" || echo 0)" -eq 0
   test "$(rg -c '^start initial ' "$test_dir/adb.log")" -ge 1
 else

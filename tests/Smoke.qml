@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import "plugin" as DroidLink
+import "plugin" as OmaDroid
 
 ShellRoot {
   id: testRoot
@@ -9,7 +9,7 @@ ShellRoot {
   property bool webcamApplied: false
   function check(condition, message) {
     if (!condition) {
-      console.error("DROIDLINK_TEST_FAILED: " + message);
+      console.error("OMADROID_TEST_FAILED: " + message);
       Qt.exit(1);
     }
   }
@@ -21,25 +21,25 @@ ShellRoot {
     }
     return null;
   }
-  DroidLink.ScrcpyPane {
+  OmaDroid.ScrcpyPane {
     id: mirroring
     width: 440
     devices: discovery.devices
   }
   // Loaded only on demand in the panel; instantiated here so a QML error in
   // either fails the smoke test. No device, so no camera opens.
-  DroidLink.WebcamPreview {
+  OmaDroid.WebcamPreview {
     id: previewCheck
     width: 320
   }
-  DroidLink.PreviewSplash {
+  OmaDroid.PreviewSplash {
     id: splashCheck
     width: 320
     height: 180
     label: "Waiting"
   }
   // Sound page against tests/mock-volume-adb.sh: the game playing at 10/100.
-  DroidLink.SoundPane {
+  OmaDroid.SoundPane {
     id: soundPane
     width: 440
     devices: discovery.devices
@@ -66,7 +66,7 @@ ShellRoot {
       testRoot.check(soundPane.volume.master === true, "Mute all shows at once");
     }
   }
-  DroidLink.DevicePowerControls {
+  OmaDroid.DevicePowerControls {
     id: powerControls
     width: 440
     serial: "USB123"
@@ -87,7 +87,7 @@ ShellRoot {
       return true;
     }
   }
-  DroidLink.QrPairing {
+  OmaDroid.QrPairing {
     id: qrPairing
     width: 440
     actions: qrActions
@@ -99,7 +99,7 @@ ShellRoot {
     }
   }
   property string qrPassword: ""
-  DroidLink.SettingsPane {
+  OmaDroid.SettingsPane {
     id: settingsPane
     width: 440
     consumer: QtObject {
@@ -111,7 +111,7 @@ ShellRoot {
   // Auto-connect: two phones are ready over Wi-Fi and get remembered, then
   // both drop. The trusted one is reconnected; the one that refuses (fake adb:
   // 192.168.1.66) is forgotten. Neither endpoint is tried twice.
-  DroidLink.AutoConnect {
+  OmaDroid.AutoConnect {
     id: autoConnect
     property var attempts: []
     property int stage: 0
@@ -145,7 +145,7 @@ ShellRoot {
       }
     }
   }
-  DroidLink.ScrcpyPane {
+  OmaDroid.ScrcpyPane {
     id: otherMonitor
     width: 440
     devices: discovery.devices
@@ -176,16 +176,16 @@ ShellRoot {
         mirroring.launch();
       } else if (testRoot.step === 9 && mirroring.sessionPid > 0 && otherMonitor.sessionPid === mirroring.sessionPid && !testRoot.stopQueued) {
         testRoot.check(mirroring.message.indexOf("Session started") !== 0, "launch message cleared once active: " + mirroring.message);
-        testRoot.check(child(mirroring, "droidlinkSessionCard").visible && !child(mirroring, "droidlinkNextOptions").visible, "session card first, options folded");
+        testRoot.check(child(mirroring, "omadroidSessionCard").visible && !child(mirroring, "omadroidNextOptions").visible, "session card first, options folded");
         mirroring.pageMode = "webcam";
-        testRoot.check(!child(mirroring, "droidlinkSessionCard").visible && child(mirroring, "droidlinkOtherSession").visible && child(mirroring, "droidlinkWebcamOptions").visible, "webcam page keeps camera settings visible during mirroring");
+        testRoot.check(!child(mirroring, "omadroidSessionCard").visible && child(mirroring, "omadroidOtherSession").visible && child(mirroring, "omadroidWebcamOptions").visible, "webcam page keeps camera settings visible during mirroring");
         mirroring.pageMode = "mirror";
         mirroring.optionsExpanded = true;
-        testRoot.check(child(mirroring, "droidlinkNextOptions").visible, "options expand during a session");
+        testRoot.check(child(mirroring, "omadroidNextOptions").visible, "options expand during a session");
         testRoot.stopQueued = true;
         stopTimer.start();
       } else if (testRoot.step === 9 && testRoot.stopQueued && !mirroring.busy && !otherMonitor.busy) {
-        testRoot.check(!child(mirroring, "droidlinkSessionCard").visible && child(mirroring, "droidlinkNextOptions").visible, "options shown when idle");
+        testRoot.check(!child(mirroring, "omadroidSessionCard").visible && child(mirroring, "omadroidNextOptions").visible, "options shown when idle");
         testRoot.step = 10;
         mirroring.chooseDevice("UNPLUGGED");
         mirroring.launch();
@@ -193,13 +193,13 @@ ShellRoot {
       }
     }
   }
-  DroidLink.Discovery {
+  OmaDroid.Discovery {
     id: discovery
     mdnsInBackground: true
     onBusyChanged: if (!busy && initialized) {
       Qt.callLater(function () {
         testRoot.check(discovery.devices.length === 4, "four adb devices");
-        var unavailable = Quickshell.env("DROIDLINK_TEST_CASE") === "avahi_unavailable";
+        var unavailable = Quickshell.env("OMADROID_TEST_CASE") === "avahi_unavailable";
         testRoot.check(discovery.rows.length === (unavailable ? 4 : 6), "merged mDNS rows");
         testRoot.check(unavailable ? discovery.mdnsLevel === "error" && discovery.mdnsDetails.indexOf("Daemon not running") >= 0 : !discovery.mdnsError, "mDNS failure does not suppress USB");
         testRoot.check(discovery.readyCount === 2, "ready count");
@@ -210,7 +210,7 @@ ShellRoot {
       });
     }
   }
-  DroidLink.Actions {
+  OmaDroid.Actions {
     id: actions
     onChanged: {
       if (testRoot.step === 1) {
@@ -233,13 +233,13 @@ ShellRoot {
       }
     }
   }
-  DroidLink.Command {
+  OmaDroid.Command {
     id: command
     onFinished: (code, output, error) => {
       if (testRoot.step === 5) {
         testRoot.check(code === 124, "command timeout");
         testRoot.step = 6;
-        Qt.callLater(() => command.start(["droidlink-intentionally-missing-executable"], 2));
+        Qt.callLater(() => command.start(["omadroid-intentionally-missing-executable"], 2));
       } else if (testRoot.step === 6) {
         testRoot.check(code === 127, "missing executable");
         testRoot.step = 7;
@@ -267,11 +267,11 @@ ShellRoot {
       }
       if (testRoot.step === 10) {
         mirroring.pageMode = "webcam";
-        testRoot.check(child(mirroring, "droidlinkWebcamOptions").visible && !child(mirroring, "droidlinkMirrorResolution").visible && !child(mirroring, "droidlinkMirrorLaunch").visible, "webcam page shows only camera settings");
+        testRoot.check(child(mirroring, "omadroidWebcamOptions").visible && !child(mirroring, "omadroidMirrorResolution").visible && !child(mirroring, "omadroidMirrorLaunch").visible, "webcam page shows only camera settings");
         var outputs = mirroring.webcamOutputs;
         mirroring.webcamOutputs = [];
         mirroring.webcamIssue = "missing-package";
-        testRoot.check(child(mirroring, "droidlinkWebcamSetup").visible, "missing driver shows setup card");
+        testRoot.check(child(mirroring, "omadroidWebcamSetup").visible, "missing driver shows setup card");
         mirroring.copyWebcamCommands();
         mirroring.webcamOutputs = outputs;
         mirroring.chooseDevice("USB123");
@@ -282,7 +282,7 @@ ShellRoot {
         // Panes here sit outside a window, so layouts never re-measure and
         // widths cannot be checked; only that the folded section opens.
         mirroring.webcamDetailsOpen = true;
-        testRoot.check(child(mirroring, "droidlinkWebcamDetails").visible, "quality and adjustments open");
+        testRoot.check(child(mirroring, "omadroidWebcamDetails").visible, "quality and adjustments open");
         testRoot.check(mirroring.cameras && mirroring.cameras.length === 3, "cameras read from the phone: " + JSON.stringify(mirroring.cameras));
         testRoot.check(mirroring.webcam.camera === "id:1" && mirroring.webcam.size === "1920x1080" && mirroring.webcam.fps === "30", "webcam settings fit the camera: " + JSON.stringify(mirroring.webcam));
         mirroring.applyPreset("sharp");
@@ -312,10 +312,10 @@ ShellRoot {
         testRoot.check(mirroring.sessionArgs.indexOf("--camera-id=1") >= 0 && mirroring.sessionArgs.indexOf("--camera-zoom=2") >= 0 && mirroring.sessionArgs.indexOf("--camera-torch") >= 0, "webcam starts with the chosen camera and adjustments: " + JSON.stringify(mirroring.sessionArgs));
         testRoot.check(!mirroring.webcamChanged && !otherMonitor.webcamChanged, "nothing to apply right after start, on either widget: " + JSON.stringify(otherMonitor.webcam));
         mirroring.webcamPreview = true;
-        testRoot.check(child(mirroring, "droidlinkWebcamPreview").visible, "Preview shows during a webcam session");
-        testRoot.check(!child(otherMonitor, "droidlinkSessionCard").visible && child(otherMonitor, "droidlinkOtherSession").visible && child(otherMonitor, "droidlinkNextOptions").visible, "mirror page keeps its options visible during webcam capture");
+        testRoot.check(child(mirroring, "omadroidWebcamPreview").visible, "Preview shows during a webcam session");
+        testRoot.check(!child(otherMonitor, "omadroidSessionCard").visible && child(otherMonitor, "omadroidOtherSession").visible && child(otherMonitor, "omadroidNextOptions").visible, "mirror page keeps its options visible during webcam capture");
         mirroring.setWebcam({ fps: "24" });
-        testRoot.check(mirroring.webcamChanged && child(mirroring, "droidlinkWebcamApply").visible, "a changed setting offers Apply");
+        testRoot.check(mirroring.webcamChanged && child(mirroring, "omadroidWebcamApply").visible, "a changed setting offers Apply");
         testRoot.webcamApplied = true;
         mirroring.applyWebcam();
       }
@@ -327,7 +327,7 @@ ShellRoot {
   property int sendTextHides: 0
   property bool sendTextDone: false
   // SendText.qml's window needs Wayland layer shell, so the card is tested alone.
-  DroidLink.SendTextCard {
+  OmaDroid.SendTextCard {
     id: sendTextOverlay
     property bool opened: false
     function open() { opened = true; reset(); }
@@ -347,7 +347,7 @@ ShellRoot {
     interval: 6000
     running: true
     onTriggered: {
-      var hotkey = child(settingsPane, "droidlinkHotkey");
+      var hotkey = child(settingsPane, "omadroidHotkey");
       testRoot.check(hotkey.installed === "", "no Send text hotkey at first: " + hotkey.installed + " " + hotkey.message);
       hotkey.run(["set", "super+alt+d"]);
       child(powerControls, "powerLock").clicked();
@@ -408,7 +408,7 @@ ShellRoot {
       testRoot.check(powerRow.implicitWidth <= powerControls.width, "power buttons fit the card: " + powerRow.implicitWidth + " > " + powerControls.width);
       testRoot.check(powerControls.message === "Device locked." && !powerControls.failed, "Lock reaches the device: " + powerControls.message);
       // The Settings page shows and flips the shared service's options.
-      var wakeButton = child(settingsPane, "droidlinkSetting-wakeOnLaunch");
+      var wakeButton = child(settingsPane, "omadroidSetting-wakeOnLaunch");
       testRoot.check(wakeButton && wakeButton.text.indexOf("✓") === 0, "Settings page shows wake on launch on: " + (wakeButton ? wakeButton.text : "missing"));
       settingsPane.toggle("wakeOnLaunch");
       testRoot.check(!discovery.preferences.wakeOnLaunch && wakeButton.text.indexOf("○") === 0, "Settings page toggle saved: " + wakeButton.text);
@@ -437,9 +437,9 @@ ShellRoot {
       testRoot.check(testRoot.sendTextDone, "send text finished");
       var gameNow = soundPane.volume.apps.find(app => app.uid === 10360);
       testRoot.check(gameNow.volume === 40 && soundPane.volume.streams.find(stream => stream.key === "media").muted && soundPane.volume.master === true && soundPane.changeError === "", "sound changes reached the device: " + JSON.stringify(gameNow) + " " + soundPane.changeError);
-      var hotkeyRow = child(settingsPane, "droidlinkHotkey");
-      testRoot.check(hotkeyRow.installed === "SUPER + ALT + D" && child(hotkeyRow, "droidlinkHotkeyRemove").visible, "Send text hotkey installed: " + hotkeyRow.installed + " " + hotkeyRow.message);
-      console.log("DROIDLINK_SMOKE_OK");
+      var hotkeyRow = child(settingsPane, "omadroidHotkey");
+      testRoot.check(hotkeyRow.installed === "SUPER + ALT + D" && child(hotkeyRow, "omadroidHotkeyRemove").visible, "Send text hotkey installed: " + hotkeyRow.installed + " " + hotkeyRow.message);
+      console.log("OMADROID_SMOKE_OK");
       Qt.quit();
     }
   }

@@ -9,7 +9,7 @@ export LC_ALL=C
 
 for dependency in avahi-browse:Avahi setpriv:util-linux; do
   if ! command -v "${dependency%%:*}" >/dev/null 2>&1; then
-    printf 'DroidLink mDNS: missing %s. Install %s.\n' "${dependency%%:*}" "${dependency#*:}" >&2
+    printf 'OmaDroid mDNS: missing %s. Install %s.\n' "${dependency%%:*}" "${dependency#*:}" >&2
     exit 1
   fi
 done
@@ -44,7 +44,7 @@ for index in "${!browser_pids[@]}"; do
   [[ "${browser_pids[$index]}" == "${stopped_pid:-}" ]] || continue
   # Already reaped; never signal its PID during cleanup.
   unset 'browser_pids[index]'
-  printf 'DroidLink mDNS: discovery stopped (%s exited with %s). Check that avahi-daemon is running.\n' \
+  printf 'OmaDroid mDNS: discovery stopped (%s exited with %s). Check that avahi-daemon is running.\n' \
     "${browser_types[$index]}" "$browser_status" >&2
 done
 exit 1

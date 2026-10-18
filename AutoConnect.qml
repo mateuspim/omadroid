@@ -5,12 +5,12 @@ import "AutoConnect.js" as AutoConnect
 // Connects devices that were ready over Wi-Fi here before, as soon as they
 // announce Wireless debugging. Devices are remembered by their mDNS service
 // name, whether or not auto-connect is on, and forgotten when they refuse
-// this computer. The switch and the list live in DroidLink's own
-// droidlink.ini. Lives in the shared discovery service so two bars don't act twice.
+// this computer. The switch and the list live in OmaDroid's own
+// omadroid.ini. Lives in the shared discovery service so two bars don't act twice.
 Item {
   id: root
   readonly property bool enabled: remembered.enabled
-  // droidlink.ini, from Preferences.
+  // omadroid.ini, from Preferences.
   required property string settingsLocation
   property var devices: []
   property var services: []

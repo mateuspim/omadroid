@@ -6,7 +6,7 @@ Item {
   id: root
 
   property var shell: null
-  property string pluginId: "pym.droidlink"
+  property string pluginId: "pym.omadroid"
   property bool mdnsWanted: false
   readonly property var sharedDiscovery: shell && typeof shell.serviceFor === "function" ? shell.serviceFor(pluginId) : null
   readonly property var discovery: sharedDiscovery || unavailableDiscovery
@@ -23,7 +23,7 @@ Item {
       sharedDiscovery.holdMdns(root, wanted);
   }
 
-  // Options are saved by the service in droidlink.ini, so every widget shows
+  // Options are saved by the service in omadroid.ini, so every widget shows
   // the same state and the service acts on connects once.
   function setAutoConnect(on) {
     if (sharedDiscovery)

@@ -4,8 +4,8 @@
 # format, unlike Qt's camera, whose cached format list could push a stale size
 # onto the shared output and garble it for every app.
 set -euo pipefail
-sys_root="${DROIDLINK_VIDEO_SYSFS:-/sys/class/video4linux}"
-runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/droidlink-${UID}"
+sys_root="${OMADROID_VIDEO_SYSFS:-/sys/class/video4linux}"
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/omadroid-${UID}"
 device="${1:-}" out="${2:-}"
 [[ "$device" =~ ^/dev/video[0-9]+$ ]] || { echo "Invalid preview device '$device'." >&2; exit 2; }
 [[ "$out" =~ ^"$runtime_dir"/preview-[A-Za-z0-9]+\.jpg$ ]] || { echo "Invalid preview path '$out'." >&2; exit 2; }

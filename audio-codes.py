@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print the IAudioService binder transaction codes DroidLink calls with
+"""Print the IAudioService binder transaction codes OmaDroid calls with
 `service call audio`, read from a device's /system/framework/framework.jar.
 
 Samsung's per-app volume and Android's master mute have no shell command, and

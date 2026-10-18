@@ -18,7 +18,7 @@ function newlyReady(previous, current) {
 }
 
 /** The `device-power.sh connected` command for devices that just became ready.
- * Devices already present when DroidLink starts only get their keepers back:
+ * Devices already present when OmaDroid starts only get their keepers back:
  * a shell reload shouldn't wake or unlock anything.
  * Example: connectedCommand("/p/device-power.sh", ["B"], true, false, false) → ["bash", "/p/device-power.sh", "connected", "1", "0", "B"]
  * @returns {Array<string>} empty when there is nothing to do

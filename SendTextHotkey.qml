@@ -4,7 +4,7 @@ import qs.Commons
 import qs.Ui
 
 // Settings row for the Send text overlay's key binding. hotkey.sh keeps it in
-// a DroidLink block of ~/.config/hypr/bindings.lua; nothing is written until
+// a OmaDroid block of ~/.config/hypr/bindings.lua; nothing is written until
 // Install is pressed.
 ColumnLayout {
   id: root
@@ -51,20 +51,20 @@ ColumnLayout {
     spacing: Style.space(10)
     TextField {
       id: comboField
-      objectName: "droidlinkHotkeyCombo"
+      objectName: "omadroidHotkeyCombo"
       Layout.preferredWidth: Style.space(150)
       text: "SUPER + ALT + D"
       Accessible.name: "Send text key combination"
       onAccepted: root.run(["set", text])
     }
     ActionButton {
-      objectName: "droidlinkHotkeyInstall"
+      objectName: "omadroidHotkeyInstall"
       text: root.installed ? "Update" : "Install"
       enabled: !hotkeyCommand.busy && root.installed !== null && comboField.text.trim() !== ""
       onClicked: root.run(["set", comboField.text])
     }
     ActionButton {
-      objectName: "droidlinkHotkeyRemove"
+      objectName: "omadroidHotkeyRemove"
       visible: !!root.installed
       text: "Remove"
       enabled: !hotkeyCommand.busy
@@ -72,7 +72,7 @@ ColumnLayout {
     }
   }
   Label {
-    objectName: "droidlinkHotkeyStatus"
+    objectName: "omadroidHotkeyStatus"
     Layout.fillWidth: true
     text: root.message || (root.installed ? root.installed + " opens the Send text prompt. Saved in ~/.config/hypr/bindings.lua." : "Adds a key binding to ~/.config/hypr/bindings.lua that opens a prompt for typing on a device.")
     wrapMode: Text.WordWrap

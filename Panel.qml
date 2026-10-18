@@ -8,8 +8,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "pym.droidlink"
-  ipcTarget: "pym.droidlink"
+  moduleName: "pym.omadroid"
+  ipcTarget: "pym.omadroid"
   manageIpc: false
 
   implicitWidth: button.implicitWidth
@@ -69,7 +69,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    tooltipText: "DroidLink · " + discovery.readyCount + " ready" + (scrcpyPane.sessionPid > 0 ? " · " + (scrcpyPane.sessionType === "webcam" ? "Webcam" : scrcpyPane.sessionType === "audio" ? "Audio" : "Mirroring") + " active" : "") + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsLevel === "error" ? " · wireless discovery unavailable" : "")
+    tooltipText: "OmaDroid · " + discovery.readyCount + " ready" + (scrcpyPane.sessionPid > 0 ? " · " + (scrcpyPane.sessionType === "webcam" ? "Webcam" : scrcpyPane.sessionType === "audio" ? "Audio" : "Mirroring") + " active" : "") + (root.missingTools ? " · Missing: " + root.missingTools : "") + (discovery.mdnsLevel === "error" ? " · wireless discovery unavailable" : "")
     iconComponent: Component {
       Item {
         DroidPromptIcon {
@@ -113,7 +113,7 @@ Panel {
 
     ColumnLayout {
       id: popupLayout
-      objectName: "droidlinkPopup"
+      objectName: "omadroidPopup"
       anchors.fill: parent
       spacing: Style.space(12)
       Keys.onEscapePressed: root.close()
@@ -133,7 +133,7 @@ Panel {
           spacing: Style.space(3)
           Label {
             Layout.fillWidth: true
-            text: "DroidLink"
+            text: "OmaDroid"
             font.bold: true
             font.pixelSize: Style.font.title
           }
@@ -175,14 +175,14 @@ Panel {
       Label {
         Layout.fillWidth: true
         visible: root.missingTools !== ""
-        text: "⚠ Missing tools: " + root.missingTools + ". Install them to use DroidLink mirroring."
+        text: "⚠ Missing tools: " + root.missingTools + ". Install them to use OmaDroid mirroring."
         color: Color.urgent
         wrapMode: Text.WordWrap
       }
       RowLayout {
         Layout.fillWidth: true
         Accessible.role: Accessible.PageTabList
-        Accessible.name: "DroidLink pages"
+        Accessible.name: "OmaDroid pages"
         Repeater {
           model: [
             { key: "devices", label: "Devices" },
@@ -214,7 +214,7 @@ Panel {
 
         Controls.ScrollView {
           id: deviceScroll
-          objectName: "droidlinkScroll"
+          objectName: "omadroidScroll"
           anchors.fill: parent
           visible: root.page !== "mirror" && root.page !== "webcam"
           contentWidth: availableWidth
@@ -408,7 +408,7 @@ Panel {
             color: Util.alpha(Color.foreground, 0.7)
           }
           SoundPane {
-            objectName: "droidlinkSound"
+            objectName: "omadroidSound"
             Layout.fillWidth: true
             // Room for the scrollbar, which is drawn over the page's right edge.
             Layout.rightMargin: Style.space(14)
@@ -457,7 +457,7 @@ Panel {
         // so it scrolls like the device pages instead of overflowing the card.
         Controls.ScrollView {
           id: mirrorScroll
-          objectName: "droidlinkMirrorScroll"
+          objectName: "omadroidMirrorScroll"
           anchors.fill: parent
           visible: root.page === "mirror" || root.page === "webcam"
           contentWidth: availableWidth
@@ -465,7 +465,7 @@ Panel {
           Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
           ScrcpyPane {
             id: scrcpyPane
-            objectName: "droidlinkScrcpy"
+            objectName: "omadroidScrcpy"
             width: mirrorScroll.availableWidth
             devices: discovery.devices
             missingTools: root.missingTools

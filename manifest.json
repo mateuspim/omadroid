@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "pym.droidlink",
-  "name": "DroidLink",
+  "id": "pym.omadroid",
+  "name": "OmaDroid",
   "version": "0.9.0",
-  "author": "pym",
+  "author": "Mateus Pim",
   "license": "MIT",
-  "description": "Discover ADB devices and launch scrcpy from the Omarchy bar.",
+  "description": "Android on Omarchy: discover ADB devices, mirror and control them with scrcpy from the bar.",
   "kinds": [
     "bar-widget",
     "overlay",
@@ -17,7 +17,7 @@
     "service": "Discovery.qml"
   },
   "barWidget": {
-    "displayName": "DroidLink",
+    "displayName": "OmaDroid",
     "description": "Discover Android devices over USB and wireless ADB, then mirror them with scrcpy.",
     "category": "Hardware",
     "allowMultiple": false,

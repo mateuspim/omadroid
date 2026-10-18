@@ -3,15 +3,15 @@
 # here touches a real device.
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-test_dir="$(mktemp -d /tmp/droidlink-wireless.XXXXXX)"
-trap '[[ "$test_dir" == /tmp/droidlink-wireless.* ]] && rm -rf -- "$test_dir"' EXIT
+test_dir="$(mktemp -d /tmp/omadroid-wireless.XXXXXX)"
+trap '[[ "$test_dir" == /tmp/omadroid-wireless.* ]] && rm -rf -- "$test_dir"' EXIT
 mkdir -p "$test_dir/bin" "$test_dir/device"
 cp "$repo_dir/tests/mock-adb.sh" "$test_dir/bin/adb"
 chmod +x "$test_dir/bin/adb"
-export PATH="$test_dir/bin:$PATH" DROIDLINK_WIRELESS_DIR="$test_dir/device" DROIDLINK_POLL_DELAY=0.01
+export PATH="$test_dir/bin:$PATH" OMADROID_WIRELESS_DIR="$test_dir/device" OMADROID_POLL_DELAY=0.01
 device="$test_dir/device"
 fail() {
-  echo "DROIDLINK_WIRELESS_FAILED: $*" >&2
+  echo "OMADROID_WIRELESS_FAILED: $*" >&2
   exit 1
 }
 # reset_device SDK ENABLED: a phone on Wi-Fi (and mobile data) with a clean log.
@@ -72,7 +72,7 @@ go 2 USB123
 
 # A host the device doesn't trust over TLS is pointed at QR pairing.
 reset_device 34 0
-DROIDLINK_TEST_CASE=untrusted go 4 USB123
+OMADROID_TEST_CASE=untrusted go 4 USB123
 [[ "$out" == *"isn't authorized"*"Pair with QR code"* ]] || fail "untrusted hint: $out"
 
 # Serials are checked before adb sees them.
@@ -80,4 +80,4 @@ reset_device 34 0
 go 1 'bad serial;'
 [[ ! -e "$device/log" ]] || fail "a bad serial never reaches adb"
 
-echo DROIDLINK_WIRELESS_OK
+echo OMADROID_WIRELESS_OK

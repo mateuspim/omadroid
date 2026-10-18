@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # The device side of device-volume.sh, called by mock-adb.sh through
-# DROIDLINK_VOLUME_MOCK. Exits 100 for calls it doesn't handle.
+# OMADROID_VOLUME_MOCK. Exits 100 for calls it doesn't handle.
 #
-# DROIDLINK_VOLUME_DIR holds the device: `fingerprint`, `framework.jar`,
+# OMADROID_VOLUME_DIR holds the device: `fingerprint`, `framework.jar`,
 # `stream-N` and `muted-N` per stream index, `app-UID`/`appmute-UID`
 # (Samsung) and `appop-UID` (PLAY_AUDIO ignored), `master`, `ringer`
 # (0-2), `players` ("UID started|idle" lines) and `log` of every call.
 # Device scripts are evaluated with fake service/cmd/dumpsys/appops/input/pm,
 # so the real script's quoting and parsing run. Service codes are the Tab
-# S11's; DROIDLINK_TEST_CASE=wrong_codes answers getStreamVolume wrongly, as a
+# S11's; OMADROID_TEST_CASE=wrong_codes answers getStreamVolume wrongly, as a
 # device whose cached codes no longer match would.
 set -u
 export LC_ALL=C
-dir="${DROIDLINK_VOLUME_DIR:?}"
+dir="${OMADROID_VOLUME_DIR:?}"
 [[ "${1:-}" == -s ]] || exit 100
 serial="$2"
 shift 2
@@ -26,7 +26,7 @@ service() {
   shift 2
   printf 'service %s\n' "$*" >>"$dir/log"
   case "$1 ${*:2}" in
-    '27 i32 '*) [[ "${DROIDLINK_TEST_CASE:-}" == wrong_codes ]] && parcel 99 || parcel "$(value "stream-$3" 0)" ;;
+    '27 i32 '*) [[ "${OMADROID_TEST_CASE:-}" == wrong_codes ]] && parcel 99 || parcel "$(value "stream-$3" 0)" ;;
     '294 i32 '*) parcel "$(value "app-$3" 100)" ;;
     '296 i32 '*) parcel "$(value "appmute-$3" 0)" ;;
     '293 i32 '*' i32 '*' s16 com.android.shell') printf '%s' "$5" >"$dir/app-$3"; void ;;

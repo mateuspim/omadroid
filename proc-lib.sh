@@ -1,6 +1,6 @@
 # Sourced by session.sh and device-power.sh: the per-user runtime folder and
-# process identity checks shared by every process DroidLink leaves running.
-runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/droidlink-${UID}"
+# process identity checks shared by every process OmaDroid leaves running.
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/omadroid-${UID}"
 mkdir -p -m 700 -- "$runtime_dir"
 chmod 700 -- "$runtime_dir"
 

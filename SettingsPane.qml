@@ -4,7 +4,7 @@ import qs.Commons
 import qs.Ui
 
 // The popup's Settings page. Every option is saved by the shared discovery
-// service in DroidLink's own droidlink.ini, so all widgets show the same values.
+// service in OmaDroid's own omadroid.ini, so all widgets show the same values.
 ColumnLayout {
   id: root
   required property var consumer
@@ -62,7 +62,7 @@ ColumnLayout {
           Layout.fillWidth: true
           spacing: Style.space(10)
           ActionButton {
-            objectName: "droidlinkSetting-" + modelData.key
+            objectName: "omadroidSetting-" + modelData.key
             Layout.minimumWidth: Style.space(120)
             text: (parent.isOn ? "✓ " : "○ ") + modelData.label
             selected: parent.isOn
@@ -83,7 +83,7 @@ ColumnLayout {
     }
   }
   SendTextHotkey {
-    objectName: "droidlinkHotkey"
+    objectName: "omadroidHotkey"
     Layout.fillWidth: true
   }
   Label {
@@ -120,7 +120,7 @@ ColumnLayout {
   }
   Label {
     Layout.fillWidth: true
-    text: "Saved in DroidLink's droidlink.ini."
+    text: "Saved in OmaDroid's omadroid.ini."
     color: Util.alpha(Color.foreground, 0.5)
     font.pixelSize: Style.font.bodySmall
   }

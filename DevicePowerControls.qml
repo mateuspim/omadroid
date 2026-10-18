@@ -121,7 +121,7 @@ ColumnLayout {
   Label {
     Layout.fillWidth: true
     visible: root.editingSecret
-    text: "Kept in your desktop keyring, never in DroidLink's settings. It is entered once per unlock; a failed try pauses unlocking until you save it again."
+    text: "Kept in your desktop keyring, never in OmaDroid's settings. It is entered once per unlock; a failed try pauses unlocking until you save it again."
     wrapMode: Text.WordWrap
     font.pixelSize: Style.font.bodySmall
     color: Util.alpha(Color.foreground, 0.7)

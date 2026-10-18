@@ -14,7 +14,7 @@ export LC_ALL=C
 
 source "$(dirname -- "${BASH_SOURCE[0]}")/adb-lib.sh"
 # Seconds between polls; tests shorten it.
-poll_delay="${DROIDLINK_POLL_DELAY:-0.5}"
+poll_delay="${OMADROID_POLL_DELAY:-0.5}"
 tls_hint="If this computer isn't paired for Wireless debugging yet, use Pair with QR code in Wireless."
 
 # The device's IPv4 address on Wi-Fi, from "47: wlan0    inet 192.168.1.42/24 …".

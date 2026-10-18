@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Enumerate actual v4l2loopback nodes; custom card labels are allowed.
 set -euo pipefail
-sys_root="${DROIDLINK_VIDEO_SYSFS:-/sys/class/video4linux}"
-dev_root="${DROIDLINK_VIDEO_DEV:-/dev}"
-module_root="${DROIDLINK_VIDEO_MODULE_SYSFS:-/sys/module/v4l2loopback}"
+sys_root="${OMADROID_VIDEO_SYSFS:-/sys/class/video4linux}"
+dev_root="${OMADROID_VIDEO_DEV:-/dev}"
+module_root="${OMADROID_VIDEO_MODULE_SYSFS:-/sys/module/v4l2loopback}"
 
 # Most specific first: a module loaded or installed from any package (a -git
 # build, a prebuilt kernel module) must not be reported as a missing package.
@@ -46,10 +46,10 @@ case "${1:-}" in
     node="${sink##*/}"
     is_loopback "$node" || { echo "No v4l2loopback output at $sink. Create a loopback device and refresh the list." >&2; exit 1; }
     [[ -w "$dev_root/$node" ]] || { echo "Cannot write to $sink. Check its video group permissions." >&2; exit 1; }
-    # An Apply restart sets DROIDLINK_KEEP_READERS: a call reading the output
+    # An Apply restart sets OMADROID_KEEP_READERS: a call reading the output
     # bridges the gap. If the new size clashes, scrcpy fails with "busy" and
     # session.sh reports the output as occupied.
-    if [[ "${DROIDLINK_KEEP_READERS:-}" != 1 ]] && command -v fuser >/dev/null 2>&1 && fuser "$dev_root/$node" >/dev/null 2>&1; then
+    if [[ "${OMADROID_KEEP_READERS:-}" != 1 ]] && command -v fuser >/dev/null 2>&1 && fuser "$dev_root/$node" >/dev/null 2>&1; then
       echo "$sink is occupied. Close OBS, your video call, or the app using it, then retry." >&2
       exit 1
     fi

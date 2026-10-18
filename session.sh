@@ -7,7 +7,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/proc-lib.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/terminal-lib.sh"
 state_file="$runtime_dir/session"
 lock_file="$runtime_dir/lock"
-# Holds the serial whose rotation lock DroidLink set during the current session.
+# Holds the serial whose rotation lock OmaDroid set during the current session.
 rotation_file="$runtime_dir/rotation"
 # Written by `run` once the terminal reached it. `launch` waits for this, not
 # for the state file, which a watching widget removes as soon as a scrcpy that
@@ -58,7 +58,7 @@ with_lock() {
 }
 
 # Android keeps a user-rotation lock after scrcpy exits. Release only a lock
-# DroidLink set, never one chosen on the phone. Detached so a missing device
+# OmaDroid set, never one chosen on the phone. Detached so a missing device
 # cannot stall the status poll that holds the session lock.
 release_owned_rotation() {
   local serial
@@ -75,17 +75,17 @@ release_owned_rotation() {
 # the terminal simply stays visible.
 hide_terminal() {
   command -v hyprctl >/dev/null 2>&1 || return 0
-  hyprctl eval 'hl.window_rule({ name = "droidlink-terminal", match = { class = "^org\\.omarchy\\.droidlink$" }, workspace = "special:droidlink silent", no_initial_focus = true })' >/dev/null 2>&1 || true
+  hyprctl eval 'hl.window_rule({ name = "omadroid-terminal", match = { class = "^io\\.github\\.mateuspim\\.omadroid$" }, workspace = "special:omadroid silent", no_initial_focus = true })' >/dev/null 2>&1 || true
 }
 
 # --hold keeps each finished session's terminal open for its errors, so they
 # pile up on the hidden workspace. Called only while no session runs; a
-# process is stopped only if every window it owns is a DroidLink terminal, so
+# process is stopped only if every window it owns is a OmaDroid terminal, so
 # a shared single-instance terminal is never closed.
 close_stale_terminals() {
   command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 || return 0
   local pid
-  hyprctl clients -j 2>/dev/null | jq -r 'group_by(.pid)[] | select(all(.class == "org.omarchy.droidlink")) | .[0].pid' 2>/dev/null |
+  hyprctl clients -j 2>/dev/null | jq -r 'group_by(.pid)[] | select(all(.class == "io.github.mateuspim.omadroid")) | .[0].pid' 2>/dev/null |
     while read -r pid; do
       [[ "$pid" =~ ^[0-9]+$ ]] && kill -TERM "$pid" 2>/dev/null || true
     done || true
@@ -97,7 +97,7 @@ end_session() {
   release_owned_rotation
 }
 
-# Prints "free" or "lock N", plus "owned" when DroidLink set the lock.
+# Prints "free" or "lock N", plus "owned" when OmaDroid set the lock.
 # Android stores user_rotation as null until it is first set; that means 0.
 query_rotation() {
   local reply auto="" user=""
@@ -188,11 +188,11 @@ case "${1:-}" in
     terminal_available || { echo 'No terminal is available. Install foot or set an Omarchy default terminal.' >&2; exit 127; }
     with_lock
     if read_session; then
-      echo 'A DroidLink session is already active.' >&2
+      echo 'A OmaDroid session is already active.' >&2
       exit 1
     fi
     if launch_in_progress; then
-      echo 'A DroidLink session is already starting.' >&2
+      echo 'A OmaDroid session is already starting.' >&2
       exit 1
     fi
     printf '%s\n%s\n' "$$" "$(start_time "$$")" > "$launching_file"
@@ -210,19 +210,19 @@ case "${1:-}" in
     # The terminal is detached from Quickshell. Its child execs scrcpy, so
     # terminal output and errors remain visible even after a shell restart.
     # fd 9 is closed so the terminal never holds the session lock.
-    launch_terminal org.omarchy.droidlink DroidLink bash "$0" run "$request" 9>&-
+    launch_terminal io.github.mateuspim.omadroid OmaDroid bash "$0" run "$request" 9>&-
     flock -u 9
     for ((attempt=0; attempt<30; attempt++)); do
       if [[ -f "$started_file" ]]; then
         rm -f -- "$started_file"
         rm -f -- "$request"
-        echo 'Session started in the hidden DroidLink terminal.'
+        echo 'Session started in the hidden OmaDroid terminal.'
         exit 0
       fi
       sleep 0.1
     done
     rm -f -- "$request"
-    echo 'The DroidLink terminal did not start scrcpy. Check foot or your default terminal.' >&2
+    echo 'The OmaDroid terminal did not start scrcpy. Check foot or your default terminal.' >&2
     exit 1
     ;;
   run)
@@ -234,14 +234,14 @@ case "${1:-}" in
     set -- "${request[@]:3}"
     with_lock
     if read_session; then
-      echo 'A DroidLink session is already active.' >&2
+      echo 'A OmaDroid session is already active.' >&2
       exit 1
     fi
     printf '%s\n%s\n%s\n%s\n%s\n' "$$" "$(start_time "$$")" "$serial" "$session_type" "$recording" > "$state_file"
     : > "$started_file"
     flock -u 9
     exec 9>&-
-    printf 'DroidLink: running %q ' "$@"
+    printf 'OmaDroid: running %q ' "$@"
     printf '\n'
     exec "$@" > >(tee -a "$log_file") 2>&1
     ;;
@@ -249,7 +249,7 @@ case "${1:-}" in
     with_lock
     if ! read_session; then
       end_session
-      echo 'No active DroidLink session.'
+      echo 'No active OmaDroid session.'
       exit 0
     fi
     pid="${state[0]}" birth="${state[1]}"
@@ -313,7 +313,7 @@ case "${1:-}" in
       *) echo "Invalid rotate action '$action'; expected lock, free or query." >&2; exit 2 ;;
     esac
     with_lock
-    read_session || { echo 'No active DroidLink session.' >&2; exit 1; }
+    read_session || { echo 'No active OmaDroid session.' >&2; exit 1; }
     serial="${state[2]}"
     # adb may take seconds; status polls must not wait behind it.
     flock -u 9

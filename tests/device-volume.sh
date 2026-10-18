@@ -3,18 +3,18 @@
 # framework.jar is a fixture dex. Nothing here touches a real device.
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-test_dir="$(mktemp -d /tmp/droidlink-volume.XXXXXX)"
-trap '[[ "$test_dir" == /tmp/droidlink-volume.* ]] && rm -rf -- "$test_dir"' EXIT
+test_dir="$(mktemp -d /tmp/omadroid-volume.XXXXXX)"
+trap '[[ "$test_dir" == /tmp/omadroid-volume.* ]] && rm -rf -- "$test_dir"' EXIT
 mkdir -p "$test_dir/bin" "$test_dir/cache" "$test_dir/device"
 cp "$repo_dir/tests/mock-adb.sh" "$test_dir/bin/adb"
 cp "$repo_dir/tests/mock-scrcpy.sh" "$test_dir/bin/scrcpy"
 chmod +x "$test_dir/bin/"*
-export PATH="$test_dir/bin:$PATH" XDG_CACHE_HOME="$test_dir/cache" DROIDLINK_TEST_ARGS="$test_dir/scrcpy-args"
-export DROIDLINK_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" DROIDLINK_VOLUME_DIR="$test_dir/device"
+export PATH="$test_dir/bin:$PATH" XDG_CACHE_HOME="$test_dir/cache" OMADROID_TEST_ARGS="$test_dir/scrcpy-args"
+export OMADROID_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" OMADROID_VOLUME_DIR="$test_dir/device"
 dev="$test_dir/device"
 volume() { bash "$repo_dir/device-volume.sh" "$@"; }
 fail() {
-  echo "DROIDLINK_VOLUME_FAILED: $*" >&2
+  echo "OMADROID_VOLUME_FAILED: $*" >&2
   exit 1
 }
 expect_code() {
@@ -92,12 +92,12 @@ expect_code 1 status MISSING
 
 # Codes that don't verify are never used: status falls back, writes refuse.
 : >"$dev/log"
-status="$(DROIDLINK_TEST_CASE=wrong_codes volume status USB123)"
+status="$(OMADROID_TEST_CASE=wrong_codes volume status USB123)"
 [[ "$status" == *'mode appops'* && "$status" == *'master -'* ]] || fail "unverified codes still offered: $status"
 [[ "$(grep -c '^service ' "$dev/log")" == 1 ]] || fail "only the check code ran: $(grep '^service ' "$dev/log")"
 printf 10 >"$dev/app-10360"
-DROIDLINK_TEST_CASE=wrong_codes expect_code 6 app USB123 10360 set 80
-DROIDLINK_TEST_CASE=wrong_codes expect_code 6 master USB123 mute
+OMADROID_TEST_CASE=wrong_codes expect_code 6 app USB123 10360 set 80
+OMADROID_TEST_CASE=wrong_codes expect_code 6 master USB123 mute
 [[ "$(cat "$dev/app-10360")" == 10 && "$(cat "$dev/master" 2>/dev/null || echo 0)" == 0 ]] || fail "an unverified write changed something"
 
 # A phone without Samsung's app volume mutes apps through PLAY_AUDIO.
@@ -113,10 +113,10 @@ expect_code 6 app USB123 10360 set 50
 
 # Without python3 there are no codes; streams and app-op mute still work.
 reset_device
-rm -rf "$test_dir/cache/droidlink/audio-codes"
+rm -rf "$test_dir/cache/omadroid/audio-codes"
 mkdir -p "$test_dir/nopython"
 find /usr/bin -maxdepth 1 ! -name 'python*' -exec ln -s -t "$test_dir/nopython" {} +
 status="$(PATH="$test_dir/bin:$test_dir/nopython" volume status USB123)"
 [[ "$status" == *'mode appops'* && "$status" == *'stream media 3 13 0 15 0'* && "$(grep -c '^pull ' "$dev/log")" == 0 ]] || fail "status without python3: $status"
 
-echo DROIDLINK_VOLUME_OK
+echo OMADROID_VOLUME_OK

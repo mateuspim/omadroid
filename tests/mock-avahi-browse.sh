@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eu
-if [[ "${DROIDLINK_TEST_CASE:-}" == avahi_unavailable ]]; then
+if [[ "${OMADROID_TEST_CASE:-}" == avahi_unavailable ]]; then
   printf '%s\n' 'Failed to create client object: Daemon not running' >&2
   exit 1
 fi
@@ -15,7 +15,7 @@ case "${*: -1}" in
       '-;eno1;IPv4;removed;_adb-tls-connect._tcp;local'
     ;;
   _adb-tls-pairing._tcp)
-    if [[ "${DROIDLINK_TEST_CASE:-}" == partial ]]; then
+    if [[ "${OMADROID_TEST_CASE:-}" == partial ]]; then
       printf '%s\n' 'Pairing resolver failed (fixture)' >&2
       exit 1
     fi

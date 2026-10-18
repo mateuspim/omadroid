@@ -7,11 +7,11 @@ device_rows() {
     '192.168.1.3:5555 offline' \
     'adb-PHONE-random._adb-tls-connect._tcp device model:Pixel_9'
 }
-# device-power.sh fixture: DROIDLINK_POWER_DIR holds `awake` and `locked`
+# device-power.sh fixture: OMADROID_POWER_DIR holds `awake` and `locked`
 # flags and the `password` that unlocks. Typed scripts are evaluated like the
 # device shell would, so quoting mistakes change what gets typed.
 mock_power() {
-  local serial="$1" dir="$DROIDLINK_POWER_DIR" line typed=""
+  local serial="$1" dir="$OMADROID_POWER_DIR" line typed=""
   shift
   printf '%s\n' "$*" >>"$dir/argv"
   case "$*" in
@@ -19,9 +19,9 @@ mock_power() {
     'input keyevent KEYCODE_WAKEUP') touch "$dir/awake" ;;
     'input keyevent KEYCODE_SLEEP')
       # lock_delay: keyguard comes later; sleep_ignored: screen stays on.
-      [[ "${DROIDLINK_TEST_CASE:-}" == sleep_ignored ]] && return 0
+      [[ "${OMADROID_TEST_CASE:-}" == sleep_ignored ]] && return 0
       rm -f "$dir/awake"
-      [[ "${DROIDLINK_TEST_CASE:-}" == lock_delay ]] || touch "$dir/locked"
+      [[ "${OMADROID_TEST_CASE:-}" == lock_delay ]] || touch "$dir/locked"
       ;;
     'dumpsys power'*)
       [[ -e "$dir/awake" ]] && printf '  mWakefulness=Awake\r\n' || printf '  mWakefulness=Dozing\r\n'
@@ -29,7 +29,7 @@ mock_power() {
       ;;
     'input keyevent KEYCODE_WAKEUP; sleep 0.3; wm dismiss-keyguard'*)
       touch "$dir/awake"
-      [[ "${DROIDLINK_TEST_CASE:-}" == pattern ]] && printf '<node resource-id="com.android.systemui:id/lockPatternView"/>\r\n' ||
+      [[ "${OMADROID_TEST_CASE:-}" == pattern ]] && printf '<node resource-id="com.android.systemui:id/lockPatternView"/>\r\n' ||
         printf '<node resource-id="com.android.systemui:id/passwordEntry"/>\r\n'
       ;;
     '')
@@ -48,13 +48,13 @@ mock_power() {
     *) return 7 ;;
   esac
 }
-# send-text.sh fixture: DROIDLINK_TEXT_DIR/typed collects what the device
+# send-text.sh fixture: OMADROID_TEXT_DIR/typed collects what the device
 # types, keys as <ENTER> or <CTRL+A>. The command string is evaluated like the
 # device's sh would, so a quoting mistake changes what gets typed; %s is typed
-# as a space, as Android does. DROIDLINK_TEST_CASE=input_error answers like an
+# as a space, as Android does. OMADROID_TEST_CASE=input_error answers like an
 # input command that threw; serial MISSING isn't connected.
 mock_input() {
-  local dir="$DROIDLINK_TEXT_DIR" space='%s' keys
+  local dir="$OMADROID_TEXT_DIR" space='%s' keys
   case "$1" in
     text) [[ $# == 2 ]] || return 9; printf '%s' "${2//$space/ }" >>"$dir/typed" ;;
     keyevent | keycombination)
@@ -66,19 +66,19 @@ mock_input() {
   esac
 }
 mock_text() {
-  local dir="$DROIDLINK_TEXT_DIR"
+  local dir="$OMADROID_TEXT_DIR"
   printf '%s\n' "$*" >>"$dir/argv"
   [[ "$serial" != MISSING ]] || { printf "adb: device 'MISSING' not found\n" >&2; return 1; }
-  [[ "${DROIDLINK_TEST_CASE:-}" == input_error ]] && { printf 'java.lang.IllegalStateException: no window\r\n'; return 0; }
+  [[ "${OMADROID_TEST_CASE:-}" == input_error ]] && { printf 'java.lang.IllegalStateException: no window\r\n'; return 0; }
   input() { mock_input "$@"; }
   eval "$*"
 }
-# go-wireless.sh fixture: DROIDLINK_WIRELESS_DIR holds the device's `sdk`, its
+# go-wireless.sh fixture: OMADROID_WIRELESS_DIR holds the device's `sdk`, its
 # `ip -4 -o addr show` output in `addresses`, `enabled` (adb_wifi_enabled) and
 # the `port` adbd publishes once enabled (`stale-port` before). Every adb call
-# is appended to `log`. DROIDLINK_TEST_CASE=untrusted connects unauthorized.
+# is appended to `log`. OMADROID_TEST_CASE=untrusted connects unauthorized.
 mock_wireless_shell() {
-  local dir="$DROIDLINK_WIRELESS_DIR"
+  local dir="$OMADROID_WIRELESS_DIR"
   printf 'shell %s\n' "$*" >>"$dir/log"
   case "$*" in
     'getprop ro.build.version.sdk') printf '%s\r\n' "$(cat "$dir/sdk")" ;;
@@ -92,14 +92,14 @@ mock_wireless_shell() {
   esac
 }
 mock_wireless() {
-  local dir="$DROIDLINK_WIRELESS_DIR"
+  local dir="$OMADROID_WIRELESS_DIR"
   printf '%s\n' "$*" >>"$dir/log"
   case "$1" in
     connect) printf 'connected to %s\n' "$2" ;;
     -s)
       case "$3" in
         tcpip) printf 'restarting in TCP mode port: %s\n' "$4" ;;
-        get-state) [[ "${DROIDLINK_TEST_CASE:-}" == untrusted ]] && printf 'unauthorized\n' || printf 'device\n' ;;
+        get-state) [[ "${OMADROID_TEST_CASE:-}" == untrusted ]] && printf 'unauthorized\n' || printf 'device\n' ;;
         shell) shift 3; mock_wireless_shell "$@" ;;
         *) return 7 ;;
       esac
@@ -109,43 +109,43 @@ mock_wireless() {
 }
 # device-volume.sh fixture: tests/mock-volume-adb.sh answers its calls and
 # exits 100 for anything else.
-if [[ -n "${DROIDLINK_VOLUME_MOCK:-}" ]]; then
+if [[ -n "${OMADROID_VOLUME_MOCK:-}" ]]; then
   volume_code=0
-  bash "$DROIDLINK_VOLUME_MOCK" "$@" || volume_code=$?
+  bash "$OMADROID_VOLUME_MOCK" "$@" || volume_code=$?
   [[ "$volume_code" == 100 ]] || exit "$volume_code"
 fi
-if [[ -n "${DROIDLINK_WIRELESS_DIR:-}" ]]; then
+if [[ -n "${OMADROID_WIRELESS_DIR:-}" ]]; then
   mock_wireless "$@"
   exit $?
 fi
 case "${1:-}" in
   track-devices)
     # no_track models an adb whose tracker fails, so discovery falls back to polling.
-    [[ "${DROIDLINK_TEST_CASE:-}" != no_track ]] || { echo 'adb: unknown command track-devices' >&2; exit 1; }
-    [[ -z "${DROIDLINK_ADB_LOG:-}" ]] || printf 'track %s\n' "$$" >>"$DROIDLINK_ADB_LOG"
+    [[ "${OMADROID_TEST_CASE:-}" != no_track ]] || { echo 'adb: unknown command track-devices' >&2; exit 1; }
+    [[ -z "${OMADROID_ADB_LOG:-}" ]] || printf 'track %s\n' "$$" >>"$OMADROID_ADB_LOG"
     # Real framing: an empty list, then 4 hex digits of byte length and the rows.
     rows="$(device_rows)"$'\n'
     printf '0000%04x%s' "${#rows}" "$rows"
     exec sleep 30
     ;;
   devices)
-    if [[ -n "${DROIDLINK_ADB_LOG:-}" ]]; then
-      if ! mkdir "${DROIDLINK_ADB_LOG}.lock" 2>/dev/null; then
-        printf '%s\n' overlap >>"$DROIDLINK_ADB_LOG"
+    if [[ -n "${OMADROID_ADB_LOG:-}" ]]; then
+      if ! mkdir "${OMADROID_ADB_LOG}.lock" 2>/dev/null; then
+        printf '%s\n' overlap >>"$OMADROID_ADB_LOG"
       else
-        trap 'rmdir -- "${DROIDLINK_ADB_LOG}.lock"' EXIT
+        trap 'rmdir -- "${OMADROID_ADB_LOG}.lock"' EXIT
       fi
       discovery_phase=initial
-      if [[ -n "${DROIDLINK_REFRESH_MARKER:-}" && -e "$DROIDLINK_REFRESH_MARKER" ]]; then
+      if [[ -n "${OMADROID_REFRESH_MARKER:-}" && -e "$OMADROID_REFRESH_MARKER" ]]; then
         discovery_phase=refresh
       fi
-      printf 'start %s %s\n' "$discovery_phase" "$$" >>"$DROIDLINK_ADB_LOG"
+      printf 'start %s %s\n' "$discovery_phase" "$$" >>"$OMADROID_ADB_LOG"
       sleep 0.15
     fi
     printf '%s\n' 'List of devices attached'
     device_rows
-    if [[ -n "${DROIDLINK_ADB_LOG:-}" ]]; then
-      printf 'end %s %s\n' "$discovery_phase" "$$" >>"$DROIDLINK_ADB_LOG"
+    if [[ -n "${OMADROID_ADB_LOG:-}" ]]; then
+      printf 'end %s %s\n' "$discovery_phase" "$$" >>"$OMADROID_ADB_LOG"
     fi
     ;;
   connect)
@@ -165,13 +165,13 @@ case "${1:-}" in
     printf '%s\n' "Successfully paired to $2 [guid=mock]"
     ;;
   -s)
-    # Emulates Android's rotation settings in DROIDLINK_ADB_ROTATION as the two
+    # Emulates Android's rotation settings in OMADROID_ADB_ROTATION as the two
     # lines `settings get` prints: accelerometer_rotation, then user_rotation.
     [[ "${3:-}" == shell ]] || exit 7
     serial="$2"
     shift 3
     if [[ "$*" == 'getprop ro.build.version.sdk' ]]; then
-      printf '%s\r\n' "${DROIDLINK_TEST_SDK:-36}"
+      printf '%s\r\n' "${OMADROID_TEST_SDK:-36}"
       exit 0
     fi
     if [[ "$*" == 'settings get global device_name' ]]; then
@@ -195,15 +195,15 @@ case "${1:-}" in
         'tmpfs              5491156         0   5491156   0% /storage'
       exit 0
     fi
-    if [[ -n "${DROIDLINK_TEXT_DIR:-}" && ( "$*" == 'input text '* || "$*" == 'input key'* ) && "$*" != *KEYCODE_WAKEUP* && "$*" != *KEYCODE_SLEEP* ]]; then
+    if [[ -n "${OMADROID_TEXT_DIR:-}" && ( "$*" == 'input text '* || "$*" == 'input key'* ) && "$*" != *KEYCODE_WAKEUP* && "$*" != *KEYCODE_SLEEP* ]]; then
       mock_text "$@"
       exit $?
     fi
-    if [[ -n "${DROIDLINK_POWER_DIR:-}" ]]; then
+    if [[ -n "${OMADROID_POWER_DIR:-}" ]]; then
       mock_power "$serial" "$@"
       exit $?
     fi
-    rotation_state="${DROIDLINK_ADB_ROTATION:?}"
+    rotation_state="${OMADROID_ADB_ROTATION:?}"
     case "$*" in
       'wm user-rotation free') printf '1\n0\n' >"$rotation_state" ;;
       'wm user-rotation lock '[0-3]) printf '0\n%s\n' "${*: -1}" >"$rotation_state" ;;

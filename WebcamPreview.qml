@@ -10,7 +10,7 @@ import qs.Commons
 Item {
   id: root
   property string device: ""
-  // DroidLink's per-user runtime folder, from ScrcpyPane's session path.
+  // OmaDroid's per-user runtime folder, from ScrcpyPane's session path.
   property string runtimeDir: ""
   property int frames: 0
   property string error: ""

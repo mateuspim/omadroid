@@ -73,4 +73,4 @@
         - 176x144
 scrcpy 4.1 <https://github.com/Genymobile/scrcpy>
 INFO: ADB device found:
-INFO:     --> (tcpip)  192.168.1.156:37129            device  SM_X730
+INFO:     --> (tcpip)  192.168.1.50:37129            device  SM_X730

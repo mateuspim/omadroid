@@ -29,7 +29,7 @@ ColumnLayout {
   property string sessionType: "mirror"
   property int sessionPid: 0
   // Camera, quality and adjustments for the next webcam (Model.webcamSettings),
-  // saved in droidlink.ini. Replaced whole by setWebcam() so bindings update.
+  // saved in omadroid.ini. Replaced whole by setWebcam() so bindings update.
   property var webcam: Model.webcamSettings("")
   // Each device's cameras (Model.parseCameraList), read once per serial.
   // A phone whose scan failed maps to [] (and its error), so it is not asked
@@ -114,7 +114,7 @@ ColumnLayout {
 
   Core.Settings {
     id: saved
-    location: Util.fileUrl((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/droidlink.ini")
+    location: Util.fileUrl((Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/omadroid.ini")
     property string profilesJson: "[]"
     property string lastProfile: "Balanced"
     property string recordingFolder: Quickshell.env("HOME")
@@ -230,7 +230,7 @@ ColumnLayout {
   }
   function toggleLog() {
     if (!logToggle.busy)
-      logToggle.start(["hyprctl", "dispatch", "hl.dsp.workspace.toggle_special(\"droidlink\")"], 3);
+      logToggle.start(["hyprctl", "dispatch", "hl.dsp.workspace.toggle_special(\"omadroid\")"], 3);
   }
   function launch(audioOnly) {
     if (busy)
@@ -376,7 +376,7 @@ ColumnLayout {
       sessionAudioOnly = false;
       stopping = false;
       message = (target ? "Restarting webcam for " : "Starting webcam for ") + serial + "…";
-      launcher.start((target ? ["env", "DROIDLINK_KEEP_READERS=1"] : []).concat(["bash", sessionScript, "launch", serial, "webcam", "", "--"]).concat(args), 10);
+      launcher.start((target ? ["env", "OMADROID_KEEP_READERS=1"] : []).concat(["bash", sessionScript, "launch", serial, "webcam", "", "--"]).concat(args), 10);
     } catch (e) {
       failed = true;
       message = e.message;
@@ -408,7 +408,7 @@ ColumnLayout {
       if (code !== 0 || root.sessionType !== "webcam" || root.sessionPid <= 0)
         return;
       // From the first option on: a scrcpy wrapper script runs as
-      // "bash /path/scrcpy …", while DroidLink builds "scrcpy …".
+      // "bash /path/scrcpy …", while OmaDroid builds "scrcpy …".
       var list = output.split("\n").filter(Boolean);
       var first = list.findIndex(arg => arg.indexOf("--") === 0);
       root.sessionArgs = first < 0 ? [] : ["scrcpy"].concat(list.slice(first));
@@ -578,7 +578,7 @@ ColumnLayout {
       if (code === 0 && output.trim() === "ok")
         return;
       root.failed = true;
-      root.message = "Could not show the DroidLink terminal: " + Model.commandError(code, output, error, "hyprctl");
+      root.message = "Could not show the OmaDroid terminal: " + Model.commandError(code, output, error, "hyprctl");
     }
   }
   Command {
@@ -631,7 +631,7 @@ ColumnLayout {
     }
   }
   Rectangle {
-    objectName: "droidlinkOtherSession"
+    objectName: "omadroidOtherSession"
     Layout.fillWidth: true
     visible: root.busy && !root.sessionMatchesPage
     implicitHeight: otherSessionContent.implicitHeight + Style.space(24)
@@ -671,7 +671,7 @@ ColumnLayout {
   // While a session runs, its controls come first; the options below only
   // affect the next launch, so they fold away until asked for.
   Rectangle {
-    objectName: "droidlinkSessionCard"
+    objectName: "omadroidSessionCard"
     Layout.fillWidth: true
     visible: root.busy && root.sessionMatchesPage
     implicitHeight: sessionCardContent.implicitHeight + Style.space(24)
@@ -756,7 +756,7 @@ ColumnLayout {
         Accessible.name: text
       }
       RowLayout {
-        objectName: "droidlinkWebcamApply"
+        objectName: "omadroidWebcamApply"
         Layout.fillWidth: true
         visible: root.webcamChanged
         Label {
@@ -779,7 +779,7 @@ ColumnLayout {
       // Only while visible: an open preview keeps reading and decoding frames.
       Loader {
         id: previewLoader
-        objectName: "droidlinkWebcamPreview"
+        objectName: "omadroidWebcamPreview"
         Layout.fillWidth: true
         active: root.webcamPreview && root.sessionType === "webcam" && root.pageMode === "webcam" && root.sessionPid > 0 && !root.stopping && root.panelOpen && root.sessionSink !== ""
         // Named: the session-status Command is also called `status`.
@@ -828,7 +828,7 @@ ColumnLayout {
     onClicked: root.optionsExpanded = !root.optionsExpanded
   }
   ColumnLayout {
-    objectName: "droidlinkNextOptions"
+    objectName: "omadroidNextOptions"
     Layout.fillWidth: true
     visible: !root.busy || root.optionsExpanded || !root.sessionMatchesPage
     spacing: root.spacing
@@ -867,7 +867,7 @@ ColumnLayout {
       }
     }
     GridLayout {
-      objectName: "droidlinkMirrorResolution"
+      objectName: "omadroidMirrorResolution"
       Layout.fillWidth: true
       visible: root.pageMode === "mirror"
       columns: 2
@@ -1036,7 +1036,7 @@ ColumnLayout {
     }
   }
   ColumnLayout {
-    objectName: "droidlinkWebcamOptions"
+    objectName: "omadroidWebcamOptions"
     Layout.fillWidth: true
     visible: root.pageMode === "webcam" && (!root.busy || root.optionsExpanded || !root.sessionMatchesPage)
     spacing: root.spacing
@@ -1060,7 +1060,7 @@ ColumnLayout {
       columns: 2
       columnSpacing: Style.space(6)
       Dropdown {
-        objectName: "droidlinkWebcamCamera"
+        objectName: "omadroidWebcamCamera"
         Layout.fillWidth: true
         Layout.preferredWidth: 1
         Layout.columnSpan: 2
@@ -1100,7 +1100,7 @@ ColumnLayout {
     // Folded by default, with what is set beside it. Buttons never elide,
     // so the summary is a label that does; a long button widened the popup.
     RowLayout {
-      objectName: "droidlinkWebcamDetailsToggle"
+      objectName: "omadroidWebcamDetailsToggle"
       Layout.fillWidth: true
       ActionButton {
         text: (root.webcamDetailsOpen ? "▾ " : "▸ ") + "Quality and adjustments"
@@ -1122,7 +1122,7 @@ ColumnLayout {
       }
     }
     GridLayout {
-      objectName: "droidlinkWebcamDetails"
+      objectName: "omadroidWebcamDetails"
       Layout.fillWidth: true
       visible: root.webcamDetailsOpen
       columns: 2
@@ -1211,7 +1211,7 @@ ColumnLayout {
     RowLayout {
       Layout.fillWidth: true
       ActionButton {
-        objectName: "droidlinkWebcamStart"
+        objectName: "omadroidWebcamStart"
         readonly property bool applies: root.sessionType === "webcam" && root.busy
         text: applies ? "Apply · restart" : "Start webcam"
         selected: true
@@ -1238,7 +1238,7 @@ ColumnLayout {
       }
     }
     Rectangle {
-      objectName: "droidlinkWebcamSetup"
+      objectName: "omadroidWebcamSetup"
       Layout.fillWidth: true
       visible: root.webcamOutputs.length === 0
       implicitHeight: setupContent.implicitHeight + Style.space(24)
@@ -1295,7 +1295,7 @@ ColumnLayout {
     }
   }
   RowLayout {
-    objectName: "droidlinkMirrorLaunch"
+    objectName: "omadroidMirrorLaunch"
     Layout.fillWidth: true
     visible: root.pageMode === "mirror" && !root.busy
     ActionButton {
@@ -1308,7 +1308,7 @@ ColumnLayout {
     ActionButton {
       text: "Audio only"
       enabled: root.selectedReady && !root.missingTools
-      tooltipText: "Start windowless audio; stop it here in DroidLink"
+      tooltipText: "Start windowless audio; stop it here in OmaDroid"
       onClicked: root.launch(true)
     }
     Item {

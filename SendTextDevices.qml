@@ -16,7 +16,7 @@ Flow {
   Text {
     visible: root.devices.length === 0
     textFormat: Text.PlainText
-    text: "⚠ No device ready. Connect one with DroidLink first."
+    text: "⚠ No device ready. Connect one with OmaDroid first."
     color: root.foreground
     font.family: root.fontFamily
     font.pixelSize: Style.font.body

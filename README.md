@@ -1,4 +1,4 @@
-# <img src="icon.svg" alt="" width="32" height="32" align="top"> DroidLink
+# <img src="icon.svg" alt="" width="32" height="32" align="top"> OmaDroid
 
 An Omarchy bar widget for discovering Android Debug Bridge (ADB) devices over
 USB and wireless mDNS, then launching scrcpy with chosen video and audio
@@ -21,7 +21,7 @@ settings.
   session card shows the mirrored device's battery. The bar
   badge counts authorized, ready transports. **Refresh** (F5) re-reads ADB and
   restarts the Avahi browsers. If the ADB tracker stops (adb missing, its server
-  restarting), DroidLink polls `adb devices -l` every 15 seconds by default (the
+  restarting), OmaDroid polls `adb devices -l` every 15 seconds by default (the
   Settings page accepts 5–3600 seconds) and retries the tracker with a growing
   delay of up to a minute.
 - **Wireless:** pair by scanning a QR code with Android, **Go wireless** to
@@ -37,8 +37,8 @@ settings.
   (`--no-video --no-window`); optional audio-only recordings are saved as `.mka`.
   Use the four orientation buttons during a video session to lock the device to
   portrait, landscape, or either inverted orientation. **Auto rotate / reset**
-  restores Android's sensor rotation. A lock set from DroidLink is released when
-  the session ends; a lock set on the phone is kept. Use **Stop audio** in DroidLink to end an
+  restores Android's sensor rotation. A lock set from OmaDroid is released when
+  the session ends; a lock set on the phone is kept. Use **Stop audio** in OmaDroid to end an
   audio-only session. While a session runs, its controls (Stop, phone screen,
   rotation) come first and the options for the next launch fold under
   **Next session options**.
@@ -64,6 +64,14 @@ first). Device lists and the Wireless form scroll when needed; the compact
 Mirror page keeps its options, primary actions, and session controls visible
 without scrolling.
 
+## Install
+
+```bash
+omarchy plugin add https://github.com/mateuspim/omadroid --enable
+```
+
+`omarchy plugin update pym.omadroid` pulls new versions later.
+
 ## Requirements and enabling
 
 Requires Omarchy's Quickshell shell, Qt 6.5+, `adb`, Bash, `awk`, GNU coreutils
@@ -73,7 +81,7 @@ idle prevention. `qrencode` is only needed to pair with a QR code. The Android
 webcam also needs `v4l2loopback` (see below); its in-panel preview needs
 `ffmpeg` (with `ffprobe`), **Copy commands**
 needs `wl-copy` (wl-clipboard), and `fuser` (psmisc), when present, lets
-DroidLink refuse an output another app is holding. The bar and popup warn when `adb`, `scrcpy`, or a configured
+OmaDroid refuse an output another app is holding. The bar and popup warn when `adb`, `scrcpy`, or a configured
 default terminal is missing. This implementation was checked against the installed
 scrcpy 4.1 command-line options. Python 3 (standard library only) is only
 needed for per-app volume and **Mute all** on the Sound page. Node is only
@@ -103,7 +111,7 @@ The output then takes the next free `/dev/videoN` and the driver's default
 label. To pick both, load it yourself instead, using an unused number:
 
 ```bash
-sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="DroidLink Camera" exclusive_caps=1
+sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="OmaDroid Camera" exclusive_caps=1
 ```
 
 A bare `modprobe` lasts until reboot; to choose your own options at boot, edit
@@ -113,7 +121,7 @@ for other distributions and module options.
 
 `exclusive_caps=1` makes the device appear as a capture device to applications
 after scrcpy starts writing. If you already have loopback devices, use their
-existing numbers and labels; DroidLink lists detected loopback outputs so you
+existing numbers and labels; OmaDroid lists detected loopback outputs so you
 can choose the right one and checks write access before launch. Opening the
 Webcam page never installs or loads anything. Other USB cameras are never listed
 as outputs.
@@ -138,7 +146,7 @@ and Back and common sizes are offered.
   cameras with a light), and Smoothing, a `--v4l2-buffer` delay that hides
   Wi-Fi jitter.
 
-Settings are saved in `droidlink.ini` and apply when the webcam starts;
+Settings are saved in `omadroid.ini` and apply when the webcam starts;
 Android cameras top out at the frame rates the phone lists (often 30 fps).
 Exposure, focus and white balance stay automatic: scrcpy has no controls for
 them. While a webcam runs, changing a setting shows **Apply · restart**, which
@@ -152,7 +160,7 @@ video call, then select the chosen `/dev/videoN` or its card label as a **Video
 Capture Device** in OBS or as the camera in the call. A consumer that stays
 open across a size or orientation change can keep the old V4L2 format and show
 garbled video; the Preview detects that and says so. **Stop webcam** ends the shared
-scrcpy session from any DroidLink bar instance.
+scrcpy session from any OmaDroid bar instance.
 
 While the webcam runs, **Preview** in its session card shows the output inside
 the popup, read the same way OBS or a call reads it, so a working preview means
@@ -160,34 +168,34 @@ other apps receive the camera. An Omarchy loading screen covers it until frames
 arrive. The preview opens only once scrcpy is streaming, follows the session's
 own output, and closes when the popup closes or you leave the Webcam page. It
 runs `ffmpeg`, which reads the output at its current size and writes a small
-JPEG (480 px wide, about 12 per second) to DroidLink's runtime folder; ffmpeg
+JPEG (480 px wide, about 12 per second) to OmaDroid's runtime folder; ffmpeg
 also exits if the shell does. If apps reading the output receive a different
 size than scrcpy writes (an app that opened it during an earlier session can
 fix its old size), the preview says so instead of showing garbled video: close
 every app using the output, then stop and start the webcam.
 
-The existing development link is:
+To work on a local checkout, link it in place of the installed copy:
 
 ```text
-~/.config/omarchy/plugins/pym.droidlink → /home/me/Projects/droidlink
+~/.config/omarchy/plugins/pym.omadroid → /path/to/your/omadroid checkout
 ```
 
 If the widget is not already in the bar, enable it with:
 
 ```bash
-omarchy plugin enable pym.droidlink --section right
+omarchy plugin enable pym.omadroid --section right
 ```
 
-This repository preserves plugin ID `pym.droidlink` and the `Panel.qml` entry
-point. It does not modify packaged Omarchy files or Omarchy's configuration:
-every option is on the popup's **Settings** page and saved in DroidLink's own
-`~/.config/omarchy/droidlink.ini`, under `[preferences]` and `[autoConnect]`.
+The plugin ID is `pym.omadroid` (it was called DroidLink, `pym.droidlink`,
+before 0.10). It does not modify packaged Omarchy files or Omarchy's configuration:
+every option is on the popup's **Settings** page and saved in OmaDroid's own
+`~/.config/omarchy/omadroid.ini`, under `[preferences]` and `[autoConnect]`.
 Settings from 0.7.0 kept in `shell.json` are no longer read; set them again on
 the Settings page (the defaults are unchanged). Omarchy watches the user plugin directory for updates.
 
-Before each launch, DroidLink registers a named Hyprland window rule with
+Before each launch, OmaDroid registers a named Hyprland window rule with
 `hyprctl eval`. The rule sends its diagnostic terminal straight to the hidden
-`special:droidlink` workspace without focusing it, so the scrcpy video window is
+`special:omadroid` workspace without focusing it, so the scrcpy video window is
 the only one you see. No Hyprland config edit is needed. Without `hyprctl` the
 terminal stays visible.
 
@@ -204,11 +212,11 @@ For Android wireless debugging, keep the phone and computer on the same network:
 1. Enable Developer options → Wireless debugging on Android.
 2. Choose **Connect** on the discovered wireless connection service. If this
    workstation is already paired, it connects immediately.
-3. If the connection fails, DroidLink opens Pair with the discovered host/IP
+3. If the connection fails, OmaDroid opens Pair with the discovered host/IP
    locked in place. Open **Pair device with pairing code** on Android, then
    enter only its separate pairing port and six-digit code. If Android's
    pairing service is already advertised, its actual pairing port is filled in.
-4. Select **Pair**. DroidLink then connects to the connection port Android
+4. Select **Pair**. OmaDroid then connects to the connection port Android
    advertises for the same host. If that service isn't known yet, it waits for
    one discovery refresh before asking you to connect manually. Direct Pair on
    an advertised pairing service and the fully manual Pair and Connect forms
@@ -254,11 +262,11 @@ On Android 11 or later, open Wireless, choose **Show QR code**, then on Android
 open Developer options › Wireless debugging › **Pair device with QR code** and
 scan it. Nothing needs to be typed or installed on the phone.
 
-`qr-pair.sh` makes a one-time service name (`droidlink-` and 8 random
+`qr-pair.sh` makes a one-time service name (`omadroid-` and 8 random
 characters) and a 16-character password from `/dev/urandom`, and encodes
 `WIFI:T:ADB;S:<name>;P:<password>;;`, the payload Android Studio uses. The
 payload reaches `qrencode` on stdin, never in a process's arguments. Once
-scanned, Android announces `_adb-tls-pairing._tcp` under that name; DroidLink
+scanned, Android announces `_adb-tls-pairing._tcp` under that name; OmaDroid
 waits for that exact service, so another device's pairing service is never
 used, then runs `adb pair` with the password on stdin and connects as after
 code pairing. The code is held in memory only while it is shown, and is
@@ -274,7 +282,7 @@ A ready USB device has **Go wireless**. With the cable still in, `go-wireless.sh
 2. On Android 11+, turns on Wireless debugging (`settings put global
    adb_wifi_enabled 1`), waits for the port adbd publishes in
    `service.adb.tls.port`, and connects to it. A host already trusted over USB
-   is usually accepted without pairing. If it isn't, DroidLink says so and
+   is usually accepted without pairing. If it isn't, OmaDroid says so and
    points to **Pair with QR code**. If Android asks whether to allow wireless
    debugging on this network, allow it.
 3. On Android 10 and older, runs `adb tcpip 5555` and connects to port 5555.
@@ -287,14 +295,14 @@ you're done.
 ### Auto-connect
 
 Turn on **Auto-connect paired devices** on the popup's Settings page. It is
-saved in DroidLink's own `droidlink.ini` (`[autoConnect] enabled`). Then, when a device that was connected here before turns on
-Wireless debugging (the Quick Settings developer tile is quickest), DroidLink
+saved in OmaDroid's own `omadroid.ini` (`[autoConnect] enabled`). Then, when a device that was connected here before turns on
+Wireless debugging (the Quick Settings developer tile is quickest), OmaDroid
 connects it without a click, even with the popup closed.
 
 - A device is remembered once it is ready over Wi-Fi here, however it got
   connected (QR pairing, Go wireless, Connect), by its Wireless debugging
   service name minus the random suffix (`adb-<serial>`). Up to 50 are kept in
-  `droidlink.ini` under `[autoConnect]`, and remembering happens whether or
+  `omadroid.ini` under `[autoConnect]`, and remembering happens whether or
   not the setting is on.
 - Each announced endpoint gets one `adb connect`. A device that refuses this
   computer (unpaired on Android) is forgotten until it connects again; a
@@ -324,8 +332,8 @@ Edit the options and save them with a custom name (up to 30 profiles). Saving un
 existing custom name asks you to press **Replace**, and **Remove** asks you to
 **Confirm**; either request lapses after 5 seconds. Built-in profiles cannot be overwritten. Saved
 profiles, the last selected profile, and recording folder persist in
-`$XDG_CONFIG_HOME/omarchy/droidlink.ini` (normally
-`~/.config/omarchy/droidlink.ini`). Unsaved changes last until the widget reloads.
+`$XDG_CONFIG_HOME/omarchy/omadroid.ini` (normally
+`~/.config/omarchy/omadroid.ini`). Unsaved changes last until the widget reloads.
 **Reset** restores edited options from the profile selected before those edits. It
 does not modify Omarchy settings, saved profiles, the recording folder, or any
 device connection.
@@ -348,14 +356,14 @@ these commands against the active session's device and does not restart scrcpy.
 
 When the controls appear, including after an Omarchy shell restart, they read
 `settings get system accelerometer_rotation` and `user_rotation` to show the
-phone's current lock. DroidLink records a lock it set under
-`$XDG_RUNTIME_DIR/droidlink-$UID/rotation` and sends `wm user-rotation free`
+phone's current lock. OmaDroid records a lock it set under
+`$XDG_RUNTIME_DIR/omadroid-$UID/rotation` and sends `wm user-rotation free`
 when that session ends, whether it was stopped, its window was closed, or
 scrcpy exited. **Auto rotate / reset** clears that record. A lock chosen on the
 phone is reported as such and left in place.
 
 Android or an app can exclude protected content from capture. Authenticate on
-the physical phone in that case; DroidLink does not detect protected prompts
+the physical phone in that case; OmaDroid does not detect protected prompts
 automatically or change Android's capture protections.
 
 **Prevent idle sleep** uses scrcpy 4.1's `--keep-active`, which also works without
@@ -378,24 +386,24 @@ message saying so. The session displays its exact path. Audio is included only
 when forwarding is enabled and supported.
 Use **Stop mirroring** or close the scrcpy window to finalize a recording.
 Scrcpy runs in foot when it is installed, otherwise in Omarchy's configured
-default terminal, on a hidden `special:droidlink` workspace, leaving only the
+default terminal, on a hidden `special:omadroid` workspace, leaving only the
 scrcpy video window visible. Foot is preferred because each of its windows is a
-separate process, so DroidLink never shares a process with your own terminals.
+separate process, so OmaDroid never shares a process with your own terminals.
 Press **Show log** on the Mirror page (or run
-`hyprctl dispatch 'hl.dsp.workspace.toggle_special("droidlink")'`) to show or hide its
+`hyprctl dispatch 'hl.dsp.workspace.toggle_special("omadroid")'`) to show or hide its
 diagnostic terminal. The terminal is asked to stay open after scrcpy exits if
 the configured terminal supports that option; the next launch closes the
 previous session's terminal. Closing the popup, switching
 tabs, or restarting the Omarchy shell leaves the session running. Every monitor's
-widget reads the same session state and can stop it; only one DroidLink session
+widget reads the same session state and can stop it; only one OmaDroid session
 runs at a time. Nothing polls the session: widgets watch its state file, and
 while a session runs `session.sh wait` sleeps on the scrcpy process (util-linux
-`waitpid`) and ends the session, releasing a rotation lock DroidLink set, as soon
+`waitpid`) and ends the session, releasing a rotation lock OmaDroid set, as soon
 as scrcpy exits, even with the popup closed. Closing the terminal also ends the session. A vanished device
 selection is never silently replaced by another phone.
 
 All external programs use argument arrays, not shell interpolation. Session state
-lives under `$XDG_RUNTIME_DIR/droidlink-$UID` and is checked against the process
+lives under `$XDG_RUNTIME_DIR/omadroid-$UID` and is checked against the process
 start time so a stale PID is ignored. Stop sends `TERM` to scrcpy so it can close
 streams and finalize recordings, then force-kills only a session that fails to exit.
 Discovery and ADB actions have bounded timeouts; their diagnostics are bounded and
@@ -411,7 +419,7 @@ open. ADB's failure messages are checked even when it exits with code 0.
 `--stay-awake` only works while charging). It wakes the device, then runs a
 window-less `scrcpy --no-video --no-audio --no-window --keep-active` in its own
 session. scrcpy changes no Android setting, so nothing is left behind if
-DroidLink or the shell stops; turning it off stops that process. The choice is
+OmaDroid or the shell stops; turning it off stops that process. The choice is
 remembered per device and the keeper restarts when the device reconnects,
 including on a new wireless port.
 
@@ -422,7 +430,7 @@ the card says the screen is off and the keyguard follows after the device's own
 lock delay. A screen that stays on is reported as an error.
 
 **Unlock PIN…** stores the device's PIN or password in the desktop keyring with
-`secret-tool` (libsecret: gnome-keyring, KWallet, …), never in DroidLink's
+`secret-tool` (libsecret: gnome-keyring, KWallet, …), never in OmaDroid's
 settings, logs or command arguments. It is keyed by the device's hardware serial
 (`ro.serialno`) as reported live, never by its adb address, so a different
 device on a reused address can't receive it. Unlocking:
@@ -447,8 +455,8 @@ default), **Unlock on mirror launch**, **Wake on connect** and **Unlock on
 connect** (off). A device without a saved PIN is only woken. Devices already
 connected when the shell starts are not woken or unlocked; only their keepers
 return. A failed wake or unlock is reported and never blocks the mirror launch.
-Preferences live under `$XDG_STATE_HOME/droidlink/devices` (marker files, no
-secrets); keepers are tracked under `$XDG_RUNTIME_DIR/droidlink-$UID/keepers`.
+Preferences live under `$XDG_STATE_HOME/omadroid/devices` (marker files, no
+secrets); keepers are tracked under `$XDG_RUNTIME_DIR/omadroid-$UID/keepers`.
 
 ## Sound
 
@@ -480,12 +488,12 @@ mute have no shell command: they are binder calls (`service call audio CODE`)
 whose codes change with every firmware. The first time a firmware is seen,
 `device-volume.sh` copies the device's `/system/framework/framework.jar`
 (about 50 MB) and `audio-codes.py` reads the codes from it, which takes a few
-seconds. They are cached in `~/.cache/droidlink/audio-codes/`. The parser
+seconds. They are cached in `~/.cache/omadroid/audio-codes/`. The parser
 refuses a table it can't fully check, and before any code is used the device
 is asked for the media volume both through that code and through
 `cmd audio`; if they differ, per-app volume and **Mute all** are hidden and
 nothing is called. App names come from `scrcpy --list-apps` and are cached per
-device in `~/.cache/droidlink/apps/`.
+device in `~/.cache/omadroid/apps/`.
 
 Without the UI: `device-volume.sh status SERIAL`, `stream SERIAL media
 set 10|raise|lower|mute|unmute`, `app SERIAL UID set 40|mute|unmute`, `master
@@ -500,13 +508,13 @@ and press Enter.
 
 Omarchy has no way for a plugin to bind keys, so the Settings page's **Send
 text hotkey** row writes the binding into `~/.config/hypr/bindings.lua`. Pick a
-combination (`SUPER + ALT + D` by default) and press **Install**. DroidLink
+combination (`SUPER + ALT + D` by default) and press **Install**. OmaDroid
 appends one marked block and changes nothing else in the file:
 
 ```lua
--- >>> DroidLink send text (managed by DroidLink; change it on its Settings page)
-o.bind("SUPER + ALT + D", "DroidLink send text", "omarchy-shell shell toggle pym.droidlink")
--- <<< DroidLink send text
+-- >>> OmaDroid send text (managed by OmaDroid; change it on its Settings page)
+o.bind("SUPER + ALT + D", "OmaDroid send text", "omarchy-shell shell toggle pym.omadroid")
+-- <<< OmaDroid send text
 ```
 
 **Update** replaces that block, and **Remove** deletes it. Each change keeps a
@@ -534,7 +542,7 @@ the prompt.
   the device.
 - **Device:** with one ready device it is used. With several, a row shows them
   all and **Alt+←/→** switches. The device you last typed on is remembered
-  (`lastTextTarget` in `droidlink.ini`) and preselected while it is ready;
+  (`lastTextTarget` in `omadroid.ini`) and preselected while it is ready;
   otherwise the first ready device is. With none, the prompt says so and Enter
   does nothing.
 - The prompt closes once the text is typed. If adb fails, it stays open with
@@ -564,7 +572,7 @@ names: a letter, digit or `f1`–`f12`; `enter`, `tab`, `space`, `backspace`,
 Validate the plugin:
 
 ```bash
-omarchy plugin validate /home/me/Projects/droidlink
+omarchy plugin validate "$PWD"
 node tests/model.test.cjs
 node tests/mdns.test.cjs
 node tests/screen-power.test.cjs
@@ -583,10 +591,10 @@ bash tests/hotkey.sh
 bash tests/audio-codes.sh
 bash tests/device-volume.sh
 bash tests/shared-discovery.sh
-DROIDLINK_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
-DROIDLINK_TEST_CASE=no_track bash tests/shared-discovery.sh
+OMADROID_TEST_CASE=avahi_unavailable bash tests/shared-discovery.sh
+OMADROID_TEST_CASE=no_track bash tests/shared-discovery.sh
 bash tests/smoke.sh
-DROIDLINK_TEST_CASE=avahi_unavailable bash tests/smoke.sh
+OMADROID_TEST_CASE=avahi_unavailable bash tests/smoke.sh
 ```
 
 All Node suites run offline (`node --test tests/*.test.cjs`); the shell-helper suite uses a fake Avahi command
@@ -637,7 +645,7 @@ graceful stop, and stale selection handling without touching real devices or the
 Temporary test files are removed on exit.
 
 For a visual review, create a temporary directory and run
-`DROIDLINK_PREVIEW_DIR=/absolute/path/to/that/directory bash tests/smoke.sh`.
+`OMADROID_PREVIEW_DIR=/absolute/path/to/that/directory bash tests/smoke.sh`.
 This briefly opens a separate preview window with fake devices, captures its four tabs,
 and exits. Preview requires the QtTest QML module.
 

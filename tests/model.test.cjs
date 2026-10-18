@@ -106,7 +106,7 @@ test('Android device names replace model codes and keep the model', () => {
 test('device-info.sh reads only the current battery state and finds external volumes (fake adb)', () => {
   const { spawnSync } = require('node:child_process');
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'droidlink info fixture-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'omadroid info fixture-'));
   try {
     fs.copyFileSync(`${__dirname}/mock-adb.sh`, path.join(dir, 'adb'));
     fs.chmodSync(path.join(dir, 'adb'), 0o700);
@@ -220,18 +220,18 @@ test('merge matches wireless service or endpoint, keeps USB and pairing', () => 
 });
 
 test('a service on the host of a wireless device is that device, whatever the port', () => {
-  const tablet = '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.156;34801;"name=SM-X730"';
+  const tablet = '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.50;34801;"name=SM-X730"';
   // Ready: adb's endpoint is live; the cached advertised port is stale.
-  const ready = model.deviceRows(model.parseDevices('192.168.1.156:39357 device model:SM_X730'), model.parseMdns(tablet));
-  assert.deepEqual(plain(ready.map(r => [r.source, r.endpoint])), [['adb', '192.168.1.156:39357']]);
+  const ready = model.deviceRows(model.parseDevices('192.168.1.50:39357 device model:SM_X730'), model.parseMdns(tablet));
+  assert.deepEqual(plain(ready.map(r => [r.source, r.endpoint])), [['adb', '192.168.1.50:39357']]);
   // Offline after a port change: Connect goes to the advertised port.
-  const offline = model.deviceRows(model.parseDevices('192.168.1.156:45099 offline'), model.parseMdns(tablet));
-  assert.deepEqual(plain(offline.map(r => [r.serial, r.status, r.endpoint])), [['192.168.1.156:45099', 'offline', '192.168.1.156:34801']]);
+  const offline = model.deviceRows(model.parseDevices('192.168.1.50:45099 offline'), model.parseMdns(tablet));
+  assert.deepEqual(plain(offline.map(r => [r.serial, r.status, r.endpoint])), [['192.168.1.50:45099', 'offline', '192.168.1.50:34801']]);
   // Back on a new port: adb's dead entries for that host are hidden.
-  const back = model.deviceRows(model.parseDevices('192.168.1.156:45099 offline\n192.168.1.156:38083 offline\n192.168.1.156:46593 device\n192.168.1.9:5555 offline'), []);
-  assert.deepEqual(plain(back.map(r => r.serial)), ['192.168.1.156:46593', '192.168.1.9:5555']);
+  const back = model.deviceRows(model.parseDevices('192.168.1.50:45099 offline\n192.168.1.50:38083 offline\n192.168.1.50:46593 device\n192.168.1.9:5555 offline'), []);
+  assert.deepEqual(plain(back.map(r => r.serial)), ['192.168.1.50:46593', '192.168.1.9:5555']);
   // Another host is still its own row.
-  const other = model.deviceRows(model.parseDevices('192.168.1.156:39357 device'), model.parseMdns(tablet.replace('192.168.1.156', '192.168.1.20')));
+  const other = model.deviceRows(model.parseDevices('192.168.1.50:39357 device'), model.parseMdns(tablet.replace('192.168.1.50', '192.168.1.20')));
   assert.equal(other.length, 2);
 });
 
@@ -326,7 +326,7 @@ test('recording names are unique MKV files and malformed paths fail', () => {
   const date = new Date('2026-09-07T20:00:00Z');
   const a = model.recordingPath('/tmp/My recordings/', '192.168.1.2:1234', date, 'a');
   const b = model.recordingPath('/tmp/My recordings/', '192.168.1.2:1234', date, 'b');
-  assert.equal(a, '/tmp/My recordings/DroidLink-192_168_1_2_1234-2026-09-07T20-00-00-000Z-a.mkv');
+  assert.equal(a, '/tmp/My recordings/OmaDroid-192_168_1_2_1234-2026-09-07T20-00-00-000Z-a.mkv');
   assert.notEqual(a, b);
   assert.throws(() => model.recordingPath('relative', 'USB', date, 'x'));
   assert.throws(() => model.recordingPath('/tmp\ninvalid', 'USB', date, 'x'));
@@ -347,11 +347,11 @@ test('mDNS resolve timeouts become one hint per unreachable device', () => {
 test('A service announced over IPv4 and IPv6 is one row, preferring IPv4', () => {
   const rows = model.parseMdns([
     '=;eno1;IPv6;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;fe80::6dd7:2d81:7c95:c24d;46593;"name=SM-X730"',
-    '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.156;46593;"name=SM-X730"',
+    '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.50;46593;"name=SM-X730"',
     '=;eno1;IPv6;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;fe80::6dd7:2d81:7c95:c24d;46593;"name=SM-X730"',
     '=;eno1;IPv6;adb-SIX-y;_adb._tcp;local;six.local;fe80::2;5555;'
   ].join('\n'));
-  assert.deepEqual(plain(rows.map(row => row.endpoint)), ['192.168.1.156:46593', '[fe80::2%eno1]:5555']);
+  assert.deepEqual(plain(rows.map(row => row.endpoint)), ['192.168.1.50:46593', '[fe80::2%eno1]:5555']);
 });
 
 test("Avahi's note on being stopped is not a discovery failure", () => {
@@ -360,13 +360,13 @@ test("Avahi's note on being stopped is not a discovery failure", () => {
 
 test('mDNS hard failures are errors; clean and partial scans are not', () => {
   assert.deepEqual(plain(model.mdnsStatus(0, '', [], {})), { level: '', text: '', details: '' });
-  const down = model.mdnsStatus(1, 'Failed to create client object: Daemon not running\nDroidLink mDNS: discovery stopped (_adb._tcp exited with 1). Check that avahi-daemon is running.', [], {});
+  const down = model.mdnsStatus(1, 'Failed to create client object: Daemon not running\nOmaDroid mDNS: discovery stopped (_adb._tcp exited with 1). Check that avahi-daemon is running.', [], {});
   assert.equal(down.level, 'error');
   assert.match(down.text, /avahi-daemon/);
   assert.match(down.details, /Daemon not running/);
-  assert.equal(model.mdnsStatus(1, 'DroidLink mDNS: missing avahi-browse. Install Avahi and GNU coreutils.', [], {}).text, 'missing avahi-browse. Install Avahi and GNU coreutils.');
+  assert.equal(model.mdnsStatus(1, 'OmaDroid mDNS: missing avahi-browse. Install Avahi and GNU coreutils.', [], {}).text, 'missing avahi-browse. Install Avahi and GNU coreutils.');
   assert.equal(model.mdnsStatus(124, '', [], {}).level, 'error');
-  const stopped = model.mdnsStatus(1, 'DroidLink mDNS: discovery stopped (_adb-tls-pairing._tcp exited with 1). Check that avahi-daemon is running.', [], {});
+  const stopped = model.mdnsStatus(1, 'OmaDroid mDNS: discovery stopped (_adb-tls-pairing._tcp exited with 1). Check that avahi-daemon is running.', [], {});
   assert.equal(stopped.level, 'error', 'one browser exiting stops the whole stream');
   const partial = model.mdnsStatus(0, 'Pairing resolver failed', [], {});
   assert.equal(partial.level, 'warning');

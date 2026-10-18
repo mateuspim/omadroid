@@ -2,7 +2,7 @@
 # Run privileged setup only after the user clicks the webcam setup action.
 # A visible terminal lets Omarchy's package helper and sudo ask for a password.
 set -euo pipefail
-etc_dir="${DROIDLINK_ETC:-/etc}"
+etc_dir="${OMADROID_ETC:-/etc}"
 load_conf="$etc_dir/modules-load.d/v4l2loopback.conf"
 options_conf="$etc_dir/modprobe.d/v4l2loopback.conf"
 
@@ -18,7 +18,7 @@ enable_output() {
     printf 'v4l2loopback\n' | sudo tee "$load_conf" >/dev/null
     printf 'options v4l2loopback devices=1 exclusive_caps=1\n' | sudo tee "$options_conf" >/dev/null
   fi
-  echo 'Ready. Return to DroidLink and press Refresh on the Webcam page.'
+  echo 'Ready. Return to OmaDroid and press Refresh on the Webcam page.'
 }
 
 # In the setup terminal: a success closes after 10 s (Enter closes at once);
@@ -41,7 +41,7 @@ case "${1:-}" in
     # Omarchy floats and centers org.omarchy.terminal in its built-in rules.
     # The setup asks for Enter itself, so the window closes when it is read.
     terminal_hold=0
-    launch_terminal org.omarchy.terminal 'DroidLink webcam setup' bash "$0" "$2"
+    launch_terminal org.omarchy.terminal 'OmaDroid webcam setup' bash "$0" "$2"
     ;;
   install)
     [[ -t 0 && -t 1 ]] && trap pause_before_close EXIT

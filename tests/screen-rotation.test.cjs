@@ -37,7 +37,7 @@ function rotationControlsFixture() {
   return context;
 }
 
-const SCRIPT = '/plugins/droidlink/session.sh';
+const SCRIPT = '/plugins/omadroid/session.sh';
 
 test('rotation commands go through the session helper, which owns the device serial', () => {
   for (const rotation of [0, 1, 2, 3]) {

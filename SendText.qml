@@ -4,7 +4,7 @@ import QtQuick
 import qs.Commons
 
 // Send text overlay: a centered prompt, opened with
-// `omarchy-shell shell toggle pym.droidlink` (bind it to a key), that types
+// `omarchy-shell shell toggle pym.omadroid` (bind it to a key), that types
 // what you enter on a device. The window follows Omarchy's Reminders prompt
 // (plugins/reminders/ReminderFlow.qml); the prompt itself is SendTextCard.
 Item {
@@ -28,7 +28,7 @@ Item {
   function dismiss() {
     opened = false;
     if (shell && typeof shell.hide === "function")
-      shell.hide((manifest && manifest.id) || "pym.droidlink");
+      shell.hide((manifest && manifest.id) || "pym.omadroid");
   }
 
   DiscoveryConsumer {
@@ -46,7 +46,7 @@ Item {
       right: true
     }
     color: "transparent"
-    WlrLayershell.namespace: "droidlink-send-text"
+    WlrLayershell.namespace: "omadroid-send-text"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore

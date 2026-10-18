@@ -13,7 +13,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 // Runs qr-pair.sh with a PATH of only the tools it uses (so a real qrencode
 // is never found) plus the fake qrencode, or without qrencode at all.
 function runQrPair(withQrencode) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'droidlink qr fixture-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'omadroid qr fixture-'));
   try {
     const log = path.join(dir, 'log');
     for (const tool of ['bash', 'od', 'sed', 'cat'])
@@ -23,7 +23,7 @@ function runQrPair(withQrencode) {
       fs.chmodSync(path.join(dir, 'qrencode'), 0o700);
     }
     const result = spawnSync(path.join(dir, 'bash'), [`${__dirname}/../qr-pair.sh`], {
-      encoding: 'utf8', timeout: 10000, env: { PATH: dir, DROIDLINK_QR_LOG: log } });
+      encoding: 'utf8', timeout: 10000, env: { PATH: dir, OMADROID_QR_LOG: log } });
     return { ...result, log: fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '' };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -34,11 +34,11 @@ test('qr-pair.sh encodes a fresh service and password, never in argv', () => {
   const first = runQrPair(true), second = runQrPair(true);
   assert.equal(first.status, 0, first.stderr);
   const code = pairing.parseQrPairing(first.stdout);
-  assert.match(code.service, /^droidlink-[a-z2-9]{8}$/);
+  assert.match(code.service, /^omadroid-[a-z2-9]{8}$/);
   assert.match(code.password, /^[a-z2-9]{16}$/);
   assert.deepEqual([code.size, code.cells], [3, '111101011']);
   assert.ok(first.log.includes(`payload WIFI:T:ADB;S:${code.service};P:${code.password};;`), first.log);
-  assert.ok(!/^argv .*(droidlink-|WIFI:)/m.test(first.log), 'payload stays out of argv: ' + first.log);
+  assert.ok(!/^argv .*(omadroid-|WIFI:)/m.test(first.log), 'payload stays out of argv: ' + first.log);
   assert.notEqual(pairing.parseQrPairing(second.stdout).password, code.password, 'each code is new');
 });
 
@@ -50,13 +50,13 @@ test('qr-pair.sh names the missing qrencode', () => {
 });
 
 test('parseQrPairing reads the service, password and modules', () => {
-  const output = 'service\tdroidlink-abcd2345\npassword\tabcdefgh23456789\nrow\t10\r\nrow\t01\n';
+  const output = 'service\tomadroid-abcd2345\npassword\tabcdefgh23456789\nrow\t10\r\nrow\t01\n';
   assert.deepEqual(plain(pairing.parseQrPairing(output)),
-    { service: 'droidlink-abcd2345', password: 'abcdefgh23456789', size: 2, cells: '1001' });
+    { service: 'omadroid-abcd2345', password: 'abcdefgh23456789', size: 2, cells: '1001' });
 });
 
 test('parseQrPairing rejects incomplete or malformed output', () => {
-  const service = 'service\tdroidlink-abcd2345\n', password = 'password\tabcdefgh23456789\n';
+  const service = 'service\tomadroid-abcd2345\n', password = 'password\tabcdefgh23456789\n';
   for (const output of ['', service + 'row\t1\n', password + 'row\t1\n', service + password,
     service + password + 'row\t10\nrow\t1\n', service + 'password\tshort\nrow\t1\n', 'service\tother-abcd2345\n' + password + 'row\t1\n'])
     assert.throws(() => pairing.parseQrPairing(output), /expected service, password and square/, JSON.stringify(output));
@@ -72,10 +72,10 @@ test('validPairingSecret takes six digits or a QR password', () => {
 test('qrPairingEndpoint matches only the scanned code\'s pairing service', () => {
   const rows = [
     { pair: true, serial: 'adb-OTHER-pair', endpoint: '192.168.1.9:40000' },
-    { pair: false, serial: 'droidlink-abcd2345', endpoint: '192.168.1.5:37000' },
-    { pair: true, serial: 'droidlink-abcd2345', endpoint: '192.168.1.5:42000' }];
-  assert.equal(pairing.qrPairingEndpoint(rows, 'droidlink-abcd2345'), '192.168.1.5:42000');
-  assert.equal(pairing.qrPairingEndpoint(rows, 'droidlink-zzzz2345'), '');
+    { pair: false, serial: 'omadroid-abcd2345', endpoint: '192.168.1.5:37000' },
+    { pair: true, serial: 'omadroid-abcd2345', endpoint: '192.168.1.5:42000' }];
+  assert.equal(pairing.qrPairingEndpoint(rows, 'omadroid-abcd2345'), '192.168.1.5:42000');
+  assert.equal(pairing.qrPairingEndpoint(rows, 'omadroid-zzzz2345'), '');
   assert.equal(pairing.qrPairingEndpoint(rows, ''), '');
-  assert.equal(pairing.qrPairingEndpoint(null, 'droidlink-abcd2345'), '');
+  assert.equal(pairing.qrPairingEndpoint(null, 'omadroid-abcd2345'), '');
 });

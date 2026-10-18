@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "plugin" as DroidLink
+import "plugin" as OmaDroid
 
 ShellRoot {
   id: testRoot
@@ -9,16 +9,16 @@ ShellRoot {
 
   function check(condition, message) {
     if (!condition) {
-      console.error("DROIDLINK_SHARED_TEST_FAILED: " + message);
+      console.error("OMADROID_SHARED_TEST_FAILED: " + message);
       Qt.exit(1);
     }
   }
 
-  readonly property bool noTrack: Quickshell.env("DROIDLINK_TEST_CASE") === "no_track"
+  readonly property bool noTrack: Quickshell.env("OMADROID_TEST_CASE") === "no_track"
   property int step: 0
   property var rowsBefore: null
 
-  DroidLink.Discovery {
+  OmaDroid.Discovery {
     id: sharedDiscovery
     intervalSec: 3600
   }
@@ -42,7 +42,7 @@ ShellRoot {
         testRoot.check(sharedDiscovery.busy, "holding mDNS did not start the browsers");
         testRoot.step = 1;
       } else if (testRoot.step === 1 && !sharedDiscovery.busy) {
-        var unavailable = Quickshell.env("DROIDLINK_TEST_CASE") === "avahi_unavailable";
+        var unavailable = Quickshell.env("OMADROID_TEST_CASE") === "avahi_unavailable";
         testRoot.check(unavailable ? sharedDiscovery.mdnsLevel === "error" && sharedDiscovery.mdnsDetails.indexOf("Daemon not running") >= 0 : sharedDiscovery.mdnsError === "" && sharedDiscovery.services.length === 3, "mDNS failure was not isolated from shared USB results: " + sharedDiscovery.mdnsDetails);
         testRoot.check(sharedDiscovery.readyCount === 2, "mDNS changed the adb results");
         testRoot.rowsBefore = sharedDiscovery.rows;
@@ -67,7 +67,7 @@ ShellRoot {
 
   Component {
     id: consumerComponent
-    DroidLink.DiscoveryConsumer {
+    OmaDroid.DiscoveryConsumer {
       shell: serviceHost
     }
   }
@@ -85,7 +85,7 @@ ShellRoot {
   QtObject {
     id: serviceHost
     function serviceFor(pluginId) {
-      testRoot.check(pluginId === "pym.droidlink", "consumer requested the wrong plugin service");
+      testRoot.check(pluginId === "pym.omadroid", "consumer requested the wrong plugin service");
       return sharedDiscovery;
     }
   }
@@ -96,7 +96,7 @@ ShellRoot {
     function refresh() { refreshCalls++; }
   }
 
-  DroidLink.Actions {
+  OmaDroid.Actions {
     id: actions
     discovery: discoverySpy
     onChanged: {
@@ -136,7 +136,7 @@ ShellRoot {
     }
   }
 
-  DroidLink.Actions {
+  OmaDroid.Actions {
     id: pairActions
     discovery: pairingDiscovery
     onChanged: {
@@ -165,7 +165,7 @@ ShellRoot {
     function onBusyChanged() {
       if (testRoot.actionStep === 5 && !pairActions.busy && pairActions.action === "connect") {
         testRoot.check(!pairActions.failed, "immediate connect after pairing failed: " + pairActions.message);
-        console.log("DROIDLINK_SHARED_TEST_OK");
+        console.log("OMADROID_SHARED_TEST_OK");
         Qt.quit();
       }
     }
@@ -173,7 +173,7 @@ ShellRoot {
 
   Process {
     id: refreshMarker
-    command: ["touch", Quickshell.env("DROIDLINK_REFRESH_MARKER")]
+    command: ["touch", Quickshell.env("OMADROID_REFRESH_MARKER")]
     onExited: {
       consumerA.item.refresh();
       consumerB.item.refresh();

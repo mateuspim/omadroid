@@ -13,12 +13,12 @@ vm.runInContext(fs.readFileSync(path.join(repo, 'Model.js'), 'utf8'), model);
 // Runs the follow helper against the fake Avahi; stops it with `signal` after
 // `settleMs` unless it exits on its own first.
 function follow(scenario, settleMs, signal = 'SIGTERM') {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'droidlink mdns fixture-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'omadroid mdns fixture-'));
   const fake = path.join(dir, 'avahi-browse');
   fs.copyFileSync(path.join(__dirname, 'mock-avahi-browse.sh'), fake);
   fs.chmodSync(fake, 0o700);
   const helper = spawn('bash', [path.join(repo, 'discover-mdns.sh')], {
-    env: { ...process.env, PATH: dir + path.delimiter + process.env.PATH, DROIDLINK_TEST_CASE: scenario }
+    env: { ...process.env, PATH: dir + path.delimiter + process.env.PATH, OMADROID_TEST_CASE: scenario }
   });
   let stdout = '', stderr = '';
   helper.stdout.on('data', chunk => stdout += chunk);
@@ -60,7 +60,7 @@ for (const scenario of ['avahi_unavailable', 'partial']) {
   test(`mDNS follow helper stops when a browser exits: ${scenario}`, async () => {
     const result = await follow(scenario, 5000);
     assert.equal(result.code, 1);
-    assert.match(result.stderr, /DroidLink mDNS: discovery stopped \(\S+ exited with 1\)/);
+    assert.match(result.stderr, /OmaDroid mDNS: discovery stopped \(\S+ exited with 1\)/);
     if (scenario === 'avahi_unavailable') assert.match(result.stderr, /Daemon not running/);
     if (scenario === 'partial') assert.match(result.stderr, /Pairing resolver failed/);
     assert.equal(model.mdnsStatus(result.code, result.stderr, [], {}).level, 'error');

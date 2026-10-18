@@ -85,7 +85,7 @@ ColumnLayout {
     Accessible.name: "Wireless debugging pairing QR code"
     Canvas {
       id: qrCanvas
-      objectName: "droidlinkQrCanvas"
+      objectName: "omadroidQrCanvas"
       anchors.fill: parent
       onWidthChanged: requestPaint()
       onPaint: {

@@ -343,7 +343,7 @@ function statusHint(row) {
   if (row.status === "no permissions") return "Check the host's Android udev rules and reconnect USB.";
   if (row.status === "offline") return "Reconnect the cable or wireless endpoint, then refresh.";
   if (row.pair) return "Open Wireless debugging → Pair device with pairing code on Android.";
-  if (row.source === "mdns") return "Choose Connect. If authentication fails, DroidLink opens Pair with this host.";
+  if (row.source === "mdns") return "Choose Connect. If authentication fails, OmaDroid opens Pair with this host.";
   if (row.status !== "device") return "Mirroring requires an authorized device in normal Android mode.";
   return "";
 }
@@ -363,16 +363,16 @@ function commandError(code, output, error, name) {
  * @param {object} knownNames service name → device model, from earlier scans
  * @returns {{level: string, text: string, details: string}} level is "", "warning" or "error" */
 function mdnsStatus(code, error, services, knownNames) {
-  // "Got SIGTERM, quitting." is Avahi's note when DroidLink stops a browser.
+  // "Got SIGTERM, quitting." is Avahi's note when OmaDroid stops a browser.
   var lines = String(error || "").split(/\r?\n/).map(function(line) { return line.trim(); })
     .filter(function(line, index, all) { return line && all.indexOf(line) === index && !/^Got SIG[A-Z]+, quitting\.$/.test(line); });
   var details = lines.join("\n");
   if (code === 124 || code === 137 || code === 127)
     return { level: "error", text: commandError(code, "", error, "Wireless discovery"), details: details };
-  var missing = lines.filter(function(line) { return /^DroidLink mDNS: missing /.test(line); })[0];
-  if (missing) return { level: "error", text: missing.replace(/^DroidLink mDNS: /, ""), details: details };
+  var missing = lines.filter(function(line) { return /^OmaDroid mDNS: missing /.test(line); })[0];
+  if (missing) return { level: "error", text: missing.replace(/^OmaDroid mDNS: /, ""), details: details };
   // The streaming helper stops as a whole when any browser exits.
-  if (lines.some(function(line) { return /^DroidLink mDNS: discovery stopped/.test(line) || /Daemon not running/.test(line); }))
+  if (lines.some(function(line) { return /^OmaDroid mDNS: discovery stopped/.test(line) || /Daemon not running/.test(line); }))
     return { level: "error", text: "Avahi isn't responding. Check that avahi-daemon is running.", details: details };
 
   var answered = (Array.isArray(services) ? services : []).map(function(row) { return row.serial; });
@@ -476,7 +476,7 @@ function audioOnlyCommand(serial, profile, recordPath) {
 /** Parse `scrcpy --list-camera-sizes`. Example line pair:
  * "--camera-id=1    (front, 2032x1524, fps={10, 15, 30}, zoom-range=[1, 8])" then "- 1920x1080"
  * → [{ id: "1", facing: "front", sensor: "2032x1524", fps: [10, 15, 30], zoom: [1, 8], sizes: ["1920x1080"] }].
- * High-speed sizes are left out; DroidLink does not use high-speed capture.
+ * High-speed sizes are left out; OmaDroid does not use high-speed capture.
  */
 function parseCameraList(output) {
   var cameras = [], current = null, highSpeed = false;
@@ -662,5 +662,5 @@ function recordingPath(folder, serial, now, nonce, extension) {
   if (!folder || folder[0] !== "/" || /[\x00-\x1f\x7f]/.test(folder)) throw new Error("Enter an existing absolute recording folder.");
   extension = String(extension || "mkv").replace(/^\./, "").toLowerCase();
   if (["mkv", "mka"].indexOf(extension) < 0) throw new Error("Choose a supported recording format.");
-  return folder + "/DroidLink-" + String(serial).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 48) + "-" + now.toISOString().replace(/[:.]/g, "-") + "-" + nonce + "." + extension;
+  return folder + "/OmaDroid-" + String(serial).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 48) + "-" + now.toISOString().replace(/[:.]/g, "-") + "-" + nonce + "." + extension;
 }

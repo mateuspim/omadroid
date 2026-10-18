@@ -3,15 +3,15 @@
 # device's sh. Nothing here touches a real device.
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-test_dir="$(mktemp -d /tmp/droidlink-text.XXXXXX)"
-trap '[[ "$test_dir" == /tmp/droidlink-text.* ]] && rm -rf -- "$test_dir"' EXIT
+test_dir="$(mktemp -d /tmp/omadroid-text.XXXXXX)"
+trap '[[ "$test_dir" == /tmp/omadroid-text.* ]] && rm -rf -- "$test_dir"' EXIT
 mkdir -p "$test_dir/bin" "$test_dir/device"
 cp "$repo_dir/tests/mock-adb.sh" "$test_dir/bin/adb"
 chmod +x "$test_dir/bin/adb"
-export PATH="$test_dir/bin:$PATH" DROIDLINK_TEXT_DIR="$test_dir/device"
+export PATH="$test_dir/bin:$PATH" OMADROID_TEXT_DIR="$test_dir/device"
 device="$test_dir/device"
 fail() {
-  echo "DROIDLINK_TEXT_FAILED: $*" >&2
+  echo "OMADROID_TEXT_FAILED: $*" >&2
   exit 1
 }
 # send EXPECTED_CODE ARGS... → output in $out, what was typed in $typed.
@@ -66,8 +66,8 @@ send 1 'bad serial' text:hi
 [[ ! -e "$device/argv" ]] || fail "bad serial refused"
 
 # adb errors are reported with adb's own text.
-DROIDLINK_TEST_CASE=input_error send 1 USB123 text:hi
+OMADROID_TEST_CASE=input_error send 1 USB123 text:hi
 [[ "$out" == *"Couldn't type on USB123: java.lang.IllegalStateException"* ]] || fail "input exception: $out"
 send 1 MISSING text:hi
 [[ "$out" == *"Couldn't type on MISSING"* ]] || fail "adb failure: $out"
-echo DROIDLINK_TEXT_OK
+echo OMADROID_TEXT_OK
