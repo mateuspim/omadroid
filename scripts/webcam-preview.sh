@@ -5,14 +5,13 @@
 # onto the shared output and garble it for every app.
 set -euo pipefail
 sys_root="${OMADROID_VIDEO_SYSFS:-/sys/class/video4linux}"
-runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/omadroid-${UID}"
+source "$(dirname -- "${BASH_SOURCE[0]}")/proc-lib.sh"
 device="${1:-}" out="${2:-}"
 [[ "$device" =~ ^/dev/video[0-9]+$ ]] || { echo "Invalid preview device '$device'." >&2; exit 2; }
 [[ "$out" =~ ^"$runtime_dir"/preview-[A-Za-z0-9]+\.jpg$ ]] || { echo "Invalid preview path '$out'." >&2; exit 2; }
 for program in ffmpeg ffprobe setpriv; do
   command -v "$program" >/dev/null 2>&1 || { echo "The preview needs $program (ffmpeg, util-linux)." >&2; exit 127; }
 done
-mkdir -p -m 700 -- "$runtime_dir"
 
 # scrcpy's size, from the driver ("YU12:1080x1920@30"), against what readers
 # receive. They differ when a reader fixed an older size; every app then sees

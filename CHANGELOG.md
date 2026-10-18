@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Runtime folder:** session, keep-awake and webcam preview state is refused
+  when its folder is a symlink or owned by another user. Without
+  `XDG_RUNTIME_DIR` that folder falls back to the shared `/tmp`.
+
+### Docs
+
+- README: a **Remove** section and a **Security and privileges** section that
+  list everything OmaDroid installs, writes or runs as root.
+
 ## 1.0.0 — 2026-10-18
 
 The first public release, as OmaDroid (`pym.omadroid`).

@@ -273,4 +273,12 @@ kill "$shared"
 wait "$shared" 2>/dev/null || true
 session stop
 wait_for_inactive
+# Regression: a runtime folder that is a symlink (as another user could plant
+# in /tmp) is refused before any PID in it is read or signalled.
+mkdir -p "$test_dir/planted" "$test_dir/shared"
+ln -s "$test_dir/planted" "$test_dir/shared/omadroid-$UID"
+if error="$(XDG_RUNTIME_DIR="$test_dir/shared" session status 2>&1)"; then
+  echo 'A symlinked runtime folder was accepted.' >&2; exit 1
+fi
+[[ "$error" == *"must be a directory owned by"* ]] || { echo "Unexpected refusal: $error" >&2; exit 1; }
 echo 'OMADROID_SESSION_OK'
