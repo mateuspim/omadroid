@@ -7,6 +7,10 @@
 - **Runtime folder:** session, keep-awake and webcam preview state is refused
   when its folder is a symlink or owned by another user. Without
   `XDG_RUNTIME_DIR` that folder falls back to the shared `/tmp`.
+- **Sound:** the phone's installed-app list, its playing apps and their
+  volumes no longer appear in process arguments; they reach awk as files and
+  the environment. `~/.cache/omadroid` is now owner-only (folders 700, files
+  600), and an older readable cache is tightened the next time Sound opens.
 - **Duplicate devices:** a device that adb reaches both by `host:port` and
   by its mDNS name (adb's own auto-connect) shows as one row, not two.
   Disconnect on its page drops both links, so it doesn't stay connected.

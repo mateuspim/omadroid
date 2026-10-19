@@ -191,6 +191,10 @@ config outside its own settings, and never calls `sudo`.
 - **Runtime state:** session and keep-awake PIDs live in
   `$XDG_RUNTIME_DIR/omadroid-$UID`, owner-only. A folder that is a symlink or
   owned by another user is refused.
+- **Cache:** `~/.cache/omadroid` holds each phone's installed-app names (for
+  the Sound section) and per-firmware audio codes. It is owner-only (folders
+  700, files 600), and the app list is handled as files, never as process
+  arguments.
 
 ## Requirements and enabling
 
@@ -657,7 +661,7 @@ refuses a table it can't fully check, and before any code is used the device
 is asked for the media volume both through that code and through
 `cmd audio`; if they differ, per-app volume and **Mute all** are hidden and
 nothing is called. App names come from `scrcpy --list-apps` and are cached per
-device in `~/.cache/omadroid/apps/`.
+device in `~/.cache/omadroid/apps/`, readable only by you.
 
 Without the UI: `scripts/device-volume.sh status SERIAL`, `stream SERIAL media
 set 10|raise|lower|mute|unmute`, `app SERIAL UID set 40|mute|unmute`, `master

@@ -23,6 +23,13 @@ export LC_ALL=C
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 source "$script_dir/adb-lib.sh"
 cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/omadroid"
+# The cache lists the phone's installed apps, so it is private to this user,
+# also when an older version left it readable under a 022 umask.
+umask 077
+private_cache() {
+  mkdir -p -m 700 -- "$cache_root" "$1" &&
+    find "$cache_root" -perm /077 \( -type d -o -type f \) -exec chmod go= -- {} +
+}
 # Stream key → AudioManager.STREAM_* index. Aliased streams (TTS,
 # accessibility, DTMF) follow media or ringtone, so they aren't listed.
 declare -A stream_index=([call]=0 [system]=1 [ring]=2 [media]=3 [alarm]=4 [notification]=5 [assistant]=11)
@@ -47,7 +54,7 @@ codes_file() {
 read_codes() {
   local serial="$1" file="$2" work
   command -v python3 >/dev/null 2>&1 || return 1
-  mkdir -p -- "${file%/*}"
+  private_cache "${file%/*}"
   work="$(mktemp -d)" || return 1
   timeout 90 adb -s "$serial" pull /system/framework/framework.jar "$work/framework.jar" >/dev/null 2>&1 &&
     python3 -I "$script_dir/audio-codes.py" "$work/framework.jar" >"$work/codes" 2>"$work/error" &&
@@ -62,7 +69,7 @@ load_codes() {
   local file name code
   file="$(codes_file "$2")"
   if [[ ! -s "$file" ]]; then
-    mkdir -p -- "${file%/*}"
+    private_cache "${file%/*}"
     exec 9>"$file.lock"
     flock -x 9
     [[ -s "$file" ]] || read_codes "$1" "$file" || return 1
@@ -145,18 +152,19 @@ apps_file() {
 
 # "APPID PACKAGE LABEL" for every package: uids from `pm`, labels from
 # `scrcpy --list-apps` (packages without a launcher keep their package name).
+# Device output reaches awk as files, never as arguments, which other local
+# users could read in a process listing.
 read_apps() {
   local serial="$1" file="$2" packages labels
   packages="$(device_shell "$serial" 10 'pm list packages -U')" || return 1
   labels="$(timeout 20 scrcpy "--serial=$serial" --list-apps 2>/dev/null)" || labels=""
-  mkdir -p -- "${file%/*}"
-  awk -v labels="$labels" '
-    BEGIN { n = split(labels, rows, "\n")
-            for (i = 1; i <= n; i++) if (rows[i] ~ /^ [*-] /) { p = rows[i]; sub(/.* /, "", p); l = substr(rows[i], 4); sub(/ +[^ ]+$/, "", l); label[p] = l } }
+  private_cache "${file%/*}"
+  awk '
+    FILENAME == ARGV[1] { if ($0 ~ /^ [*-] /) { p = $0; sub(/.* /, "", p); l = substr($0, 4); sub(/ +[^ ]+$/, "", l); label[p] = l }; next }
     match($0, /^package:[^ ]+ uid:[0-9]+/) {
       split(substr($0, 9), f, " uid:"); u = f[2] + 0
       if (!((u % 100000) in seen)) { seen[u % 100000] = 1; print (u % 100000) "\t" f[1] "\t" ((f[1] in label) ? label[f[1]] : f[1]) }
-    }' <<<"$packages" >"$file.new" && mv -- "$file.new" "$file"
+    }' <(printf '%s\n' "$labels") - <<<"$packages" >"$file.new" && mv -- "$file.new" "$file"
 }
 
 # Rebuilt when a playing app is unknown, at most every 10 minutes: isolated
@@ -165,7 +173,8 @@ refresh_apps() {
   local serial="$1" file="$2" uid
   shift 2
   for uid in "$@"; do
-    [[ -s "$file" ]] && awk -F'\t' -v id="$((uid % 100000))" '$1 == id { found = 1 } END { exit !found }' "$file" && continue
+    # The uid goes through the environment, which other users can't read.
+    [[ -s "$file" ]] && APP_ID="$((uid % 100000))" awk -F'\t' '$1 == ENVIRON["APP_ID"] { found = 1 } END { exit !found }' "$file" && continue
     [[ -s "$file" && -n "$(find "$file" -mmin -10 2>/dev/null)" ]] && return 0
     read_apps "$serial" "$file"
     return 0
@@ -183,6 +192,7 @@ print_status() {
   [[ "$reply" == *'@verified 1'* ]] || mode=appops
   parsed="$(parse_dumpsys <<<"$reply")"
   file="$(apps_file "$serialno")"
+  private_cache "${file%/*}"
   refresh_apps "$serial" "$file" $(awk '$1 == "player" { print $2 }' <<<"$parsed")
   printf 'mode %s\n' "$mode"
   awk '$1 == "@master" { m = ($2 == "1" || $2 == "0") ? $2 : "-" } END { print "master", m == "" ? "-" : m }' <<<"$reply"
@@ -192,16 +202,17 @@ print_status() {
 }
 
 # One line per app player, volume and mute from @app, names from the cache.
+# The device's reply and players reach awk as files, as in read_apps.
 join_apps() {
-  awk -F'\t' -v reply="$2" -v parsed="$3" '
-    BEGIN { n = split(reply, r, "\n"); for (i = 1; i <= n; i++) if (split(r[i], f, " ") >= 2 && f[1] == "@app") { vol[f[2]] = f[3]; mute[f[2]] = f[4] }
-            n = split(parsed, p, "\n"); for (i = 1; i <= n; i++) if (split(p[i], f, " ") == 3 && f[1] == "player") state[f[2]] = f[3] }
+  awk -F'\t' '
+    FILENAME == ARGV[1] { if (split($0, f, " ") >= 2 && f[1] == "@app") { vol[f[2]] = f[3]; mute[f[2]] = f[4] }; next }
+    FILENAME == ARGV[2] { if (split($0, f, " ") == 3 && f[1] == "player") state[f[2]] = f[3]; next }
     { pkg[$1] = $2; label[$1] = $3 }
     END { for (u in state) {
             id = u % 100000; if (id < 10000 || id >= 90000) continue
             v = (vol[u] ~ /^[0-9]+$/ && vol[u] <= 100) ? vol[u] : "-"; m = (mute[u] == "0" || mute[u] == "1") ? mute[u] : "-"
             print "app", u, state[u], v, m, (id in pkg) ? pkg[id] : "uid" u, (id in label) ? label[id] : "App " u } }
-  ' "$([[ -s "$1" ]] && echo "$1" || echo /dev/null)"
+  ' <(printf '%s\n' "$2") <(printf '%s\n' "$3") "$([[ -s "$1" ]] && echo "$1" || echo /dev/null)"
 }
 
 # --- Actions -----------------------------------------------------------------

@@ -215,7 +215,7 @@ Settings page ([ADR 0005](adr/0005-external-config-only-via-install-button.md)).
 | Unlock PIN / password | Desktop keyring via `secret-tool` |
 | Per-device markers (keep-awake, PIN identity hash, `blocked`) | `$XDG_STATE_HOME/omadroid/devices/` |
 | Session state, keepers, locks, request files, preview JPEG, logs | `$XDG_RUNTIME_DIR/omadroid-$UID/` (mode 700) |
-| Audio codes per firmware, app names per device | `$XDG_CACHE_HOME/omadroid/` |
+| Audio codes per firmware, app names per device | `$XDG_CACHE_HOME/omadroid/` (folders 700, files 600) |
 | Send text hotkey | One marked block in `~/.config/hypr/bindings.lua` (+ 2 newest backups) |
 
 OmaDroid writes nothing in Omarchy's own configuration.

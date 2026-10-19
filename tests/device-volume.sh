@@ -8,6 +8,9 @@ trap '[[ "$test_dir" == /tmp/omadroid-volume.* ]] && rm -rf -- "$test_dir"' EXIT
 mkdir -p "$test_dir/bin" "$test_dir/cache" "$test_dir/device"
 cp "$repo_dir/tests/mock-adb.sh" "$test_dir/bin/adb"
 cp "$repo_dir/tests/mock-scrcpy.sh" "$test_dir/bin/scrcpy"
+# Logs every awk's arguments, so a test can check device output never lands
+# in a process listing.
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"%s/awk-args"\nexec %s "$@"\n' "$test_dir" "$(command -v awk)" >"$test_dir/bin/awk"
 chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH" XDG_CACHE_HOME="$test_dir/cache" OMADROID_TEST_ARGS="$test_dir/scrcpy-args"
 export OMADROID_VOLUME_MOCK="$repo_dir/tests/mock-volume-adb.sh" OMADROID_VOLUME_DIR="$test_dir/device"
@@ -56,6 +59,20 @@ stream assistant 11 7 0 15 0'
 volume status USB123 >/dev/null
 [[ "$(grep -c '^pull ' "$dev/log")" == 1 ]] || fail "codes are cached per firmware"
 [[ "$(grep -c '^pm ' "$dev/log")" == 1 ]] || fail "app names are cached: $(grep -c '^pm ' "$dev/log") pm calls"
+# The installed-app list and the device's reply reach awk as files, never as
+# arguments: app names, packages and uids stay out of process listings.
+[[ -s "$test_dir/awk-args" ]] || fail "awk wrapper saw no calls"
+! grep -qE 'Honkai|hkrpgoversea|gametools|10360|10085' "$test_dir/awk-args" || fail "device data in awk arguments: $(grep -E 'Honkai|hkrpgoversea|gametools|10360|10085' "$test_dir/awk-args" | head -c 300)"
+# The cache is private: folders 700, files 600, and an older readable cache
+# is tightened on the next status.
+apps_dir="$test_dir/cache/omadroid/apps"
+[[ "$(stat -c %a "$test_dir/cache/omadroid" "$apps_dir" "$test_dir/cache/omadroid/audio-codes" | sort -u)" == 700 ]] || fail "cache folders: $(stat -c '%a %n' "$test_dir/cache/omadroid" "$apps_dir")"
+[[ "$(find "$test_dir/cache/omadroid" -type f -perm /077 | wc -l)" == 0 ]] || fail "readable cache files: $(find "$test_dir/cache/omadroid" -type f -perm /077)"
+find "$test_dir/cache/omadroid" -type d -exec chmod 755 {} +
+find "$test_dir/cache/omadroid" -type f -exec chmod 644 {} +
+volume status USB123 >/dev/null
+[[ "$(find "$test_dir/cache/omadroid" -perm /077 | wc -l)" == 0 ]] ||
+  fail "an older cache is tightened: $(find "$test_dir/cache/omadroid" -printf '%m %P\n')"
 
 # Per-app volume and mute through the verified codes.
 volume app USB123 10360 set 40 >/dev/null
