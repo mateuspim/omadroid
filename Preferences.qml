@@ -9,6 +9,7 @@ import "SettingsFile.js" as SettingsFile
 Item {
   id: root
   readonly property string location: SettingsFile.omadroidIniUrl(Quickshell.env("XDG_CONFIG_HOME") || "", Quickshell.env("HOME"))
+  readonly property string settingsScript: decodeURIComponent(Qt.resolvedUrl("scripts/settings-file.sh").toString().replace(/^file:\/\//, ""))
   // Seconds between `adb devices -l` polls, used only while `adb track-devices` isn't running.
   readonly property int refreshIntervalSec: clampInterval(stored.refreshIntervalSec)
   readonly property bool wakeOnLaunch: stored.wakeOnLaunch
@@ -33,6 +34,13 @@ Item {
       throw new Error("Unknown OmaDroid preference '" + name + "'; expected refreshIntervalSec, lastTextTarget, wakeOnLaunch, unlockOnLaunch, wakeOnConnect or unlockOnConnect.");
     stored[name] = !!value;
   }
+
+  // omadroid.ini holds device ids and addresses, so it is made owner-only once
+  // at startup; Qt keeps the permissions when it saves.
+  Command {
+    id: privateFile
+  }
+  Component.onCompleted: privateFile.start(["bash", settingsScript, decodeURIComponent(location.replace(/^file:\/\//, ""))], 5)
 
   // Defaults match the 0.7.0 manifest defaults.
   Core.Settings {

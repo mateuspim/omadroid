@@ -195,6 +195,9 @@ config outside its own settings, and never calls `sudo`.
   the Sound section) and per-firmware audio codes. It is owner-only (folders
   700, files 600), and the app list is handled as files, never as process
   arguments.
+- **Settings:** `~/.config/omarchy/omadroid.ini` holds remembered device ids
+  and the last device's address, so OmaDroid makes it owner-only (600) when it
+  starts. It changes only that file's permissions, never its content.
 
 ## Requirements and enabling
 

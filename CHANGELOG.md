@@ -11,6 +11,9 @@
   volumes no longer appear in process arguments; they reach awk as files and
   the environment. `~/.cache/omadroid` is now owner-only (folders 700, files
   600), and an older readable cache is tightened the next time Sound opens.
+- **Settings:** `omadroid.ini`, which holds remembered device ids and the
+  last device's address, is made owner-only (600) at startup, also when an
+  older version left it readable.
 - **Duplicate devices:** a device that adb reaches both by `host:port` and
   by its mDNS name (adb's own auto-connect) shows as one row, not two.
   Disconnect on its page drops both links, so it doesn't stay connected.

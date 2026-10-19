@@ -18,6 +18,7 @@ shell_suites=(
   hotkey.sh
   send-text.sh
   session.sh
+  settings-file.sh
   webcam-setup.sh
   shared-discovery.sh
   'shared-discovery.sh no_track'

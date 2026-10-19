@@ -211,7 +211,7 @@ Settings page ([ADR 0005](adr/0005-external-config-only-via-install-button.md)).
 
 | What | Where |
 | --- | --- |
-| Preferences, Auto-connect list, mirror profiles, recording folder, webcam settings | `$XDG_CONFIG_HOME/omarchy/omadroid.ini` (Qt `Settings`; location from `SettingsFile.omadroidIniUrl`, computed at construction) |
+| Preferences, Auto-connect list, mirror profiles, recording folder, webcam settings | `$XDG_CONFIG_HOME/omarchy/omadroid.ini` (Qt `Settings`; location from `SettingsFile.omadroidIniUrl`, computed at construction); mode 600, set by `settings-file.sh` at startup |
 | Unlock PIN / password | Desktop keyring via `secret-tool` |
 | Per-device markers (keep-awake, PIN identity hash, `blocked`) | `$XDG_STATE_HOME/omadroid/devices/` |
 | Session state, keepers, locks, request files, preview JPEG, logs | `$XDG_RUNTIME_DIR/omadroid-$UID/` (mode 700) |
@@ -230,7 +230,8 @@ if a shell suite in `tests/` is missing from its list.
   the way QML does. No npm packages.
 - **Shell suites with mocks:** the scripts with real side effects
   (`session.sh`, `device-power.sh`, `device-volume.sh`, `audio-codes.py`,
-  `go-wireless.sh`, `hotkey.sh`, `send-text.sh`, `webcam-setup.sh`) each have
+  `go-wireless.sh`, `hotkey.sh`, `send-text.sh`, `settings-file.sh`,
+  `webcam-setup.sh`) each have
   a suite in `tests/` that runs them against fake executables (`tests/mock-*.sh`: adb, scrcpy, avahi-browse,
   hyprctl, secret-tool, foot, qrencode, …) in a temporary directory, e.g. the
   PIN never appears in argv, one attempt then blocked, launch races, a binder

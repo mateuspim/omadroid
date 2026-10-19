@@ -41,6 +41,10 @@ python3 -I "$repo_dir/tests/make-audio-dex.py" "$test_dir/volume/framework.jar"
 printf 13 >"$test_dir/volume/stream-3"
 printf 10 >"$test_dir/volume/app-10360"
 printf '10360 started\n' >"$test_dir/volume/players"
+# An omadroid.ini left readable by an older version.
+mkdir -p "$test_dir/config/omarchy"
+: >"$test_dir/config/omarchy/omadroid.ini"
+chmod 644 "$test_dir/config/omarchy/omadroid.ini"
 test_status=0
 unset DISPLAY WAYLAND_DISPLAY
 platform=offscreen
@@ -70,6 +74,8 @@ rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/omadroid.ini"
 # The text went to adb on stdin, never in its arguments.
 ! rg -q 'ok' "$test_dir/text/argv"
 rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/omadroid.ini"
+# It was tightened at startup and Qt's saves after that kept it owner-only.
+[[ "$(stat -c %a "$test_dir/config/omarchy/omadroid.ini")" == 600 ]]
 # The Settings page installed the Send text hotkey.
 rg -qxF 'o.bind("SUPER + ALT + D", "OmaDroid send text", "omarchy-shell shell toggle pym.omadroid")' "$test_dir/bindings.lua"
 # The Sound section sent only the drag's last value.
