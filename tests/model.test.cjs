@@ -97,6 +97,23 @@ test('a service on the host of a wireless device is that device, whatever the po
   assert.equal(other.length, 2);
 });
 
+test('two ready adb links to one device are one row, the other link kept as an alias', () => {
+  const tablet = '=;eno1;IPv4;adb-TAB-x;_adb-tls-connect._tcp;local;Android.local;192.168.1.50;34801;"name=SM-X730"';
+  const both = '192.168.1.50:34801 device model:SM_X730\nadb-TAB-x._adb-tls-connect._tcp device model:SM_X730';
+  const rows = model.deviceRows(model.parseDevices(both), model.parseMdns(tablet));
+  assert.deepEqual(plain(rows.map(r => [r.serial, r.aliases])), [['192.168.1.50:34801', ['adb-TAB-x._adb-tls-connect._tcp']]]);
+  // adb's port can differ from Avahi's cached one: one adbd per host.
+  const moved = model.deviceRows(model.parseDevices(both.replace(':34801', ':39357')), model.parseMdns(tablet));
+  assert.deepEqual(plain(moved.map(r => r.serial)), ['192.168.1.50:39357']);
+  // Without the service nothing ties them together, and another device's
+  // service doesn't merge them either.
+  assert.equal(model.deviceRows(model.parseDevices(both), []).length, 2);
+  assert.equal(model.deviceRows(model.parseDevices(both), model.parseMdns(tablet.replace('adb-TAB-x', 'adb-OTHER-y'))).length, 2);
+  // An offline mDNS link isn't merged; it stays a row to drop.
+  const stale = model.deviceRows(model.parseDevices(both.replace(/(_tcp) device/, '$1 offline')), model.parseMdns(tablet));
+  assert.equal(stale.length, 2);
+});
+
 test('Avahi decimal escaping preserves service names without treating them as shell code', () => {
   const rows = model.parseMdns(String.raw`=;eno1;IPv4;Phone\032name\059test;_adb-tls-connect._tcp;local;phone.local;192.168.1.2;1234;`);
   assert.equal(rows[0].name, 'Phone name;test');

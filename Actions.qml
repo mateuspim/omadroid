@@ -11,6 +11,8 @@ Item {
   property var discovery: null
   // Set when a pair succeeded before Avahi reported the device's connect port.
   property string pairedAwaitingConnect: ""
+  // The other adb links to a device being disconnected (a row's `aliases`).
+  property var pendingDisconnects: []
   readonly property bool busy: command.busy
   readonly property string wirelessScript: decodeURIComponent(Qt.resolvedUrl("scripts/go-wireless.sh").toString().replace(/^file:\/\//, ""))
   signal changed
@@ -37,6 +39,16 @@ Item {
       message = e.message;
       return false;
     }
+  }
+
+  /** Disconnect a device row and every other adb link to it, one after
+   * another, so it doesn't stay ready through its mDNS link.
+   * Example: actions.disconnectDevice({ serial: "10.0.0.2:40001", aliases: ["adb-X-y._adb-tls-connect._tcp"] }) */
+  function disconnectDevice(row) {
+    if (!row || busy)
+      return false;
+    pendingDisconnects = (row.aliases || []).slice();
+    return run("disconnect", row.serial, "");
   }
 
   /** Move a USB device to wireless ADB through go-wireless.sh, so its cable can
@@ -91,6 +103,12 @@ Item {
         root.finishWireless(code, output, error);
       else
         root.finishAdb(code, output, error);
+      if (root.action === "disconnect" && !root.failed && root.pendingDisconnects.length) {
+        var next = root.pendingDisconnects[0];
+        root.pendingDisconnects = root.pendingDisconnects.slice(1);
+        Qt.callLater(() => root.run("disconnect", next, ""));
+      } else
+        root.pendingDisconnects = [];
       root.changed();
       if (root.discovery)
         root.discovery.refresh();

@@ -196,6 +196,9 @@ function withDeviceNames(rows, names) {
  * keeps adb's live endpoint (Avahi may hold a stale cached port), an offline
  * one takes the advertised port so Connect reaches it. adb keeps endpoints it
  * lost as "offline"; once their host is ready on another port they are hidden.
+ * adb can hold two ready links to one device, its own mDNS auto-connect (named
+ * after the service) and an `adb connect host:port`; when the service ties
+ * them together the host:port row stays and lists the other in `aliases`.
  * Example: deviceRows(parseDevices("10.0.0.2:40001 device"), parseMdns("=;eno1;IPv4;adb-X-y;_adb-tls-connect._tcp;local;a.local;10.0.0.2;39999;"))
  *   → one row, endpoint "10.0.0.2:40001" */
 function deviceRows(devices, services) {
@@ -205,6 +208,16 @@ function deviceRows(devices, services) {
   var rows = devices.filter(function(row) {
     return !(wireless(row) && row.status !== "device" && readyHosts.indexOf(host(row)) >= 0);
   }).map(function(row) { return Object.assign({}, row); });
+  services.forEach(function(service) {
+    if (service.pair) return;
+    var ready = rows.filter(function(row) { return wireless(row) && row.status === "device"; });
+    var byEndpoint = ready.find(function(row) { return row.endpoint && row.endpoint === service.endpoint; }) ||
+      ready.find(function(row) { return row.endpoint && host(row) === host(service); });
+    var byName = ready.find(function(row) { return !row.endpoint && serviceId(row.serial) === serviceId(service.serial); });
+    if (!byEndpoint || !byName) return;
+    byEndpoint.aliases = (byEndpoint.aliases || []).concat(byName.serial);
+    rows.splice(rows.indexOf(byName), 1);
+  });
   services.forEach(function(service) {
     var candidates = service.pair ? [] : rows.filter(wireless);
     var existing = candidates.find(function(row) {

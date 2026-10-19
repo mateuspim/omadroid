@@ -51,7 +51,7 @@ ColumnLayout {
     keepAwake: () => devicePower.toggleKeepAwake(),
     sendText: () => root.sendTextRequested(root.serial),
     goWireless: () => root.actions.goWireless(root.serial),
-    disconnect: () => root.actions.run("disconnect", root.serial, "")
+    disconnect: () => root.actions.disconnectDevice(root.device)
   })
   spacing: Style.space(12)
 

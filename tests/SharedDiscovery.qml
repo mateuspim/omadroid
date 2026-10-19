@@ -122,6 +122,17 @@ ShellRoot {
     }
   }
 
+  // A device that adb reaches through two links is disconnected from both.
+  property var aliasDisconnects: []
+  OmaDroid.Actions {
+    id: aliasActions
+    onChanged: {
+      testRoot.check(!failed, "alias disconnect failed: " + message);
+      testRoot.aliasDisconnects = testRoot.aliasDisconnects.concat(target);
+    }
+    Component.onCompleted: disconnectDevice({ serial: "192.168.1.5:37002", aliases: ["adb-PHONE-random._adb-tls-connect._tcp"] })
+  }
+
   // Avahi reports the tablet's connect port only on the refresh after pairing,
   // so Actions must wait for that scan and then connect by itself.
   QtObject {
@@ -194,6 +205,7 @@ ShellRoot {
         return;
       running = false;
       testRoot.check(sharedDiscovery.deviceNames[serials[0]] === "Desk phone", "first device name not read: " + JSON.stringify(sharedDiscovery.deviceNames));
+      testRoot.check(JSON.stringify(testRoot.aliasDisconnects) === JSON.stringify(["192.168.1.5:37002", "adb-PHONE-random._adb-tls-connect._tcp"]), "every link was disconnected: " + JSON.stringify(testRoot.aliasDisconnects));
       console.log("OMADROID_SHARED_TEST_OK");
       Qt.quit();
     }
