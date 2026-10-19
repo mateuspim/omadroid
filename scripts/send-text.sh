@@ -2,12 +2,14 @@
 # Type text and press keys on a device with `adb shell input`, for the Send
 # text overlay.
 #
-#   send-text.sh SERIAL STEP... → nothing on success
-#   STEP is text:TEXT or key:NAME, e.g. key:ctrl+a key:backspace text:hello key:enter
+#   printf '%s\n' STEP... | send-text.sh SERIAL → nothing on success
+#   STEP is text:TEXT or key:NAME, one per line on stdin, e.g. key:ctrl+a
+#   key:backspace text:hello key:enter
 #
-# Every step is checked before anything is sent, then all of them run in one
-# `adb shell`, chained with && so a failing step stops the rest. adb joins its
-# argv into one string for the device's sh, so text is sent as one
+# Steps come on stdin and go to adb on stdin, so typed text never appears in a
+# process's arguments on this computer. Every step is checked before anything
+# is sent, then all of them run in one `adb shell`, chained with && so a
+# failing step stops the rest. Text is sent to the device's sh as one
 # single-quoted word; spaces become %s, which `input text` types as a space. A
 # literal "%s" in the text is typed as a space too: `input text` can't escape it.
 #
@@ -67,10 +69,11 @@ step_command() {
   esac
 }
 
-# Runs the chained commands and dies with adb's own message.
+# Runs the chained commands on adb's stdin and dies with adb's own message.
+# `exit` hands the chain's status back as adb's exit code.
 device_input() {
   local serial="$1" reply
-  reply="$(timeout 20 adb -s "$serial" shell "$2" 2>&1)" ||
+  reply="$(printf '%s\nexit\n' "$2" | timeout 20 adb -s "$serial" shell 2>&1)" ||
     die 1 "Couldn't type on $serial: ${reply:-no answer from adb}"
   # `adb shell` exits 0 on some devices even when input throws.
   [[ "$reply" =~ Exception|Error: ]] && die 1 "Couldn't type on $serial: $reply"
@@ -80,9 +83,11 @@ device_input() {
 serial="${1:-}"
 valid_serial "$serial"
 shift
-(($#)) || die 1 "Nothing to send; expected steps like text:hello or key:enter."
+(($# == 0)) || die 1 "Steps go on stdin, one per line, not as arguments: arguments are visible to other users."
+mapfile -t steps
+((${#steps[@]})) || die 1 "Nothing to send; expected steps like text:hello or key:enter."
 script=""
-for step in "$@"; do
+for step in "${steps[@]}"; do
   command="$(step_command "$step")" || exit $?
   script+="${script:+ && }$command"
 done

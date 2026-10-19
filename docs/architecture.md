@@ -197,8 +197,10 @@ as every use. Unverified or missing codes fall back to app-op mute
 prompt state and keys, `SendTextSteps.qml` draws text and recorded key chips,
 `SendTextDevices.qml` the device row. `SendText.js` maps Qt keys to step names
 and picks the target (`lastTextTarget` preference, or the first ready device).
-`send-text.sh SERIAL STEP...` validates every `text:` / `key:` step, then sends
-them in one `adb shell` chained with `&&`. The hotkey is installed by
+`send-text.sh SERIAL` reads one `text:` / `key:` step per line on stdin,
+validates every step, then sends them in one `adb shell` chained with `&&`,
+also on stdin, so typed text never appears in a process's arguments. The
+hotkey is installed by
 `hotkey.sh` into one marked block of Hyprland's `bindings.lua`, only from the
 Settings page ([ADR 0005](adr/0005-external-config-only-via-install-button.md)).
 

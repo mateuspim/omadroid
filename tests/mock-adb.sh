@@ -54,7 +54,8 @@ mock_power() {
   esac
 }
 # send-text.sh fixture: OMADROID_TEXT_DIR/typed collects what the device
-# types, keys as <ENTER> or <CTRL+A>. The command string is evaluated like the
+# types, keys as <ENTER> or <CTRL+A>. adb's arguments go to `argv` and the
+# script it reads on stdin to `script`; the script is evaluated like the
 # device's sh would, so a quoting mistake changes what gets typed; %s is typed
 # as a space, as Android does. OMADROID_TEST_CASE=input_error answers like an
 # input command that threw; serial MISSING isn't connected.
@@ -72,11 +73,12 @@ mock_input() {
 }
 mock_text() {
   local dir="$OMADROID_TEXT_DIR"
-  printf '%s\n' "$*" >>"$dir/argv"
+  printf 'shell %s\n' "$*" >>"$dir/argv"
+  cat >"$dir/script"
   [[ "$serial" != MISSING ]] || { printf "adb: device 'MISSING' not found\n" >&2; return 1; }
   [[ "${OMADROID_TEST_CASE:-}" == input_error ]] && { printf 'java.lang.IllegalStateException: no window\r\n'; return 0; }
   input() { mock_input "$@"; }
-  eval "$*"
+  eval "$(cat "$dir/script")"
 }
 # go-wireless.sh fixture: OMADROID_WIRELESS_DIR holds the device's `sdk`, its
 # `ip -4 -o addr show` output in `addresses`, `enabled` (adb_wifi_enabled) and
@@ -200,7 +202,7 @@ case "${1:-}" in
         'tmpfs              5491156         0   5491156   0% /storage'
       exit 0
     fi
-    if [[ -n "${OMADROID_TEXT_DIR:-}" && ( "$*" == 'input text '* || "$*" == 'input key'* ) && "$*" != *KEYCODE_WAKEUP* && "$*" != *KEYCODE_SLEEP* ]]; then
+    if [[ -n "${OMADROID_TEXT_DIR:-}" && $# == 0 ]]; then
       mock_text "$@"
       exit $?
     fi

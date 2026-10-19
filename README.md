@@ -185,6 +185,7 @@ config outside its own settings, and never calls `sudo`.
   [Send text](#send-text).
 - **Secrets:** unlock PINs live in your keyring (libsecret) and, like pairing
   passwords, are passed through stdin, never argv, logs or settings.
+  Send text sends what you type or paste on stdin too.
 - **Network:** OmaDroid talks only to the devices you pair or connect (adb,
   mDNS through Avahi). It downloads and executes nothing from the internet.
 - **Runtime state:** session and keep-awake PIDs live in
@@ -725,9 +726,12 @@ the prompt.
 
 The overlay is `SendText.qml` (window), `SendTextCard.qml` (prompt and keys)
 and `SendTextSteps.qml` (text and chips);
-`scripts/send-text.sh` does the typing and can be run on its own:
-`scripts/send-text.sh SERIAL key:ctrl+a key:backspace "text:hello world" key:enter`. It
-checks every step first, then sends them all in one `adb shell` call. Key
+`scripts/send-text.sh` does the typing and can be run on its own, with one step
+per line on stdin:
+`printf '%s\n' key:ctrl+a key:backspace "text:hello world" key:enter | scripts/send-text.sh SERIAL`.
+Steps are refused as arguments, which other local users could read in a
+process listing. It checks every step first, then sends them all in one
+`adb shell` call, on adb's stdin too. Key
 names: a letter, digit or `f1`–`f12`; `enter`, `tab`, `space`, `backspace`,
 `del`, `esc`, `home`, `end`, `up`, `down`, `left`, `right`, `pageup`,
 `pagedown`, `insert`, and Android's `back`, `menu`, `search`; prefix `ctrl+`,

@@ -76,7 +76,7 @@ BorderSurface {
       return;
     status = "Typing on " + deviceLabel(targetDevice) + "…";
     sender.sentTo = target;
-    sender.start(SendText.sendTextCommand(sendScript, target, steps, options), 30);
+    sender.start(SendText.sendTextCommand(sendScript, target), 30, SendText.sendTextInput(steps, options));
   }
 
   // A failed send keeps the prompt open with adb's message, so it can be retried.

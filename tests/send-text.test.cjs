@@ -83,8 +83,9 @@ test('keyLabel names chips', () => {
   assert.equal(sendText.keyLabel('backspace'), '⌫ Backspace');
 });
 
-test('sendTextCommand turns steps into arguments, with clear and enter around them', () => {
-  assert.deepEqual(plain(sendText.sendTextCommand('/p/send-text.sh', 'A', [{ text: 'hi' }], {})), ['bash', '/p/send-text.sh', 'A', 'text:hi']);
-  assert.deepEqual(plain(sendText.sendTextCommand('/p/send-text.sh', 'A', [{ text: 'hi' }, { key: 'tab' }, { text: '{x}' }], { enter: true })), ['bash', '/p/send-text.sh', 'A', 'text:hi', 'key:tab', 'text:{x}', 'key:enter']);
-  assert.deepEqual(plain(sendText.sendTextCommand('/p/send-text.sh', 'A', [], { clear: true })), ['bash', '/p/send-text.sh', 'A', 'key:end', 'key:shift+home', 'key:backspace']);
+test('sendTextCommand keeps the steps out of the arguments; sendTextInput puts them on stdin', () => {
+  assert.deepEqual(plain(sendText.sendTextCommand('/p/send-text.sh', 'A')), ['bash', '/p/send-text.sh', 'A']);
+  assert.equal(sendText.sendTextInput([{ text: 'hi' }], {}), 'text:hi\n');
+  assert.equal(sendText.sendTextInput([{ text: 'hi' }, { key: 'tab' }, { text: '{x}' }], { enter: true }), 'text:hi\nkey:tab\ntext:{x}\nkey:enter\n');
+  assert.equal(sendText.sendTextInput([], { clear: true }), 'key:end\nkey:shift+home\nkey:backspace\n');
 });

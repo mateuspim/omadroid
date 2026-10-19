@@ -7,6 +7,10 @@
 - **Runtime folder:** session, keep-awake and webcam preview state is refused
   when its folder is a symlink or owned by another user. Without
   `XDG_RUNTIME_DIR` that folder falls back to the shared `/tmp`.
+- **Send text:** typed and pasted text no longer appears in process
+  arguments, where other local users could read it. It reaches
+  `send-text.sh` and then `adb shell` on stdin, as the unlock PIN already
+  did.
 
 ### Docs
 

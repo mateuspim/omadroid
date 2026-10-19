@@ -163,16 +163,25 @@ function keyLabel(name) {
 // multi-line field is selected this way.
 var clearFieldKeys = ["key:end", "key:shift+home", "key:backspace"];
 
-/** The send-text.sh command: optionally clear the focused field first, then
- * the steps, then optionally Enter.
- * Example: sendTextCommand("/p/send-text.sh", "A", [{text: "hi"}], { clear: true }) → ["bash", "/p/send-text.sh", "A", "key:end", "key:shift+home", "key:backspace", "text:hi"]
- * @param {string} script @param {string} serial @param {Array<{text: string}|{key: string}>} steps
- * @param {{clear: boolean, enter: boolean}} options
- * @returns {Array<string>}
+/** The send-text.sh command. The steps go on its stdin (sendTextInput), so
+ * typed text never shows in a process listing.
+ * Example: sendTextCommand("/p/send-text.sh", "A") → ["bash", "/p/send-text.sh", "A"]
+ * @param {string} script @param {string} serial @returns {Array<string>}
  */
-function sendTextCommand(script, serial, steps, options) {
-  var args = steps.map(function(step) { return "text" in step ? "text:" + step.text : "key:" + step.key; });
+function sendTextCommand(script, serial) {
+  return ["bash", script, serial];
+}
+
+/** send-text.sh's stdin: optionally clear the focused field first, then the
+ * steps, then optionally Enter, one per line. Text steps can't hold a line
+ * break: unsupportedChars refuses it before anything is sent.
+ * Example: sendTextInput([{text: "hi"}], { clear: true }) → "key:end\nkey:shift+home\nkey:backspace\ntext:hi\n"
+ * @param {Array<{text: string}|{key: string}>} steps @param {{clear: boolean, enter: boolean}} options
+ * @returns {string}
+ */
+function sendTextInput(steps, options) {
+  var lines = steps.map(function(step) { return "text" in step ? "text:" + step.text : "key:" + step.key; });
   var before = options && options.clear ? clearFieldKeys : [];
   var after = options && options.enter ? ["key:enter"] : [];
-  return ["bash", script, serial].concat(before, args, after);
+  return before.concat(lines, after).map(function(line) { return line + "\n"; }).join("");
 }

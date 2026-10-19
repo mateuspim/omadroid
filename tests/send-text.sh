@@ -14,14 +14,15 @@ fail() {
   echo "OMADROID_TEXT_FAILED: $*" >&2
   exit 1
 }
-# send EXPECTED_CODE ARGS... → output in $out, what was typed in $typed.
+# send EXPECTED_CODE SERIAL STEP... → the steps go on stdin, one per line;
+# output in $out, what was typed in $typed.
 send() {
-  local expected="$1" code=0
-  shift
+  local expected="$1" serial="$2" code=0
+  shift 2
   rm -f "$device/"*
-  out="$(bash "$repo_dir/scripts/send-text.sh" "$@" 2>&1)" || code=$?
+  out="$({ (($#)) && printf '%s\n' "$@"; } | bash "$repo_dir/scripts/send-text.sh" "$serial" 2>&1)" || code=$?
   typed="$(cat "$device/typed" 2>/dev/null || true)"
-  [[ "$code" == "$expected" ]] || fail "send-text $* exited $code; expected $expected: $out"
+  [[ "$code" == "$expected" ]] || fail "send-text $serial $* exited $code; expected $expected: $out"
 }
 
 # Every character the device's sh treats specially is typed as is.
@@ -34,6 +35,18 @@ done
 send 0 USB123 key:ctrl+a key:backspace 'text:new text' key:tab key:enter
 [[ "$typed" == '<CTRL+A><DEL>new text<TAB><ENTER>' ]] || fail "sequence: $typed"
 [[ "$(wc -l <"$device/argv")" == 1 ]] || fail "one adb shell: $(cat "$device/argv")"
+
+# Text never reaches adb's arguments, where any local user could read it in a
+# process listing: adb reads it on stdin.
+send 0 USB123 'text:private note' key:enter
+[[ "$typed" == 'private note<ENTER>' ]] || fail "typed over stdin: $typed"
+[[ "$(cat "$device/argv")" == 'shell ' ]] || fail "adb arguments: $(cat "$device/argv")"
+[[ "$(cat "$device/script")" == *'private%snote'* ]] || fail "adb stdin: $(cat "$device/script")"
+# Steps as arguments are refused before anything is sent.
+rm -f "$device/"*
+code=0
+out="$(bash "$repo_dir/scripts/send-text.sh" USB123 'text:private note' </dev/null 2>&1)" || code=$?
+[[ "$code" == 1 && "$out" == *"Steps go on stdin"* && ! -e "$device/argv" ]] || fail "argument steps refused ($code): $out"
 send 0 USB123 key:ctrl+shift+z key:f5 key:7 key:del key:home key:back
 [[ "$typed" == '<CTRL+SHIFT+Z><F5><7><FORWARD_DEL><MOVE_HOME><BACK>' ]] || fail "key names: $typed"
 
@@ -48,7 +61,9 @@ send 0 USB123 'text:100%sure'
 # Every step is checked before anything is sent.
 send 2 USB123 text:ok 'text:café'
 [[ "$out" == *"only printable ASCII"* && ! -e "$device/argv" ]] || fail "non-ASCII refused: $out"
-send 2 USB123 $'text:two\nlines'
+# A line break splits a step in two, so the second half is refused.
+send 1 USB123 $'text:two\nlines'
+[[ "$out" == *"Unexpected step 'lines'"* && ! -e "$device/argv" ]] || fail "line break: $out"
 send 2 USB123 text:ok key:hyper
 [[ "$out" == *"Unknown key '{hyper}'"* && ! -e "$device/argv" ]] || fail "unknown key: $out"
 send 2 USB123 key:super+a

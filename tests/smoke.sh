@@ -67,6 +67,8 @@ rg -q 'Fixture profile' "$test_dir/config/omarchy/omadroid.ini"
 rg -q 'webcamJson=.*camera.*id:1' "$test_dir/config/omarchy/omadroid.ini"
 # Send text pressed the recorded keys, typed on the chosen phone and pressed Enter.
 [[ "$(cat "$test_dir/text/typed")" == "<CTRL+A><DEL>it's {ok}<ENTER>" ]]
+# The text went to adb on stdin, never in its arguments.
+! rg -q 'ok' "$test_dir/text/argv"
 rg -q 'lastTextTarget=adb-PHONE-random' "$test_dir/config/omarchy/omadroid.ini"
 # The Settings page installed the Send text hotkey.
 rg -qxF 'o.bind("SUPER + ALT + D", "OmaDroid send text", "omarchy-shell shell toggle pym.omadroid")' "$test_dir/bindings.lua"

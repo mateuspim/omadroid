@@ -107,9 +107,9 @@ is the user manual; read its section before changing a feature.
 
 - No `/home/...` paths, real device serials or names, or LAN addresses in
   tracked files (tests use `USB123`, `adb-PHONE-random` and similar).
-- Secrets (unlock PINs, pairing passwords) never go in argv, logs or
-  settings: pipe them through stdin. Never run `secret-tool search`; it
-  prints secrets.
+- Secrets (unlock PINs, pairing passwords) and Send text's typed text never
+  go in argv, logs or settings: pipe them through stdin. Never run
+  `secret-tool search`; it prints secrets.
 - Files outside the plugin (e.g. Hyprland binds) change only through an
   explicit in-plugin Install/Remove button that touches its own marked block
   (see `scripts/hotkey.sh`). Never modify user config on load.

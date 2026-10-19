@@ -95,7 +95,7 @@ case "$1" in
     [[ "$2" == /system/framework/framework.jar ]] && cp -- "$dir/framework.jar" "$3"
     ;;
   shell)
-    [[ "$2" =~ ro\.build\.fingerprint|service\ call\ audio|cmd\ audio|appops|KEYCODE_VOLUME|pm\ list\ packages\ -U|dumpsys\ audio ]] || exit 100
+    [[ "${2:-}" =~ ro\.build\.fingerprint|service\ call\ audio|cmd\ audio|appops|KEYCODE_VOLUME|pm\ list\ packages\ -U|dumpsys\ audio ]] || exit 100
     [[ "$serial" != MISSING ]] || { printf "adb: device 'MISSING' not found\n" >&2; exit 1; }
     shift
     eval "$*" | sed 's/$/\r/'
