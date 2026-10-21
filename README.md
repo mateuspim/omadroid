@@ -729,15 +729,24 @@ names: a letter, digit or `f1`–`f12`; `enter`, `tab`, `space`, `backspace`,
 
 ## Documentation
 
+- [Documentation index](docs/README.md): everything below and more.
 - [Architecture](docs/architecture.md): what runs where, how data flows, where
   state is kept, and how it is tested.
 - [Architecture Decision Records](docs/adr/README.md): the main design
   decisions and why they were made.
+- [Specs](docs/README.md#develop-omadroid): settings keys, environment
+  variables, the Send text overlay and the script output QML parses.
+- [Troubleshooting](docs/runbooks/troubleshooting.md): messages, causes and
+  fixes.
+- [CONTRIBUTING.md](CONTRIBUTING.md): how to set up, test and send a change.
+- [SECURITY.md](SECURITY.md): the privilege model and private reporting.
 - [CHANGELOG.md](CHANGELOG.md): what each release changed.
 
 ## Development
 
-Validate the manifest, then run every test suite:
+The [development runbook](docs/runbooks/development.md) covers setup,
+offscreen previews, refreshing the README hero and releases. Validate the
+manifest, then run every test suite:
 
 ```bash
 omarchy plugin validate "$PWD"
