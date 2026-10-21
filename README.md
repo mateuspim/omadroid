@@ -169,35 +169,17 @@ Recordings stay in the folder you chose, and the packages from
 OmaDroid runs as your user. Loading the plugin installs nothing, writes no
 config outside its own settings, and never calls `sudo`.
 
-- **Root, once, when you ask:** **Set up webcam** (or **Enable output**) in a
-  device's Webcam section opens a visible terminal running
-  `scripts/webcam-setup.sh`. It runs `omarchy pkg add v4l2loopback-dkms`,
-  `sudo modprobe v4l2loopback devices=1 exclusive_caps=1`, and writes
-  `/etc/modules-load.d/v4l2loopback.conf` and
-  `/etc/modprobe.d/v4l2loopback.conf` only if neither exists yet. The
-  commands are fixed and take no input from the UI or the device; `sudo` asks
-  for your password in that terminal. **Copy commands** copies the same
-  commands if you'd rather run them yourself.
-- **Packages:** the setup above is the only place OmaDroid installs a package.
-  The other `omarchy pkg` lines in this README are for you to run.
+- **Root only when you ask:** **Set up webcam** opens a visible terminal that
+  installs `v4l2loopback-dkms` and loads it with `sudo`; the commands are
+  fixed.
 - **Your config:** only the Send text hotkey's **Install** writes outside the
-  plugin, as one marked block in `~/.config/hypr/bindings.lua`; see
-  [Send text](#send-text).
-- **Secrets:** unlock PINs live in your keyring (libsecret) and, like pairing
-  passwords, are passed through stdin, never argv, logs or settings.
-  Send text sends what you type or paste on stdin too.
-- **Network:** OmaDroid talks only to the devices you pair or connect (adb,
-  mDNS through Avahi). It downloads and executes nothing from the internet.
-- **Runtime state:** session and keep-awake PIDs live in
-  `$XDG_RUNTIME_DIR/omadroid-$UID`, owner-only. A folder that is a symlink or
-  owned by another user is refused.
-- **Cache:** `~/.cache/omadroid` holds each phone's installed-app names (for
-  the Sound section) and per-firmware audio codes. It is owner-only (folders
-  700, files 600), and the app list is handled as files, never as process
-  arguments.
-- **Settings:** `~/.config/omarchy/omadroid.ini` holds remembered device ids
-  and the last device's address, so OmaDroid makes it owner-only (600) when it
-  starts. It changes only that file's permissions, never its content.
+  plugin, as one marked block in `~/.config/hypr/bindings.lua`.
+- **Secrets:** unlock PINs stay in your keyring; PINs, pairing codes and typed
+  text travel on stdin, never in process arguments, logs or settings.
+- **Network:** only the devices you pair or connect; nothing is downloaded.
+
+[SECURITY.md](SECURITY.md) lists every command OmaDroid runs and every file it
+writes, and how to report a vulnerability.
 
 ## Requirements and enabling
 
