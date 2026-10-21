@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 — 2026-10-21
 
 ### Fixed
 
@@ -25,7 +25,30 @@
 ### Docs
 
 - README: a **Remove** section and a **Security and privileges** section that
-  list everything OmaDroid installs, writes or runs as root.
+  list everything OmaDroid installs, writes or runs as root. The full privilege
+  model moved to `SECURITY.md`, with private vulnerability reporting; the
+  README keeps a short summary and links it.
+- `CONTRIBUTING.md` and a documentation index in `docs/README.md`, linked
+  from the README and `AGENTS.md`.
+- Specs in `docs/specs/`: the `omadroid.ini` keys, the `OMADROID_*`
+  environment variables, the shell integration (entry points, discovery
+  service, Send text overlay and hotkey block) and the output of each script
+  that QML parses.
+- Runbooks: `docs/runbooks/development.md` (setup, tests, offscreen previews,
+  refreshing the README hero, releases) and
+  `docs/runbooks/troubleshooting.md` (messages, causes and fixes).
+- Brand sources: `docs/branding.md` with the hero's colours, wordmarks in
+  `docs/brand/logo.svg` and `logo-light.svg`, and `docs/brand/preview.svg`,
+  an editable layout of the README hero built on offscreen captures with fake
+  devices. `preview.png` is unchanged.
+
+### Tests
+
+- GitHub Actions runs the test suites on every push and pull request.
+  `OMADROID_SKIP_QML=1 bash tests/run-all.sh` skips the two suites that need
+  quickshell and the Omarchy shell and ends with `OMADROID_PARTIAL_OK`, so a
+  partial run never reads as a full pass.
+- Pull request and issue templates.
 
 ## 1.0.0 — 2026-10-18
 

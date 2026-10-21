@@ -4,6 +4,9 @@ OmaDroid is an Omarchy shell plugin (Quickshell/QML + bash) that discovers
 Android devices over adb and mirrors/controls them with scrcpy. Plugin id
 `pym.omadroid`; public at https://github.com/mateuspim/omadroid. The README
 is the user manual; read its section before changing a feature.
+`docs/architecture.md` says how the parts fit, `docs/adr/` why, and
+`docs/specs/` what the contracts are (settings keys, `OMADROID_*` variables,
+shell integration, script output); `docs/README.md` indexes them all.
 
 ## Project
 
@@ -26,7 +29,8 @@ is the user manual; read its section before changing a feature.
   `import qs.Commons as Commons` and `Commons.Color.x`; never a bare `Color.`.
 - Shell scripts: bash, `set -uo pipefail` (or `-euo`), plain-text results on
   stdout for QML to parse, errors on stderr with a non-zero exit. Keep the
-  user-facing scripts executable.
+  user-facing scripts executable. A changed output format updates its parser
+  and `docs/specs/scripts.md` in the same change.
   When running `scripts/session.sh` by hand, use an absolute path: it re-execs
   `bash "$0" run` inside a new terminal.
 
@@ -58,7 +62,10 @@ is the user manual; read its section before changing a feature.
 - Everything runs with one command: `bash tests/run-all.sh` (prints
   `OMADROID_ALL_OK`; stops at the first failure, naming it). Node unit tests
   alone: `node --test tests/*.test.cjs`. A new shell suite must be added to
-  the list in `tests/run-all.sh` or the run fails.
+  the list in `tests/run-all.sh` or the run fails. CI
+  (`.github/workflows/test.yml`) runs it with `OMADROID_SKIP_QML=1`, which
+  skips the quickshell suites and prints `OMADROID_PARTIAL_OK`; that is not a
+  full pass.
 - Every new function gets a test. Bug fixes get a regression test.
 - Mock external I/O (adb, scrcpy, avahi, keyring, terminal, filesystem) with
   named fakes (`tests/mock-*.sh`, fixture dirs), not inline stubs. Tests never
@@ -71,6 +78,8 @@ is the user manual; read its section before changing a feature.
   `tests/Preview.qml`); `OMADROID_PREVIEW_QML=tests/DevicePreview.qml` (or
   `HomePreview.qml`) swaps the capture script. Offscreen renders skip
   MultiEffect. Afterwards `pgrep -af omadroid-smoke` and kill your leftovers.
+  `docs/runbooks/development.md` has the full procedure, including
+  "Refresh the preview" for the README hero (`docs/brand/preview.svg`).
 - Live shell log (read-only):
   `quickshell log -p /usr/share/omarchy/shell -t 200 | grep -i omadroid`.
   Don't restart the user's shell (`omarchy-restart-shell`) or run live
@@ -114,10 +123,13 @@ is the user manual; read its section before changing a feature.
   explicit in-plugin Install/Remove button that touches its own marked block
   (see `scripts/hotkey.sh`). Never modify user config on load.
 - `HANDOFF.md` is local-only and stays gitignored.
+- A change to what OmaDroid runs, writes or installs updates the privilege
+  model in `SECURITY.md`.
 
 ## Releases
 
-1. Bump `version` in `manifest.json` and add a `CHANGELOG.md` entry.
+1. Bump `version` in `manifest.json` and turn `CHANGELOG.md`'s Unreleased
+   section into the release entry.
 2. `bash tests/run-all.sh` → `OMADROID_ALL_OK`.
 3. `omarchy plugin validate .` exits 0.
 4. Commit, then tag `vX.Y.Z`. Ask the owner before pushing commits or tags.
