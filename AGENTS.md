@@ -3,7 +3,8 @@
 OmaDroid is an Omarchy shell plugin (Quickshell/QML + bash) that discovers
 Android devices over adb and mirrors/controls them with scrcpy. Plugin id
 `pym.omadroid`; public at https://github.com/mateuspim/omadroid. The README
-is the user manual; read its section before changing a feature.
+is the landing page; `docs/guide/` is the user manual, one page per feature
+area: read its page before changing a feature.
 `docs/architecture.md` says how the parts fit, `docs/adr/` why, and
 `docs/specs/` what the contracts are (settings keys, `OMADROID_*` variables,
 shell integration, script output); `docs/README.md` indexes them all.

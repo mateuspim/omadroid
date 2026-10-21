@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Docs
+
+- README: now a short landing page (pitch, quick start, features, install,
+  remove, security, requirements). The user manual moved unchanged into
+  `docs/guide/`, one page per feature area (features, requirements,
+  connecting, mirroring, webcam, keep awake and unlock, sound, send text),
+  indexed in `docs/README.md`. What each test suite covers moved to the
+  development runbook.
+
 ## 1.0.1 — 2026-10-21
 
 ### Fixed

@@ -36,7 +36,8 @@ outside its own settings, and never calls `sudo`.
   for your password in that terminal. **Copy commands** copies the same
   commands if you'd rather run them yourself.
 - **Packages:** the setup above is the only place OmaDroid installs a package.
-  The other `omarchy pkg` lines in the README are for you to run.
+  The other `omarchy pkg` lines in the README and the [guide](docs/README.md#use-omadroid) are
+  for you to run.
 - **Your config:** only the Send text hotkey's **Install** writes outside the
   plugin, as one marked block in `~/.config/hypr/bindings.lua` (keeping the
   2 newest backups); **Remove** deletes only that block. It refuses a file
