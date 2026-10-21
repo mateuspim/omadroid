@@ -1,0 +1,21 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # session.sh's suite checks its fakes' logs with ripgrep. Every other
+      # tool the suites need (adb, scrcpy, avahi, keyring, terminal) is a
+      # fake in tests/mock-*.sh.
+      - run: sudo apt-get update && sudo apt-get install -y ripgrep
+      # The QML suites (shared-discovery.sh, smoke.sh) need quickshell and an
+      # installed Omarchy shell, so they run locally only.
+      - run: OMADROID_SKIP_QML=1 bash tests/run-all.sh

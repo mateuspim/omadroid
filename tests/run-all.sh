@@ -5,6 +5,10 @@
 # first failure, naming it; prints OMADROID_ALL_OK when everything passed.
 #
 #   bash tests/run-all.sh
+#
+# OMADROID_SKIP_QML=1 skips the suites that run quickshell against the
+# installed Omarchy shell (CI has neither) and ends with
+# OMADROID_PARTIAL_OK instead, so a partial run never reads as a full pass.
 set -uo pipefail
 tests_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(dirname -- "$tests_dir")"
@@ -25,6 +29,9 @@ shell_suites=(
   smoke.sh
   'smoke.sh avahi_unavailable'
 )
+# Suites that need quickshell and /usr/share/omarchy/shell.
+qml_suites=(shared-discovery.sh smoke.sh)
+skip_qml="${OMADROID_SKIP_QML:-0}"
 
 # Names the failed step on stderr and exits with its code.
 stop_on_failure() {
@@ -60,6 +67,14 @@ echo "== node --test tests/*.test.cjs"
 (cd "$repo_dir" && node --test tests/*.test.cjs) || stop_on_failure $? 'node --test'
 for entry in "${shell_suites[@]}"; do
   read -r suite test_case <<<"$entry"
+  if [[ "$skip_qml" == 1 && " ${qml_suites[*]} " == *" $suite "* ]]; then
+    echo "== $suite${test_case:+ (OMADROID_TEST_CASE=$test_case)} skipped (OMADROID_SKIP_QML=1)"
+    continue
+  fi
   run_suite "$suite" "$test_case"
 done
+if [[ "$skip_qml" == 1 ]]; then
+  echo "OMADROID_PARTIAL_OK: QML suites skipped (${qml_suites[*]})"
+  exit 0
+fi
 echo OMADROID_ALL_OK
