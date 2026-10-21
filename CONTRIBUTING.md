@@ -27,7 +27,7 @@ test requirements, logs and offscreen previews.
 ## Make a change
 
 1. Branch from `master`.
-2. Keep the change focused; update the README section or doc it affects.
+2. Keep the change focused; update the guide page (`docs/guide/`) or doc it affects.
 3. Add or update tests: every new function gets one, a bug fix gets a
    regression test, and external tools are faked with `tests/mock-*.sh`. Run
    `bash tests/run-all.sh` (it must print `OMADROID_ALL_OK`) and
