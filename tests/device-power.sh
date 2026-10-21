@@ -131,7 +131,12 @@ expect_code 1 lock 'bad serial;'
 power keep-awake on USB123 >/dev/null
 power keep-awake on USB123 >/dev/null
 [[ "$(power status USB123)" == 'keep=on running=1 secret=none' ]] || fail "keeper running"
-[[ "$(pgrep -fc -- '--serial=USB123 --no-video --no-audio --no-window --keep-active')" == 1 ]] || fail "exactly one keeper"
+# The keeper starts in the background through setsid, so a slow runner can
+# count it before it execs (0) or while setsid's fork is still alive (2);
+# wait for it to settle rather than sampling once.
+count_keepers() { pgrep -fc -- '--serial=USB123 --no-video --no-audio --no-window --keep-active' || true; }
+for ((attempt = 0; attempt < 20; attempt++)); do [[ "$(count_keepers)" == 1 ]] && break; sleep 0.1; done
+[[ "$(count_keepers)" == 1 ]] || fail "exactly one keeper"
 read -r keeper_pid _ <"$XDG_RUNTIME_DIR/omadroid-$UID/keepers/R5CR123ABC"
 kill "$keeper_pid"
 for ((attempt = 0; attempt < 20; attempt++)); do kill -0 "$keeper_pid" 2>/dev/null || break; sleep 0.1; done
