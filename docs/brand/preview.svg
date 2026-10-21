@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3840" height="2160" viewBox="0 0 3840 2160">
+<!-- OmaDroid README hero. Render: rsvg-convert -o preview.png docs/brand/preview.svg
+     (run from the repository root so the capture paths resolve). Layout and colours
+     were measured from the shipped preview.png; see docs/branding.md. -->
+<defs>
+  <radialGradient id="greenGlow" cx="0" cy="1" r=".55">
+    <stop offset="0" stop-color="#1f8a5a" stop-opacity=".27"/><stop offset="1" stop-color="#1f8a5a" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="blueGlow" cx="1" cy="0" r=".85">
+    <stop offset="0" stop-color="#1d3a5c" stop-opacity=".30"/><stop offset="1" stop-color="#1d3a5c" stop-opacity="0"/>
+  </radialGradient>
+  <pattern id="dots" width="56" height="56" patternUnits="userSpaceOnUse">
+    <circle cx="27.5" cy="26.5" r="2.2" fill="#7a8f9d" opacity=".11"/>
+  </pattern>
+  <filter id="shadow" x="-.2" y="-.2" width="1.5" height="1.5"><feGaussianBlur stdDeviation="40"/></filter>
+  <filter id="iconGlow" x="-.6" y="-.6" width="2.2" height="2.2"><feGaussianBlur stdDeviation="2.4"/></filter>
+  <!-- The mark from icon.svg, inlined so the SVG renders standalone. -->
+  <g id="mark">
+    <path fill-rule="evenodd" d="M3.5 13.5a8.5 8.5 0 0 1 17 0z M8.6 9.6a1.25 1.25 0 1 0 0.01 0z M15.4 9.6a1.25 1.25 0 1 0 0.01 0z"/>
+    <path d="M6.6 5.9 4.9 3.2M17.4 5.9l1.7-2.7M4.2 16.4l2.6 2-2.6 2" fill="none" stroke="#3ddc84" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="9.5" y="19.2" width="11" height="2.2" rx="1"/>
+  </g>
+</defs>
+<rect width="3840" height="2160" fill="#0b0f14"/>
+<rect width="3840" height="2160" fill="url(#greenGlow)"/>
+<rect width="3840" height="2160" fill="url(#blueGlow)"/>
+<rect width="3840" height="2160" fill="url(#dots)"/>
+
+<!-- Mark with a soft green glow behind it. -->
+<g transform="translate(239 414) scale(12.5)" fill="#3ddc84">
+  <use xlink:href="#mark" opacity=".55" filter="url(#iconGlow)"/>
+  <use xlink:href="#mark"/>
+</g>
+<text x="618" y="660" font-family="JetBrains Mono,JetBrainsMono Nerd Font,DejaVu Sans Mono,monospace" font-size="270" font-weight="600" letter-spacing="-15" fill="#e6edf3">Oma<tspan fill="#3ddc84">Droid</tspan></text>
+
+<g font-family="JetBrains Mono,JetBrainsMono Nerd Font,DejaVu Sans Mono,monospace">
+  <text x="240" y="857" font-size="83" font-weight="700" fill="#e6edf3">Android on your Omarchy desktop.</text>
+  <g font-size="55.4" fill="#8b949e">
+    <text x="240" y="1012">Discover phones and tablets over USB and Wi-Fi,</text>
+    <text x="240" y="1096">then mirror them, play their audio or use the</text>
+    <text x="240" y="1180">camera as a webcam, all from the bar.</text>
+  </g>
+
+  <!-- Feature chips: accent glyph, then label. -->
+  <g font-size="47" fill="#e6edf3">
+    <g fill="#151b20" stroke="#30363d" stroke-width="4">
+      <rect x="242" y="1272" width="315" height="107"/>
+      <rect x="588" y="1272" width="280" height="107"/>
+      <rect x="900" y="1272" width="315" height="107"/>
+      <rect x="1248" y="1272" width="428" height="107"/>
+      <rect x="242" y="1412" width="516" height="107"/>
+      <rect x="789" y="1412" width="401" height="107"/>
+      <rect x="1223" y="1412" width="545" height="107"/>
+    </g>
+    <g fill="#3ddc84" font-size="40">
+      <text x="288" y="1340">▸</text>
+      <text x="632" y="1340">♪</text>
+      <circle cx="958" cy="1326" r="15" fill="#3ddc84"/>
+      <rect x="1291" y="1313" width="26" height="26"/>
+      <circle cx="299" cy="1466" r="15" fill="none" stroke="#3ddc84" stroke-width="5"/>
+      <circle cx="299" cy="1466" r="8"/>
+      <text x="825" y="1480">⌨</text>
+      <text x="1262" y="1480">≡</text>
+    </g>
+    <text x="342" y="1342">Mirror</text>
+    <text x="685" y="1342">Audio</text>
+    <text x="1000" y="1342">Webcam</text>
+    <text x="1346" y="1342">QR pairing</text>
+    <text x="342" y="1482">Wake &amp; unlock</text>
+    <text x="890" y="1482">Send text</text>
+    <text x="1322" y="1482">Per-app volume</text>
+  </g>
+
+  <rect x="242" y="1591" width="1671" height="155" fill="#0e1218" stroke="#30363d" stroke-width="4"/>
+  <text x="298" y="1684" font-size="51.7" fill="#3ddc84">$</text>
+  <text x="362" y="1684" font-size="51.7" fill="#e6edf3">omarchy plugin add github.com/mateuspim/omadroid</text>
+</g>
+
+<!-- Offscreen captures with fake devices (docs/brand/captures), each tilted
+     slightly with a soft shadow. The device page overlaps the device list. -->
+<g transform="translate(2035 426) rotate(-2.8)">
+  <rect x="30" y="40" width="928" height="1023" fill="#000" opacity=".6" filter="url(#shadow)"/>
+  <rect x="-4" y="-4" width="928" height="1023" fill="#101315" stroke="#30363d" stroke-width="4"/>
+  <image x="0" y="0" width="920" height="1015" xlink:href="captures/home.png"/>
+</g>
+<g transform="translate(2746 225) rotate(1.95) scale(1.127)">
+  <rect x="30" y="40" width="928" height="1258" fill="#000" opacity=".7" filter="url(#shadow)"/>
+  <rect x="-4" y="-4" width="928" height="1258" fill="#101315" stroke="#30363d" stroke-width="4"/>
+  <image x="0" y="0" width="920" height="1250" xlink:href="captures/device-mirror.png"/>
+</g>
+</svg>

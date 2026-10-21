@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 256" role="img" aria-label="OmaDroid logo">
+  <!-- The icon.svg mark, inlined so the logo renders standalone. -->
+  <g transform="translate(-20 6) scale(10.4)" fill="#3ddc84">
+    <path fill-rule="evenodd" d="M3.5 13.5a8.5 8.5 0 0 1 17 0z M8.6 9.6a1.25 1.25 0 1 0 0.01 0z M15.4 9.6a1.25 1.25 0 1 0 0.01 0z"/>
+    <path d="M6.6 5.9 4.9 3.2M17.4 5.9l1.7-2.7M4.2 16.4l2.6 2-2.6 2" fill="none" stroke="#3ddc84" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="9.5" y="19.2" width="11" height="2.2" rx="1"/>
+  </g>
+  <text x="302" y="211" fill="#e6edf3" font-family="JetBrains Mono,JetBrainsMono Nerd Font,DejaVu Sans Mono,monospace" font-size="225" font-weight="600" letter-spacing="-12.5">Oma<tspan fill="#3ddc84">Droid</tspan></text>
+</svg>
