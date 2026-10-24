@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "pym.omadroid",
   "name": "OmaDroid",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Mateus Pim",
   "license": "MIT",
   "description": "Android on Omarchy: discover ADB devices, mirror and control them with scrcpy from the bar.",
