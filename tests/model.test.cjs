@@ -109,6 +109,25 @@ test('two ready adb links to one device are one row, the other link kept as an a
   // service doesn't merge them either.
   assert.equal(model.deviceRows(model.parseDevices(both), []).length, 2);
   assert.equal(model.deviceRows(model.parseDevices(both), model.parseMdns(tablet.replace('adb-TAB-x', 'adb-OTHER-y'))).length, 2);
+  // IPv4 and IPv6 links to one device: the service announced both hosts.
+  const dual = [tablet, tablet.replace('IPv4', 'IPv6').replace('192.168.1.50', 'fe80::1')].join('\n');
+  const services = model.parseMdns(dual);
+  assert.deepEqual(plain(services.map(r => [r.endpoint, r.hosts])), [['192.168.1.50:34801', ['192.168.1.50', '[fe80::1%eno1]']]]);
+  assert.deepEqual(plain(model.parseMdns(dual.split('\n').reverse().join('\n')).map(r => r.endpoint)), ['192.168.1.50:34801'], 'IPv4 wins either way');
+  const families = model.deviceRows(model.parseDevices('192.168.1.50:34801 device model:SM_X730\n[fe80::1%eno1]:34801 device model:SM_X730'), services);
+  assert.deepEqual(plain(families.map(r => [r.serial, r.aliases])), [['192.168.1.50:34801', ['[fe80::1%eno1]:34801']]]);
+  // Only the IPv6 link is ready: it is the device, not a second "available" row.
+  const v6only = model.deviceRows(model.parseDevices('[fe80::1%eno1]:34801 device model:SM_X730'), services);
+  assert.deepEqual(plain(v6only.map(r => [r.serial, r.status])), [['[fe80::1%eno1]:34801', 'device']]);
+  // Avahi resolved only IPv4 while adb's own mDNS connected over IPv6: the
+  // shared port and build still tie the two links to one adbd.
+  const linkLocal = '[fe80::1%eno1]:34801 device product:tabxx model:SM_X730 device:tab';
+  const v4only = model.deviceRows(model.parseDevices('192.168.1.50:34801 device product:tabxx model:SM_X730 device:tab\n' + linkLocal), model.parseMdns(tablet));
+  assert.deepEqual(plain(v4only.map(r => [r.serial, r.aliases])), [['192.168.1.50:34801', ['[fe80::1%eno1]:34801']]]);
+  assert.deepEqual(plain(model.deviceRows(model.parseDevices(linkLocal + '\n192.168.1.50:34801 device product:tabxx model:SM_X730 device:tab'), []).map(r => r.serial)), ['192.168.1.50:34801'], 'IPv4 stays the row');
+  // Another port or another build is another device.
+  assert.equal(model.deviceRows(model.parseDevices('192.168.1.50:34802 device product:tabxx model:SM_X730\n' + linkLocal), []).length, 2);
+  assert.equal(model.deviceRows(model.parseDevices('192.168.1.51:34801 device product:other model:SM_X730\n' + linkLocal), []).length, 2);
   // An offline mDNS link isn't merged; it stays a row to drop.
   const stale = model.deviceRows(model.parseDevices(both.replace(/(_tcp) device/, '$1 offline')), model.parseMdns(tablet));
   assert.equal(stale.length, 2);

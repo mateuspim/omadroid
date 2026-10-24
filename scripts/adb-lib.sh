@@ -10,7 +10,7 @@ die() {
 }
 
 valid_serial() {
-  [[ "$1" =~ ^[A-Za-z0-9._:@-]{1,128}$ ]] || die 1 "Unexpected adb serial '$1'; expected letters, digits and . _ : @ -."
+  [[ "$1" =~ ^[][A-Za-z0-9._:@%-]{1,128}$ ]] || die 1 "Unexpected adb serial '$1'; expected letters, digits and . _ : @ % - [ ] (IPv6 endpoints like [fe80::1%eno1]:5555)."
 }
 
 # device_shell SERIAL SECONDS COMMAND... → the command's stdout without CRs.

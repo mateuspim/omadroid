@@ -37,6 +37,8 @@ printf '%s' "$password" >"$OMADROID_POWER_DIR/password"
 
 [[ "$(power status USB123)" == 'keep=off running=0 secret=none' ]] || fail "initial status"
 expect_code 1 status 'bad serial;'
+# Wireless endpoints from mDNS can be bracketed IPv6 link-local addresses with a zone.
+expect_code 0 status '[fe80::6dd7:2d81:7c95:c24d%eno1]:39977'
 lock_device
 expect_code 3 unlock USB123
 [[ -e "$OMADROID_POWER_DIR/locked" && ! -e "$OMADROID_POWER_DIR/typed" ]] || fail "unlock without a secret typed something"

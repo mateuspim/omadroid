@@ -76,9 +76,13 @@ widget still loads.
   while a popup is open, refreshed after 60 s. Both are parsed in `Model.js` /
   `DeviceInfo.js`.
 - **Rows.** `rows = Model.deviceRows(devices, services)` merges adb transports
-  and mDNS services (one wireless endpoint per host). When adb holds both a
-  `host:port` link and its own mDNS-named link to one device, the row keeps
-  the first and lists the other in `aliases`; Disconnect drops both.
+  and mDNS services (one wireless endpoint per host; IPv4 preferred, every
+  announced host kept in `hosts`). When adb holds several ready links to one
+  device (a `host:port` link, one on the other address family — same port,
+  model and product — or its own mDNS-named link), the row keeps a `host:port`
+  link, IPv4 first, and lists the others in
+  `aliases`; Disconnect drops them all. Auto-connect treats a link on any
+  announced host as ready, so it never opens a second one.
   `Model.sameData` guards
   every published array, so an unchanged rescan rebuilds no view.
 - **Owned children.** `Preferences.qml` (the `[preferences]` settings),

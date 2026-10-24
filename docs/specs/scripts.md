@@ -16,7 +16,7 @@ parser together, with a test for both.
   says otherwise; `2` an invalid argument; `127` a missing program.
 - **Serials** passed to `device-power.sh`, `device-volume.sh`,
   `go-wireless.sh` and `send-text.sh` must match
-  `^[A-Za-z0-9._:@-]{1,128}$` (`adb-lib.sh valid_serial`).
+  `^[][A-Za-z0-9._:@%-]{1,128}$` (`adb-lib.sh valid_serial`).
 - **Secrets and typed text** go on stdin, never in argv.
 - `LC_ALL=C` in scripts that parse device output.
 
