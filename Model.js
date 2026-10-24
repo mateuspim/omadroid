@@ -67,7 +67,7 @@ function parseDevices(output) {
     var wireless = !!endpoint(serial) || /\._adb.*\._tcp/.test(serial);
     rows.push({ key: "adb:" + serial, name: (fields.model || fields.device || serial).replace(/_/g, " "),
       serial: serial, status: match[2], transport: fields.usb ? "USB" : wireless ? "Wireless" : /^emulator-/.test(serial) ? "Emulator" : "USB",
-      endpoint: endpoint(serial), service: "", source: "adb", pair: false });
+      endpoint: endpoint(serial), product: fields.product || "", service: "", source: "adb", pair: false });
     return rows;
   }, []);
 }
@@ -155,12 +155,16 @@ function parseMdns(output) {
     // interfaces) is one device. IPv4 wins; link-local IPv6 needs a scope.
     var ipv6 = fields[2] === "IPv6";
     var id = type + ";" + name;
+    // Every announced host is kept, so a link adb holds on the other family
+    // is still recognised as this device (see announcesHost).
+    var hosts = id in seen ? rows[seen[id].index].hosts : [];
+    if (hosts.indexOf(endpointParts(address).host) < 0) hosts.push(endpointParts(address).host);
     if (id in seen && (ipv6 || !seen[id].ipv6)) return rows;
     var pair = type === "_adb-tls-pairing._tcp";
     // TXT is the rest of the line: "api=36.1" "name=SM-X730" "v=1".
     var model = (/"name=([^"]*)"/.exec(fields.slice(9).join(";")) || [])[1] || "";
     var row = { key: "mdns:" + type + ":" + address, name: serviceId(name), serial: name, model: model, status: pair ? "pairing" : "discovered",
-      transport: "Wireless", endpoint: address, service: type, source: "mdns", pair: pair };
+      transport: "Wireless", endpoint: address, hosts: hosts, service: type, source: "mdns", pair: pair };
     if (id in seen) rows[seen[id].index] = row;
     else seen[id] = { index: rows.push(row) - 1 };
     seen[id].ipv6 = ipv6;
@@ -208,21 +212,15 @@ function deviceRows(devices, services) {
   var rows = devices.filter(function(row) {
     return !(wireless(row) && row.status !== "device" && readyHosts.indexOf(host(row)) >= 0);
   }).map(function(row) { return Object.assign({}, row); });
+  foldAddressFamilies(rows);
   services.forEach(function(service) {
-    if (service.pair) return;
-    var ready = rows.filter(function(row) { return wireless(row) && row.status === "device"; });
-    var byEndpoint = ready.find(function(row) { return row.endpoint && row.endpoint === service.endpoint; }) ||
-      ready.find(function(row) { return row.endpoint && host(row) === host(service); });
-    var byName = ready.find(function(row) { return !row.endpoint && serviceId(row.serial) === serviceId(service.serial); });
-    if (!byEndpoint || !byName) return;
-    byEndpoint.aliases = (byEndpoint.aliases || []).concat(byName.serial);
-    rows.splice(rows.indexOf(byName), 1);
+    if (!service.pair) foldAliases(rows.filter(function(row) { return wireless(row) && row.status === "device"; }), rows, service);
   });
   services.forEach(function(service) {
     var candidates = service.pair ? [] : rows.filter(wireless);
     var existing = candidates.find(function(row) {
       return (row.endpoint && row.endpoint === service.endpoint) || serviceId(row.serial) === serviceId(service.serial);
-    }) || candidates.find(function(row) { return host(row) && host(row) === host(service); });
+    }) || candidates.find(function(row) { return host(row) && announcesHost(service, host(row)); });
     if (existing) {
       if (existing.status !== "device" || !existing.endpoint) existing.endpoint = service.endpoint;
       existing.service = service.service;
@@ -232,6 +230,49 @@ function deviceRows(devices, services) {
     var rank = function(row) { return row.status === "device" ? 0 : row.source === "adb" ? 1 : row.pair ? 3 : 2; };
     return rank(a) - rank(b) || a.name.localeCompare(b.name) || a.key.localeCompare(b.key);
   });
+}
+
+/** True when the mDNS service announced this host on any address family.
+ * Example: announcesHost({ endpoint: "10.0.0.2:40001", hosts: ["10.0.0.2", "[fe80::1%eno1]"] }, "[fe80::1%eno1]") → true */
+function announcesHost(service, host) {
+  var hosts = Array.isArray(service.hosts) ? service.hosts : [endpointParts(service.endpoint).host];
+  return !!host && hosts.indexOf(host) >= 0;
+}
+
+// Ready links the service ties to one device (an IPv4 and an IPv6 address,
+// or adb's own mDNS link named after the service) become aliases of the first
+// host:port link, which stays the row.
+function foldAliases(ready, rows, service) {
+  var linked = ready.filter(function(row) {
+    return row.endpoint ? announcesHost(service, endpointParts(row.endpoint).host) : serviceId(row.serial) === serviceId(service.serial);
+  });
+  var main = linked.find(function(row) { return row.endpoint === service.endpoint; }) ||
+    linked.find(function(row) { return row.endpoint; });
+  if (!main) return;
+  linked.forEach(function(row) {
+    if (row === main) return;
+    main.aliases = (main.aliases || []).concat(row.serial);
+    rows.splice(rows.indexOf(row), 1);
+  });
+}
+
+// adb can hold one device over IPv4 and IPv6 at once: its own mDNS
+// auto-connect may pick the link-local address while Avahi resolves only IPv4.
+// One adbd answers both on the same port, so ready links sharing a port, model
+// and product are one device; the IPv4 link stays the row.
+function foldAddressFamilies(rows) {
+  var ready = rows.filter(function(row) { return row.source === "adb" && row.status === "device" && row.endpoint && row.product; });
+  ready.filter(function(row) { return row.endpoint.charAt(0) !== "["; }).forEach(function(main) {
+    ready.forEach(function(other) {
+      if (other === main || rows.indexOf(main) < 0 || rows.indexOf(other) < 0 || !sameAdbd(main, other)) return;
+      main.aliases = (main.aliases || []).concat(other.serial);
+      rows.splice(rows.indexOf(other), 1);
+    });
+  });
+}
+
+function sameAdbd(a, b) {
+  return endpointParts(a.endpoint).port === endpointParts(b.endpoint).port && a.product === b.product && a.name === b.name;
 }
 
 function statusLabel(status) {

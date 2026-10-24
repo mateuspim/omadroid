@@ -11,13 +11,13 @@ function deviceKey(serviceName) {
   return match ? match[1] : String(serviceName || "");
 }
 
-// A ready wireless adb transport for this connect service: the same host, or
-// the service name itself when adb connected through mDNS.
+// A ready wireless adb transport for this connect service: any host it
+// announced (a link made over IPv6 before the IPv4 record resolved counts),
+// or the service name itself when adb connected through mDNS.
 function readyFor(service, devices) {
-  var host = Model.endpointParts(service.endpoint).host;
   return devices.some(function(row) {
     return row.status === "device" && row.transport === "Wireless" &&
-      (Model.endpointParts(row.endpoint).host === host || Model.serviceId(row.serial) === Model.serviceId(service.serial));
+      (Model.announcesHost(service, Model.endpointParts(row.endpoint).host) || Model.serviceId(row.serial) === Model.serviceId(service.serial));
   });
 }
 

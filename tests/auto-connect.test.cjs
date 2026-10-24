@@ -36,6 +36,16 @@ test('autoConnectTargets picks known, unready, untried endpoints', () => {
   assert.deepEqual(plain(auto.autoConnectTargets([{ ...ready('192.168.1.5:40001', '192.168.1.5:40001'), status: 'offline' }], [phone], ['adb-R5CR123ABC'], {})), ['192.168.1.5:37002']);
 });
 
+test('a link made over IPv6 before the IPv4 record resolved blocks a second connect', () => {
+  // The service moved to IPv4 once that record resolved; adb still holds the IPv6 link.
+  const dual = { ...phone, hosts: ['192.168.1.5', '[fe80::1%eno1]'] };
+  const v6 = ready('[fe80::1%eno1]:37002', '[fe80::1%eno1]:37002');
+  assert.deepEqual(plain(auto.autoConnectTargets([v6], [dual], ['adb-R5CR123ABC'], {})), []);
+  assert.deepEqual(plain(auto.trustedKeys([v6], [dual])), ['adb-R5CR123ABC']);
+  // Another device's IPv6 link doesn't count.
+  assert.deepEqual(plain(auto.autoConnectTargets([ready('[fe80::9%eno1]:37002', '[fe80::9%eno1]:37002')], [dual], ['adb-R5CR123ABC'], {})), ['192.168.1.5:37002']);
+});
+
 test('stillAnnounced forgets endpoints that left, so they are tried on return', () => {
   assert.deepEqual(plain(auto.stillAnnounced({ '192.168.1.5:37002': true, '192.168.1.9:1': true }, [phone])), { '192.168.1.5:37002': true });
   assert.deepEqual(plain(auto.stillAnnounced(null, [phone])), {});

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+
+- **IPv6 wireless devices:** a device listed by its link-local endpoint
+  (`[fe80::…%eno1]:39977`) no longer fails with "Unexpected adb serial";
+  the serial check now accepts `[`, `]` and `%`.
+- **Duplicate wireless device:** a device adb holds over both IPv4 and IPv6
+  (adb's own mDNS auto-connect can pick the link-local address) is one row;
+  Disconnect drops both links. Auto-connect also no longer opens a second
+  link when the IPv6 mDNS record resolves before the IPv4 one.
+
 ### Docs
 
 - README: now a short landing page (pitch, quick start, features, install,
