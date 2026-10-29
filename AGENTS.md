@@ -129,8 +129,23 @@ shell integration, script output); `docs/README.md` indexes them all.
 
 ## Releases
 
-1. Bump `version` in `manifest.json` and turn `CHANGELOG.md`'s Unreleased
-   section into the release entry.
+- When: releases are batched. Fixes, docs and chores merge to `master` with a
+  `CHANGELOG.md` entry under Unreleased and wait there. Cut a release when a
+  feature merges, or when a pending fix can't wait (security, a core feature
+  broken); it ships everything under Unreleased. Never a release per fix.
+- Version: a feature bumps the minor (`1.1.0`); a release of fixes only bumps
+  the patch (`1.0.3`).
+- The owner lets the agent cut a release that meets these rules without
+  asking: push the release branch, merge its PR once CI passes, push the tag
+  and create the GitHub release. Marketplace verification is the owner's call;
+  never start it unasked.
+
+1. On a `release-X.Y.Z` branch, bump `version` in `manifest.json` and turn
+   `CHANGELOG.md`'s Unreleased section into `## X.Y.Z — YYYY-MM-DD`.
 2. `bash tests/run-all.sh` → `OMADROID_ALL_OK`.
 3. `omarchy plugin validate .` exits 0.
-4. Commit, then tag `vX.Y.Z`. Ask the owner before pushing commits or tags.
+4. Commit `Release X.Y.Z`, open a PR, and rebase-merge it once CI passes.
+5. On the merged commit: `git tag -a vX.Y.Z -m "OmaDroid X.Y.Z"`, then
+   `git push origin vX.Y.Z`.
+6. `gh release create vX.Y.Z --title "OmaDroid X.Y.Z" --verify-tag`, with the
+   changelog entry as the notes.
