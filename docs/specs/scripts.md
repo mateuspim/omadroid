@@ -94,6 +94,7 @@ master 0|1|-
 ringer normal|vibrate|silent|-
 stream KEY INDEX VOLUME MIN MAX MUTED          (KEY: call system ring media alarm notification assistant)
 app UID playing|paused VOLUME|- MUTED|- PACKAGE LABEL…
+naming UID                                     (that app's label is being read from its APK)
 ```
 
 Changes: `stream SERIAL KEY set N|raise|lower|mute|unmute`,
@@ -103,6 +104,13 @@ action needs audio codes that couldn't be read or didn't verify.
 
 `audio-codes.py framework.jar` prints `method=code` lines (for example
 `setAppVolume=293`) and refuses a table it can't check.
+
+`app-labels.sh SERIAL SERIALNO` reads packages on stdin, one per line, and
+appends `PACKAGE<TAB>LABEL` to `~/.cache/omadroid/app-labels/SERIALNO.tsv`
+(failures, one package per line, to `SERIALNO.failed`, cleared after a day).
+Prints nothing; `device-volume.sh status` starts it in the background for
+players scrcpy doesn't name. `apk-label.py base.apk` prints the application
+label on one line (at most 60 characters); exit 1 with the reason on stderr.
 
 ## Send text: `send-text.sh SERIAL`
 

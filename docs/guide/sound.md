@@ -33,8 +33,14 @@ seconds. They are cached in `~/.cache/omadroid/audio-codes/`. The parser
 refuses a table it can't fully check, and before any code is used the device
 is asked for the media volume both through that code and through
 `cmd audio`; if they differ, per-app volume and **Mute all** are hidden and
-nothing is called. App names come from `scrcpy --list-apps` and are cached per
-device in `~/.cache/omadroid/apps/`, readable only by you.
+nothing is called. Each read asks the device which package owns a playing
+uid (uids are handed out again after a factory reset or reinstall); its name
+comes from `scrcpy --list-apps`, cached per device in
+`~/.cache/omadroid/apps/`, readable only by you. Apps without a launcher icon
+(a keyboard, for example) aren't in that list: they show their package name
+and a spinning **reading name** until OmaDroid has read the label from the
+app's APK, once, in the background (APKs over 300 MB are skipped), cached in
+`~/.cache/omadroid/app-labels/`.
 
 Without the UI: `scripts/device-volume.sh status SERIAL`, `stream SERIAL media
 set 10|raise|lower|mute|unmute`, `app SERIAL UID set 40|mute|unmute`, `master

@@ -22,14 +22,7 @@ export LC_ALL=C
 
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 source "$script_dir/adb-lib.sh"
-cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/omadroid"
-# The cache lists the phone's installed apps, so it is private to this user,
-# also when an older version left it readable under a 022 umask.
-umask 077
-private_cache() {
-  mkdir -p -m 700 -- "$cache_root" "$1" &&
-    find "$cache_root" -perm /077 \( -type d -o -type f \) -exec chmod go= -- {} +
-}
+source "$script_dir/app-cache-lib.sh"
 # Stream key → AudioManager.STREAM_* index. Aliased streams (TTS,
 # accessibility, DTMF) follow media or ringtone, so they aren't listed.
 declare -A stream_index=([call]=0 [system]=1 [ring]=2 [media]=3 [alarm]=4 [notification]=5 [assistant]=11)
@@ -117,6 +110,7 @@ printf '%s\n' "\$d" | grep -E '^- STREAM_|^   (Muted|Min|Max|streamVolume):|Audi
 [ \$ok = 1 ] && [ -n "${codes[isMasterMute]:-}" ] && echo "@master \$(word ${codes[isMasterMute]:-0})"
 for u in \$(printf '%s\n' "\$d" | sed -n 's/.*AudioPlaybackConfiguration piid:.* u\/pid:\([0-9]*\)\/.*/\1/p' | sort -u); do
   [ \$((u % 100000)) -ge 10000 ] && [ \$((u % 100000)) -lt 90000 ] || continue
+  echo "@pkg \$u \$(pm list packages --uid \$u 2>/dev/null | sed -n '1s/^package://p')"
   if [ "$mode" = samsung ]; then
     [ \$ok = 1 ] && echo "@app \$u \$(word ${codes[getAppVolume]:-0} i32 \$u) \$(word ${codes[isAppMute]:-0} i32 \$u)"
   else
@@ -146,10 +140,6 @@ parse_dumpsys() {
   '
 }
 
-apps_file() {
-  printf '%s/apps/%s.tsv' "$cache_root" "$1"
-}
-
 # "APPID PACKAGE LABEL" for every package: uids from `pm`, labels from
 # `scrcpy --list-apps` (packages without a launcher keep their package name).
 # Device output reaches awk as files, never as arguments, which other local
@@ -167,24 +157,76 @@ read_apps() {
     }' <(printf '%s\n' "$labels") - <<<"$packages" >"$file.new" && mv -- "$file.new" "$file"
 }
 
-# Rebuilt when a playing app is unknown, at most every 10 minutes: isolated
-# and sandbox uids never appear in `pm`.
+# "UID PACKAGE|-" per player, the package as the device reports it now.
+# A cached uid can't name an app: a factory reset or a reinstall hands the
+# same uid to another package, so names are looked up by package.
+player_packages() {
+  awk '
+    FILENAME == ARGV[1] { if ($1 == "@pkg" && $3 ~ /^[A-Za-z0-9._]+$/) pkg[$2] = $3; next }
+    $1 == "player" { print $2, ($2 in pkg) ? pkg[$2] : "-" }
+  ' <(printf '%s\n' "$1") - <<<"$2"
+}
+
+# Rebuilt when an app player's package (or, without one, its uid) isn't cached,
+# at most every 10 minutes: isolated and sandbox uids never appear in `pm`.
 refresh_apps() {
-  local serial="$1" file="$2" uid
-  shift 2
-  for uid in "$@"; do
-    # The uid goes through the environment, which other users can't read.
-    [[ -s "$file" ]] && APP_ID="$((uid % 100000))" awk -F'\t' '$1 == ENVIRON["APP_ID"] { found = 1 } END { exit !found }' "$file" && continue
+  local serial="$1" file="$2" uid package
+  while read -r uid package; do
+    # System uids have no app row, so they never ask for a rebuild.
+    [[ "$uid" =~ ^[0-9]+$ ]] && ((uid % 100000 >= 10000 && uid % 100000 < 90000)) || continue
+    # Uid and package go through the environment, which other users can't read.
+    [[ -s "$file" ]] && APP_ID="$((uid % 100000))" APP_PKG="$package" awk -F'\t' '
+      (ENVIRON["APP_PKG"] == "-" ? $1 == ENVIRON["APP_ID"] : $2 == ENVIRON["APP_PKG"]) { found = 1 }
+      END { exit !found }' "$file" && continue
     [[ -s "$file" && -n "$(find "$file" -mmin -10 2>/dev/null)" ]] && return 0
     read_apps "$serial" "$file"
     return 0
-  done
+  done <<<"$3"
+}
+
+# Player packages that neither scrcpy nor an earlier APK read has named.
+# Cache files and players reach awk as files, as in read_apps.
+unnamed_packages() {
+  awk -F'\t' '
+    FILENAME == ARGV[1] { if ($3 != $2) named[$2] = 1; next }
+    FILENAME == ARGV[2] || FILENAME == ARGV[3] { named[$1] = 1; next }
+    { split($0, f, " "); if (f[2] != "-" && !(f[2] in named) && !(f[2] in seen)) { seen[f[2]] = 1; print f[2] } }
+  ' "$(existing "$1")" "$(existing "$2")" "$(existing "$3")" - <<<"$4"
+}
+
+# The path, or /dev/null for a missing or empty cache file.
+existing() {
+  [[ -s "$1" ]] && echo "$1" || echo /dev/null
+}
+
+# True while app-labels.sh runs for this phone (it holds the lock).
+label_reader_busy() {
+  local lock
+  lock="$(labels_file "$1").lock"
+  [[ -e "$lock" ]] && ! flock -n "$lock" true 2>/dev/null
+}
+
+# Starts app-labels.sh in its own session when a player has no name yet; it
+# outlives this read, and its result shows on a later one. Prints "naming UID"
+# for each player whose label it is reading, so the UI can say so.
+start_label_reads() {
+  local serial="$1" serialno="$2" players="$4" pending
+  pending="$(unnamed_packages "$3" "$(labels_file "$serialno")" "$(failed_labels_file "$serialno")" "$players")"
+  [[ -n "$pending" ]] && command -v python3 >/dev/null 2>&1 || return 0
+  # A reader still pulling an APK holds the lock; the next read after it ends
+  # starts one for whatever is still unnamed.
+  if ! label_reader_busy "$serialno"; then
+    setsid bash "$script_dir/app-labels.sh" "$serial" "$serialno" <<<"$pending" >/dev/null 2>&1 &
+  fi
+  awk 'FILENAME == ARGV[1] { pending[$1] = 1; next } ($2 in pending) { print "naming", $1 }' \
+    <(printf '%s\n' "$pending") - <<<"$players"
 }
 
 # mode samsung|appops · master 0|1|- · ringer normal|vibrate|silent|-
 # stream KEY INDEX VOLUME MIN MAX MUTED · app UID playing|paused VOLUME|- MUTED|- PACKAGE LABEL
+# naming UID
 print_status() {
-  local serial="$1" fingerprint serialno mode reply parsed file
+  local serial="$1" fingerprint serialno mode reply parsed file players naming
   read -r fingerprint serialno <<<"$(device_ids "$serial")"
   load_codes "$serial" "$fingerprint"
   mode="$(per_app_mode)"
@@ -193,26 +235,37 @@ print_status() {
   parsed="$(parse_dumpsys <<<"$reply")"
   file="$(apps_file "$serialno")"
   private_cache "${file%/*}"
-  refresh_apps "$serial" "$file" $(awk '$1 == "player" { print $2 }' <<<"$parsed")
+  players="$(player_packages "$reply" "$parsed")"
+  refresh_apps "$serial" "$file" "$players"
+  naming="$(start_label_reads "$serial" "$serialno" "$file" "$players")"
   printf 'mode %s\n' "$mode"
   awk '$1 == "@master" { m = ($2 == "1" || $2 == "0") ? $2 : "-" } END { print "master", m == "" ? "-" : m }' <<<"$reply"
   awk '$1 == "@ringer" { r = $2 == "0" ? "silent" : $2 == "1" ? "vibrate" : $2 == "2" ? "normal" : "-" } END { print "ringer", r == "" ? "-" : r }' <<<"$reply"
   grep '^stream ' <<<"$parsed"
-  join_apps "$file" "$reply" "$parsed"
+  join_apps "$file" "$reply" "$parsed" "$(labels_file "$serialno")"
+  [[ -z "$naming" ]] || printf '%s\n' "$naming"
 }
 
-# One line per app player, volume and mute from @app, names from the cache.
+# One line per app player, volume and mute from @app, names from the cache:
+# by the package the device reports for the uid now (@pkg), by the cached uid
+# only when the device named none. A package scrcpy didn't name takes the
+# label read from its APK (app-labels.sh), if there is one yet.
 # The device's reply and players reach awk as files, as in read_apps.
 join_apps() {
   awk -F'\t' '
-    FILENAME == ARGV[1] { if (split($0, f, " ") >= 2 && f[1] == "@app") { vol[f[2]] = f[3]; mute[f[2]] = f[4] }; next }
+    FILENAME == ARGV[1] { n = split($0, f, " ")
+      if (n >= 2 && f[1] == "@app") { vol[f[2]] = f[3]; mute[f[2]] = f[4] }
+      if (n == 3 && f[1] == "@pkg" && f[3] ~ /^[A-Za-z0-9._]+$/) now[f[2]] = f[3]; next }
     FILENAME == ARGV[2] { if (split($0, f, " ") == 3 && f[1] == "player") state[f[2]] = f[3]; next }
-    { pkg[$1] = $2; label[$1] = $3 }
+    FILENAME == ARGV[3] { pkg[$1] = $2; label[$1] = $3; if ($3 != $2) named[$2] = $3; next }
+    { if (!($1 in named)) named[$1] = $2 }
     END { for (u in state) {
             id = u % 100000; if (id < 10000 || id >= 90000) continue
             v = (vol[u] ~ /^[0-9]+$/ && vol[u] <= 100) ? vol[u] : "-"; m = (mute[u] == "0" || mute[u] == "1") ? mute[u] : "-"
-            print "app", u, state[u], v, m, (id in pkg) ? pkg[id] : "uid" u, (id in label) ? label[id] : "App " u } }
-  ' <(printf '%s\n' "$2") <(printf '%s\n' "$3") "$([[ -s "$1" ]] && echo "$1" || echo /dev/null)"
+            if (u in now) { p = now[u]; l = (p in named) ? named[p] : p }
+            else { p = (id in pkg) ? pkg[id] : "uid" u; l = (p in named) ? named[p] : (id in label) ? label[id] : "App " u }
+            print "app", u, state[u], v, m, p, l } }
+  ' <(printf '%s\n' "$2") <(printf '%s\n' "$3") "$(existing "$1")" "$(existing "$4")"
 }
 
 # --- Actions -----------------------------------------------------------------
