@@ -19,6 +19,8 @@ ColumnLayout {
   property bool muted: false
   property bool canMute: true
   property bool hasSlider: true
+  // The app's label is being read from its APK (device-volume.sh "naming").
+  property bool naming: false
   // The Flickable the wheel scrolls; null leaves the wheel unused.
   property var scrollView: null
   // final is false while dragging; the last value of a drag comes with true.
@@ -55,6 +57,36 @@ ColumnLayout {
       text: root.label + (root.detail ? " · " + root.detail : "")
       wrapMode: Text.NoWrap
       elide: Text.ElideRight
+    }
+    // Shown while the name is fetched in the background, so the package name
+    // above reads as temporary rather than as the app's name.
+    RowLayout {
+      objectName: "soundNaming"
+      visible: root.naming
+      spacing: Style.space(4)
+      Accessible.role: Accessible.StaticText
+      Accessible.name: "Reading the app's name"
+      Text {
+        textFormat: Text.PlainText
+        text: "󰑓"
+        color: Util.alpha(Commons.Color.foreground, 0.6)
+        font.family: Style.font.family
+        font.pixelSize: Style.font.bodySmall
+        RotationAnimation on rotation {
+          running: root.naming && root.visible
+          from: 0
+          to: 360
+          duration: 1000
+          loops: Animation.Infinite
+        }
+      }
+      Label {
+        text: "reading name"
+        wrapMode: Text.NoWrap
+        elide: Text.ElideRight
+        font.pixelSize: Style.font.bodySmall
+        color: Util.alpha(Commons.Color.foreground, 0.6)
+      }
     }
     Label {
       text: SoundVolume.volumeText(root.volume, root.maximum, root.muted)

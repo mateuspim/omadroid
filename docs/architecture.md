@@ -198,6 +198,18 @@ cached in `$XDG_CACHE_HOME/omadroid/audio-codes/` and verified on the device
 as every use. Unverified or missing codes fall back to app-op mute
 (`PLAY_AUDIO`). See [ADR 0006](adr/0006-audio-codes-from-framework-jar.md).
 
+App names: every status asks the device which package owns each playing uid
+(`pm list packages --uid`), since uids are reassigned after a factory reset or
+reinstall, and looks the name up by package in a per-device list built from
+`pm list packages -U` and `scrcpy --list-apps`. scrcpy only names launchable
+apps; for the rest `device-volume.sh` starts `app-labels.sh` in its own
+session, which streams the app's `base.apk` over `adb shell -T` (script on
+stdin, so no package name lands in a process's arguments) and reads the
+label with `apk-label.py` (binary manifest + `resources.arsc`). Meanwhile
+status prints `naming UID` and the row shows "reading name"; the label shows
+on a later read, and a failure is retried after a day. One reader runs per
+phone (a lock), so a slow pull isn't started again by every read.
+
 ## Send text
 
 `SendText.qml` hosts a centered `PanelWindow`; `SendTextCard.qml` holds the
@@ -219,7 +231,7 @@ Settings page ([ADR 0005](adr/0005-external-config-only-via-install-button.md)).
 | Unlock PIN / password | Desktop keyring via `secret-tool` |
 | Per-device markers (keep-awake, PIN identity hash, `blocked`) | `$XDG_STATE_HOME/omadroid/devices/` |
 | Session state, keepers, locks, request files, preview JPEG, logs | `$XDG_RUNTIME_DIR/omadroid-$UID/` (mode 700) |
-| Audio codes per firmware, app names per device | `$XDG_CACHE_HOME/omadroid/` (folders 700, files 600) |
+| Audio codes per firmware, app names and APK labels per device | `$XDG_CACHE_HOME/omadroid/` (folders 700, files 600) |
 | Send text hotkey | One marked block in `~/.config/hypr/bindings.lua` (+ 2 newest backups) |
 
 OmaDroid writes nothing in Omarchy's own configuration.
@@ -233,7 +245,7 @@ if a shell suite in `tests/` is missing from its list.
   loaded by `tests/load-js.cjs` in a `vm` context that resolves `.import` lines
   the way QML does. No npm packages.
 - **Shell suites with mocks:** the scripts with real side effects
-  (`session.sh`, `device-power.sh`, `device-volume.sh`, `audio-codes.py`,
+  (`session.sh`, `device-power.sh`, `device-volume.sh`, `audio-codes.py`, `apk-label.py`,
   `go-wireless.sh`, `hotkey.sh`, `send-text.sh`, `settings-file.sh`,
   `webcam-setup.sh`) each have
   a suite in `tests/` that runs them against fake executables (`tests/mock-*.sh`: adb, scrcpy, avahi-browse,

@@ -9,7 +9,7 @@ done
 [[ "$1" == --serial=USB123 ]] || exit 5
 # App names for device-volume.sh, in scrcpy 4.1's format (system apps "*").
 if [[ "${2:-}" == --list-apps ]]; then
-  printf '%s\n' ' * YouTube                        com.google.android.youtube' ' - Honkai: Star Rail              com.HoYoverse.hkrpgoversea'
+  printf '%s\n' ' * Videos                         com.example.videos' ' - Starship: Demo Game              com.example.starship'
   exit 0
 fi
 # The real camera list of a Galaxy Tab S11, captured from scrcpy 4.1.

@@ -56,12 +56,29 @@ ShellRoot {
     onTriggered: {
       testRoot.check(soundPane.volume && soundPane.volume.mode === "samsung" && soundPane.readError === "", "sound status read: " + JSON.stringify(soundPane.volume) + " " + soundPane.readError);
       var game = soundPane.apps.find(app => app.uid === 10360);
-      testRoot.check(game && game.label === "Honkai: Star Rail" && game.volume === 10 && testRoot.child(soundPane, "soundApp:10360") !== null, "the playing game has a row: " + JSON.stringify(soundPane.apps));
+      testRoot.check(game && game.label === "Starship: Demo Game" && game.volume === 10 && testRoot.child(soundPane, "soundApp:10360") !== null, "the playing game has a row: " + JSON.stringify(soundPane.apps));
       testRoot.check(testRoot.child(soundPane, "soundStream:media") !== null, "media has a row");
       // A new reading moves the sliders; rebuilding them broke a drag.
       var row = testRoot.child(soundPane, "soundApp:10360");
       soundPane.volume = JSON.parse(JSON.stringify(soundPane.volume));
       testRoot.check(testRoot.child(soundPane, "soundApp:10360") === row, "rows survive a new reading");
+      // A paused app whose name is still being read keeps a row and says so.
+      var reading = JSON.parse(JSON.stringify(soundPane.volume));
+      reading.apps.push({ uid: 10400, playing: false, volume: 100, muted: false, package: "com.example.keys", label: "com.example.keys", naming: true });
+      soundPane.volume = reading;
+      var namingRow = testRoot.child(soundPane, "soundApp:10400");
+      var naming = namingRow ? testRoot.child(namingRow, "soundNaming") : null;
+      testRoot.check(naming !== null && naming.visible, "an app being named shows reading name, in the same reading: ");
+      testRoot.check(!testRoot.child(row, "soundNaming").visible, "a named app shows no reading indicator");
+      // The name arrives and sorts the app first: rows move, none is rebuilt
+      // (a rebuilt slider replays its fill animation from 0).
+      var named = JSON.parse(JSON.stringify(reading));
+      named.apps[named.apps.length - 1].label = "A Keyboard";
+      named.apps[named.apps.length - 1].naming = false;
+      named.apps[named.apps.length - 1].playing = true;
+      soundPane.volume = named;
+      testRoot.check(JSON.stringify(soundPane.apps.map(app => app.uid)) === "[10400,10360]", "the renamed app sorts first: " + JSON.stringify(soundPane.apps.map(app => app.uid)));
+      testRoot.check(testRoot.child(soundPane, "soundApp:10400") === namingRow && testRoot.child(soundPane, "soundApp:10360") === row, "rows survive a rename");
       soundPane.setApp(game, 35);
       soundPane.setApp(game, 40);
       testRoot.check(soundPane.apps.find(app => app.uid === 10360).volume === 40, "a change shows at once");

@@ -20,11 +20,12 @@ ColumnLayout {
   // Parsed `device-volume.sh status` of `target`; null until read.
   property var volume: null
   readonly property var apps: volume ? SoundVolume.visibleApps(volume.apps) : []
-  // The rows' keys (app uids, stream keys). They change only when a row comes
-  // or goes, so a new reading moves the sliders instead of rebuilding them;
-  // rebuilding destroyed the slider being dragged.
-  property var appKeys: []
-  property var streamKeys: []
+  // The rows' keys (app uids, stream keys) as `rowKey` strings, changed in
+  // place by SoundVolume.syncRowKeys: a new reading moves the sliders instead
+  // of rebuilding them. Rebuilding destroyed the slider being dragged and
+  // replayed every slider's fill animation from 0.
+  property ListModel appRows: ListModel {}
+  property ListModel streamRows: ListModel {}
   // The page's Flickable, which the wheel scrolls over a slider.
   property var scrollView: null
   // A failed change stays until the next change; a failed read until a read works.
@@ -44,12 +45,10 @@ ColumnLayout {
 
   onActiveChanged: active ? refresh() : queued = []
   onVolumeChanged: {
-    var apps = root.apps.map(app => app.uid);
-    var streams = volume ? volume.streams.map(stream => stream.key) : [];
-    if (JSON.stringify(apps) !== JSON.stringify(appKeys))
-      appKeys = apps;
-    if (JSON.stringify(streams) !== JSON.stringify(streamKeys))
-      streamKeys = streams;
+    // From `volume` itself: the `apps` binding may not be re-evaluated yet
+    // here, which left the rows one read behind.
+    SoundVolume.syncRowKeys(appRows, volume ? SoundVolume.visibleApps(volume.apps).map(app => String(app.uid)) : []);
+    SoundVolume.syncRowKeys(streamRows, volume ? volume.streams.map(stream => stream.key) : []);
   }
   onTargetChanged: {
     volume = null;
@@ -191,13 +190,13 @@ ColumnLayout {
       color: Util.alpha(Commons.Color.foreground, 0.7)
     }
     Repeater {
-      model: root.appKeys
+      model: root.appRows
       delegate: SoundRow {
-        required property var modelData
-        readonly property var app: root.appRow(modelData)
+        required property string rowKey
+        readonly property var app: root.appRow(Number(rowKey))
         Layout.fillWidth: true
         visible: app !== null
-        objectName: "soundApp:" + modelData
+        objectName: "soundApp:" + rowKey
         scrollView: root.scrollView
         label: app ? app.label : ""
         detail: app && !app.playing ? "paused" : ""
@@ -205,6 +204,7 @@ ColumnLayout {
         muted: app !== null && app.muted === true
         canMute: app !== null && app.muted !== null
         hasSlider: app !== null && app.volume !== null
+        naming: app !== null && app.naming === true
         onVolumeChosen: (value, final) => root.setApp(app, value)
         onMuteToggled: root.toggleApp(app)
       }
@@ -215,13 +215,13 @@ ColumnLayout {
       text: "SYSTEM SOUNDS"
     }
     Repeater {
-      model: root.streamKeys
+      model: root.streamRows
       delegate: SoundRow {
-        required property var modelData
-        readonly property var stream: root.streamRow(modelData)
+        required property string rowKey
+        readonly property var stream: root.streamRow(rowKey)
         Layout.fillWidth: true
         visible: stream !== null
-        objectName: "soundStream:" + modelData
+        objectName: "soundStream:" + rowKey
         scrollView: root.scrollView
         label: stream ? stream.label : ""
         volume: stream ? stream.volume : 0

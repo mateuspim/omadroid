@@ -57,9 +57,11 @@ outside its own settings, and never calls `sudo`.
   owned by another user is refused, and a recorded PID is trusted only if its
   process start time matches.
 - **Cache:** `~/.cache/omadroid` holds each phone's installed-app names (for
-  the Sound section) and per-firmware audio codes. It is owner-only (folders
-  700, files 600), and the app list is handled as files, never as process
-  arguments.
+  the Sound section), labels read from the APKs of apps without a launcher
+  icon, and per-firmware audio codes. It is owner-only (folders 700, files
+  600), and app lists and package names are handled as files or stdin, never
+  as process arguments. An APK is copied to a private temporary folder only to
+  read its label, then deleted; it is parsed, never installed or executed.
 - **Settings:** `~/.config/omarchy/omadroid.ini` holds remembered device ids
   and the last device's address, so OmaDroid makes it owner-only (600) when it
   starts. It changes only that file's permissions, never its content.

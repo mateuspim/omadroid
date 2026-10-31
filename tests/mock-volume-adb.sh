@@ -78,9 +78,18 @@ appops() {
 
 input() { printf 'input %s\n' "$*" >>"$dir/log"; }
 settings() { [[ "$*" == 'get global mode_ringer' ]] && value ringer 2; }
+# `pm list packages -U` lists every package; `--uid UID` names the owner;
+# `pm path PACKAGE` points at `apks/PACKAGE/base.apk` when the test made one.
 pm() {
   printf 'pm %s\n' "$*" >>"$dir/log"
-  printf '%s\n' 'package:android uid:1000' 'package:com.HoYoverse.hkrpgoversea uid:10360' 'package:com.samsung.android.game.gametools uid:10085' 'package:com.google.android.youtube uid:10200,10201'
+  local packages=('package:android uid:1000' 'package:com.example.starship uid:10360' 'package:com.example.gamebar uid:10085' 'package:com.example.videos uid:10200,10201' 'package:com.example.keys uid:10400')
+  if [[ "$1" == path ]]; then
+    # Preinstalled apps are NAME.apk, with splits after the base.
+    [[ -e "$dir/apks/$2/Keys.apk" ]] && printf 'package:%s\n' "$dir/apks/$2/Keys.apk" "$dir/apks/$2/split_config.en.apk"
+    return 0
+  fi
+  [[ "$3" == --uid ]] || { printf '%s\n' "${packages[@]}"; return; }
+  printf '%s\n' "${packages[@]}" | sed -n "s/^\(package:[^ ]*\) uid:$4\$/\1/p"
 }
 getprop() {
   case "$1" in
@@ -94,8 +103,16 @@ case "$1" in
     printf 'pull %s\n' "$2" >>"$dir/log"
     [[ "$2" == /system/framework/framework.jar ]] && cp -- "$dir/framework.jar" "$3"
     ;;
+  # A script on stdin, binary output untouched: app-labels.sh's APK reads.
   shell)
-    [[ "${2:-}" =~ ro\.build\.fingerprint|service\ call\ audio|cmd\ audio|appops|KEYCODE_VOLUME|pm\ list\ packages\ -U|dumpsys\ audio ]] || exit 100
+    if [[ "${2:-}" == -T && $# == 2 ]]; then
+      script="$(cat)"
+      [[ "$script" == *'pm path '* ]] || exit 100
+      printf 'shell -T\n' >>"$dir/log"
+      eval "$script"
+      exit 0
+    fi
+    [[ "${2:-}" =~ ro\.build\.fingerprint|service\ call\ audio|cmd\ audio|appops|KEYCODE_VOLUME|pm\ list\ packages|dumpsys\ audio ]] || exit 100
     [[ "$serial" != MISSING ]] || { printf "adb: device 'MISSING' not found\n" >&2; exit 1; }
     shift
     eval "$*" | sed 's/$/\r/'
