@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.1.0 — 2026-10-31
+
+### Added
+
+- **App names without a launcher icon:** apps scrcpy doesn't name (a
+  keyboard, for example) showed their package name in Sound's Apps list; their
+  label is now read once from the app's APK in the background and cached.
+  While it is read, the row shows a spinning "reading name".
+
+### Fixed
+
+- **Wrong app names in Sound:** after a factory reset (or an app reinstall)
+  the Apps list could name a player after whatever app held its uid before,
+  e.g. a game shown as another app. Names now follow the package the device
+  reports for the uid on every read, and a player whose package isn't in the
+  cached app list rebuilds it. System players no longer rebuild that list
+  every 10 minutes.
+- **Sound sliders jumping:** when an app came, went or got its name, every
+  Apps slider was rebuilt and replayed its fill from 0. Rows are now moved in
+  place, so only a new row is created.
+- **Sound rows one read late:** a new app in Sound's Apps list appeared one
+  read (2 s) after the status that listed it.
+
 ## 1.0.2 — 2026-10-24
 
 ### Fixed
