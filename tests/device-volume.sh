@@ -135,6 +135,19 @@ started=$SECONDS
 wait
 sleep 0.3
 [[ ! -e "$labels_dir/R5CR123ABC.failed" ]] || fail "a second reader started while one ran"
+# The background reader is bounded as a whole (1 s here, 600 s by default):
+# a device that never answers doesn't keep it, its lock or its work folder.
+touch "$dev/apk-hang"
+: >"$dev/log"
+started=$SECONDS
+OMADROID_LABEL_WORKER_SECONDS=1 volume status USB123 >/dev/null
+# The reader starts in the background; wait until its pull hangs.
+for _ in {1..30}; do grep -qx 'shell -T' "$dev/log" && break; sleep 0.1; done
+flock -w 4 "$labels_dir/R5CR123ABC.tsv.lock" true || fail "the hung reader outlived its timeout"
+((SECONDS - started < 4)) || fail "the hung reader took $((SECONDS - started)) s to stop; expected about 1"
+grep -qx 'hang stopped' "$dev/log" || fail "the hung pull wasn't stopped: $(tail -3 "$dev/log")"
+[[ -z "$(find "$labels_dir" -name '.work-*')" ]] || fail "work folder left: $(ls -A "$labels_dir")"
+rm -f -- "$dev/apk-hang"
 
 # Per-app volume and mute through the verified codes.
 volume app USB123 10360 set 40 >/dev/null

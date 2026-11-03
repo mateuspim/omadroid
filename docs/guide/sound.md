@@ -39,8 +39,9 @@ comes from `scrcpy --list-apps`, cached per device in
 `~/.cache/omadroid/apps/`, readable only by you. Apps without a launcher icon
 (a keyboard, for example) aren't in that list: they show their package name
 and a spinning **reading name** until OmaDroid has read the label from the
-app's APK, once, in the background (APKs over 300 MB are skipped), cached in
-`~/.cache/omadroid/app-labels/`.
+app's APK, once, in the background (APKs over 300 MiB, or past the other
+[read limits](../../SECURITY.md#privilege-model), keep the package name),
+cached in `~/.cache/omadroid/app-labels/`.
 
 Without the UI: `scripts/device-volume.sh status SERIAL`, `stream SERIAL media
 set 10|raise|lower|mute|unmute`, `app SERIAL UID set 40|mute|unmute`, `master

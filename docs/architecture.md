@@ -208,7 +208,9 @@ stdin, so no package name lands in a process's arguments) and reads the
 label with `apk-label.py` (binary manifest + `resources.arsc`). Meanwhile
 status prints `naming UID` and the row shows "reading name"; the label shows
 on a later read, and a failure is retried after a day. One reader runs per
-phone (a lock), so a slow pull isn't started again by every read.
+phone (a lock), so a slow pull isn't started again by every read. The device
+is untrusted: the pull, the ZIP, the parser and the whole run are bounded on
+the host (see [SECURITY.md](../SECURITY.md#privilege-model)).
 
 ## Send text
 

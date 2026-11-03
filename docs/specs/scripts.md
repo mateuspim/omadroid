@@ -109,8 +109,14 @@ action needs audio codes that couldn't be read or didn't verify.
 appends `PACKAGE<TAB>LABEL` to `~/.cache/omadroid/app-labels/SERIALNO.tsv`
 (failures, one package per line, to `SERIALNO.failed`, cleared after a day).
 Prints nothing; `device-volume.sh status` starts it in the background for
-players scrcpy doesn't name. `apk-label.py base.apk` prints the application
-label on one line (at most 60 characters); exit 1 with the reason on stderr.
+players scrcpy doesn't name, under a 600 s `timeout` for the whole run.
+Each APK streams through a 300 MiB host cap and is parsed under a 30 s
+`timeout`. `apk-label.py base.apk` prints the application label on one line
+(at most 60 characters); exit 1 with the reason on stderr, also for an APK
+past one of its limits (file 300 MiB, 60,000 members, central directory
+8 MiB, ZIP64, manifest 8 MiB, `resources.arsc` 64 MiB, 64 MiB decoded in
+all) or, killed, past 20 s of CPU; it caps its address space at 512 MiB.
+See [SECURITY.md](../../SECURITY.md#privilege-model).
 
 ## Send text: `send-text.sh SERIAL`
 

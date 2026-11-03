@@ -37,6 +37,9 @@ defaults that match a normal system and should not be set in daily use.
 | `OMADROID_VIDEO_DEV` | `/dev` | `webcam-devices.sh` |
 | `OMADROID_VIDEO_MODULE_SYSFS` | `/sys/module/v4l2loopback` | `webcam-devices.sh` |
 | `OMADROID_ETC` | `/etc` | `webcam-setup.sh` |
+| `OMADROID_LABEL_MAX_BYTES` | `314572800` (300 MiB) | `app-labels.sh`: APK pull cap; only a smaller value applies |
+| `OMADROID_LABEL_PARSE_SECONDS` | `30` | `app-labels.sh`: `apk-label.py` timeout; only a smaller value applies |
+| `OMADROID_LABEL_WORKER_SECONDS` | `600` | `device-volume.sh`: whole `app-labels.sh` run; only a smaller value applies |
 
 ## Test harness only
 
