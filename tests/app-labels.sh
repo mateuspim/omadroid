@@ -45,10 +45,10 @@ read_keys 10 env
 expect_clean 'a normal read'
 
 # An endless stream stops at the host cap (1 MiB here) and is refused: the
-# host closes the pipe (SIGPIPE, 141). The 4 MiB file-size limit keeps a
-# regression from filling the disk; it would end the stream with SIGXFSZ.
+# host closes the pipe. The 4 MiB file-size limit keeps a regression from
+# filling the disk; it would end the stream with SIGXFSZ or EFBIG instead.
 read_keys 10 env OMADROID_LABEL_MAX_BYTES=1048576 bash -c 'ulimit -f 4096; touch "$OMADROID_VOLUME_DIR/apk-endless"; exec "$@"' sh
-grep -qx 'endless stopped 141' "$dev/log" || fail "the endless pull wasn't cut by the host cap: $(cat "$dev/log")"
+grep -qx 'endless stopped BrokenPipeError' "$dev/log" || fail "the endless pull wasn't cut by the host cap: $(cat "$dev/log")"
 expect_failed 'an endless stream'
 
 # A parser that hangs is stopped after the parse timeout (1 s here).

@@ -111,11 +111,20 @@ case "$1" in
       [[ "$script" == *'pm path '* ]] || exit 100
       printf 'shell -T\n' >>"$dir/log"
       # A compromised device: ignores the size check and streams forever
-      # (logging how the stream ended: 141 is SIGPIPE, the host's cap), or
+      # (logging why it stopped: BrokenPipeError is the host's cap closing
+      # the pipe, the same whether or not SIGPIPE is ignored, as on CI), or
       # never answers (logging the TERM that stops it).
       if [[ -e "$dir/apk-endless" ]]; then
-        cat /dev/zero
-        printf 'endless stopped %s\n' "$?" >>"$dir/log"
+        python3 -I -c '
+import sys
+block = bytes(65536)
+try:
+    while True:
+        sys.stdout.buffer.write(block)
+except OSError as error:
+    with open(sys.argv[1], "a") as log:
+        print("endless stopped", type(error).__name__, file=log)
+' "$dir/log" 2>/dev/null
         exit 0
       fi
       if [[ -e "$dir/apk-hang" ]]; then
