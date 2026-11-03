@@ -5,7 +5,8 @@
 # OMADROID_VOLUME_DIR holds the device: `fingerprint`, `framework.jar`,
 # `stream-N` and `muted-N` per stream index, `app-UID`/`appmute-UID`
 # (Samsung) and `appop-UID` (PLAY_AUDIO ignored), `master`, `ringer`
-# (0-2), `players` ("UID started|idle" lines) and `log` of every call.
+# (0-2), `players` ("UID started|idle" lines) and `log` of every call;
+# `apk-endless` or `apk-hang` turns APK pulls hostile.
 # Device scripts are evaluated with fake service/cmd/dumpsys/appops/input/pm,
 # so the real script's quoting and parsing run. Service codes are the Tab
 # S11's; OMADROID_TEST_CASE=wrong_codes answers getStreamVolume wrongly, as a
@@ -109,6 +110,24 @@ case "$1" in
       script="$(cat)"
       [[ "$script" == *'pm path '* ]] || exit 100
       printf 'shell -T\n' >>"$dir/log"
+      # A compromised device: ignores the size check and streams forever
+      # (logging how the stream ended: 141 is SIGPIPE, the host's cap), or
+      # never answers (logging the TERM that stops it).
+      if [[ -e "$dir/apk-endless" ]]; then
+        cat /dev/zero
+        printf 'endless stopped %s\n' "$?" >>"$dir/log"
+        exit 0
+      fi
+      if [[ -e "$dir/apk-hang" ]]; then
+        # app-labels.sh's lock is fd 9; a pull that inherits it outlives a
+        # stopped run holding the lock.
+        [[ ! -e /proc/$$/fd/9 ]] || printf 'lock inherited\n' >>"$dir/log"
+        trap 'printf "hang stopped\n" >>"$dir/log"; kill "$sleeper"; exit 143' TERM
+        sleep 30 >/dev/null &
+        sleeper=$!
+        wait
+        exit 0
+      fi
       eval "$script"
       exit 0
     fi

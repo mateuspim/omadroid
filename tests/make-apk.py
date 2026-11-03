@@ -12,6 +12,14 @@ Usage: make-apk.py OUT.apk VARIANT
   compact   default, with compact entries
   chained   app_name references a second string resource
   nolabel   <application> without android:label
+Hostile APKs, each past one of apk-label.py's caps:
+  bomb      a 9 MiB manifest of zeros, deflated to a few KiB
+  liar      the bomb, its central directory declaring 100 bytes
+  aggregate a 7 MiB manifest and a 58 MiB table: each fits, not both
+  members   an end record declaring 60001 members
+  zip64     an end record behind a ZIP64 locator
+  bigdir    an end record declaring a 9 MiB central directory
+  hugepool  a manifest whose string pool declares 2^28 strings
 """
 import struct
 import sys
@@ -95,8 +103,55 @@ def resources(variant: str) -> bytes:
     return chunk(0x0002, struct.pack("<I", 1), pool(strings, False) + package)
 
 
+MIB = 1024 * 1024
+
+
+def end_record(count: int, directory: int) -> bytes:
+    return b"PK\x05\x06" + struct.pack("<HHHHIIH", 0, 0, count, count, directory, 0, 0)
+
+
+def write_hostile(out: str, variant: str) -> bool:
+    """Write a hostile variant; False when `variant` isn't one."""
+    raw = {
+        "members": lambda: end_record(60001, 0),
+        "zip64": lambda: b"PK\x06\x07" + b"\0" * 16 + end_record(1, 0),
+        "bigdir": lambda: end_record(1, 9 * MIB),
+    }
+    if variant in raw:
+        with open(out, "wb") as apk:
+            apk.write(raw[variant]())
+        return True
+    members = {
+        "bomb": {"AndroidManifest.xml": b"\0" * 9 * MIB},
+        "liar": {"AndroidManifest.xml": b"\0" * 9 * MIB},
+        "aggregate": {"AndroidManifest.xml": manifest("default") + b"\0" * 7 * MIB, "resources.arsc": resources("default") + b"\0" * 58 * MIB},
+        "hugepool": {"AndroidManifest.xml": bytearray(manifest("literal"))},
+    }
+    if variant not in members:
+        return False
+    if variant == "hugepool":
+        # The manifest's first chunk is its string pool; its count at +8.
+        struct.pack_into("<I", members[variant]["AndroidManifest.xml"], 8 + 8, 1 << 28)
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as apk:
+        for name, content in members[variant].items():
+            apk.writestr(name, bytes(content))
+    if variant == "liar":
+        lie_about_size(out)
+    return True
+
+
+def lie_about_size(out: str) -> None:
+    """Rewrite the central directory's uncompressed size to 100 bytes."""
+    with open(out, "r+b") as apk:
+        blob = apk.read()
+        apk.seek(blob.rfind(b"PK\x01\x02") + 24)
+        apk.write(struct.pack("<I", 100))
+
+
 def main() -> None:
     out, variant = sys.argv[1], sys.argv[2]
+    if write_hostile(out, variant):
+        return
     with zipfile.ZipFile(out, "w") as apk:
         apk.writestr("AndroidManifest.xml", manifest(variant))
         if variant not in ("literal", "nolabel"):

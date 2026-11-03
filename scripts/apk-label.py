@@ -7,8 +7,14 @@ Apps without a launcher icon (a keyboard, a system service) aren't named by
 tab reads it from the APK the device runs. The default-locale string wins,
 then English, then any other.
 
+The APK comes from the device, so every byte of it is untrusted: the file,
+its member count, each member's decoded size and this process's memory and
+CPU time are all capped, and anything past a cap fails closed (exit 1).
+
 Usage: apk-label.py base.apk → "Samsung Keyboard"
 """
+import os
+import resource
 import struct
 import sys
 import zipfile
@@ -28,6 +34,29 @@ TYPE_SPARSE = 0x01
 TYPE_OFFSET16 = 0x02
 NO_ENTRY = 0xFFFFFFFF
 MAX_LABEL = 60
+
+# Host-side bounds, from the marketplace review of the APK read
+# (omacom/omarchy-plugin-marketplace#13776). app-labels.sh pulls at most
+# MAX_APK_BYTES, so a bigger file here is refused too.
+MAX_APK_BYTES = 300 * 1024 * 1024
+# Big apps ship 10-20 thousand entries. Below 0xFFFF, the count that marks a
+# ZIP64 archive, which no APK needs and which is refused.
+MAX_MEMBERS = 60_000
+# zipfile parses the whole central directory into memory before any count
+# check, so its declared size is capped first (~90 bytes per entry).
+MAX_CENTRAL_DIRECTORY = 8 * 1024 * 1024
+# Real manifests are kilobytes (a couple of MiB at most); the largest real
+# resource tables are 20-30 MiB. Both together stay under MAX_DECODED_BYTES.
+MAX_MANIFEST_BYTES = 8 * 1024 * 1024
+MAX_ARSC_BYTES = 64 * 1024 * 1024
+MAX_DECODED_BYTES = 64 * 1024 * 1024
+READ_CHUNK = 64 * 1024
+# Two decoded members (and one copy each) fit with room to spare; a bad
+# table walk ends at the CPU cap (SIGXCPU) instead of running on.
+MAX_MEMORY_BYTES = 512 * 1024 * 1024
+MAX_CPU_SECONDS = 20
+END_RECORD = b"PK\x05\x06"
+ZIP64_LOCATOR = b"PK\x06\x07"
 
 
 class ApkError(Exception):
@@ -58,15 +87,32 @@ def string_length(blob: bytes, at: int, utf8: bool) -> tuple[int, int]:
     return first, 2
 
 
-def read_pool(blob: bytes, at: int) -> list[str]:
-    """Decode the string pool chunk at `at`.
+class StringPool:
+    """The string pool chunk at `at`, decoded one string at a time: a pool can
+    declare millions of strings, and the label needs only a few.
 
-    Example: read_pool(manifest, 8)[0] → "versionCode"
+    Example: StringPool(manifest, 8)[0] → "versionCode"
     """
-    _, header, _, count, _, flags, strings_start, _ = struct.unpack_from("<HHIIIIII", blob, at)
-    utf8 = bool(flags & UTF8_FLAG)
-    offsets = struct.unpack_from(f"<{count}I", blob, at + header)
-    return [pool_string(blob, at + strings_start + offset, utf8) for offset in offsets]
+
+    def __init__(self, blob: bytes = b"", at: int | None = None):
+        self.blob, self.count, self.utf8, self.offsets, self.strings = blob, 0, False, 0, 0
+        if at is None:
+            return
+        _, header, _, count, _, flags, strings_start, _ = struct.unpack_from("<HHIIIIII", blob, at)
+        room = (len(blob) - at - header) // 4
+        if count > room:
+            raise ApkError(f"string pool at {at} lists {count} strings; expected at most {room}")
+        self.count, self.utf8 = count, bool(flags & UTF8_FLAG)
+        self.offsets, self.strings = at + header, at + strings_start
+
+    def __len__(self) -> int:
+        return self.count
+
+    def __getitem__(self, index: int) -> str:
+        if not 0 <= index < self.count:
+            raise IndexError(f"string {index} of a pool of {self.count}")
+        offset = struct.unpack_from("<I", self.blob, self.offsets + 4 * index)[0]
+        return pool_string(self.blob, self.strings + offset, self.utf8)
 
 
 def pool_string(blob: bytes, at: int, utf8: bool) -> str:
@@ -86,11 +132,11 @@ def manifest_label(manifest: bytes) -> tuple[int, int | str]:
 
     Example: manifest_label(zip.read("AndroidManifest.xml")) → (1, 0x7F0F0012)
     """
-    strings: list[str] = []
+    strings = StringPool()
     ids: tuple[int, ...] = ()
     for kind, at, header, size in chunks(manifest, 8, len(manifest)):
         if kind == STRING_POOL:
-            strings = read_pool(manifest, at)
+            strings = StringPool(manifest, at)
         elif kind == XML_RESOURCE_MAP:
             ids = struct.unpack_from(f"<{(size - header) // 4}I", manifest, at + header)
         elif kind == XML_START_ELEMENT and element_name(manifest, at + header, strings) == "application":
@@ -98,12 +144,12 @@ def manifest_label(manifest: bytes) -> tuple[int, int | str]:
     raise ApkError("the manifest has no <application> element")
 
 
-def element_name(manifest: bytes, ext: int, strings: list[str]) -> str:
+def element_name(manifest: bytes, ext: int, strings: StringPool) -> str:
     name = struct.unpack_from("<I", manifest, ext + 4)[0]
     return strings[name] if name < len(strings) else ""
 
 
-def application_label(manifest: bytes, ext: int, strings: list[str], ids: tuple[int, ...]) -> tuple[int, int | str]:
+def application_label(manifest: bytes, ext: int, strings: StringPool, ids: tuple[int, ...]) -> tuple[int, int | str]:
     start, size, count = struct.unpack_from("<HHH", manifest, ext + 8)
     for index in range(count):
         at = ext + start + index * size
@@ -117,18 +163,18 @@ def application_label(manifest: bytes, ext: int, strings: list[str], ids: tuple[
     raise ApkError("<application> has no android:label")
 
 
-def table_values(arsc: bytes, resource: int) -> tuple[list[str], list[tuple[bytes, int, int]]]:
+def table_values(arsc: bytes, resource: int) -> tuple[StringPool, list[tuple[bytes, int, int]]]:
     """The table's global string pool, and (language, value type, value data)
     of `resource` in every config of resources.arsc.
 
     Example: table_values(arsc, 0x7F0F0012) → (pool, [(b"\\0\\0", 3, 41), (b"pt", 3, 42)])
     """
     package, kind, entry = resource >> 24, (resource >> 16) & 0xFF, resource & 0xFFFF
-    pool: list[str] = []
+    pool = StringPool()
     found: list[tuple[bytes, int, int]] = []
     for chunk, at, header, size in chunks(arsc, 12, len(arsc)):
         if chunk == STRING_POOL:
-            pool = read_pool(arsc, at)
+            pool = StringPool(arsc, at)
         elif chunk == TABLE_PACKAGE and struct.unpack_from("<I", arsc, at + 8)[0] == package:
             found += package_values(arsc, at + header, at + size, kind, entry)
     return pool, found
@@ -202,15 +248,68 @@ def resource_string(arsc: bytes, resource: int) -> str:
     raise ApkError(f"resource 0x{resource:08x} references too deep")
 
 
+def check_end_record(path: str) -> None:
+    """Refuse a file too big, or a ZIP whose end record declares too many
+    members, too big a central directory or ZIP64, before zipfile reads it.
+
+    Example: check_end_record("/tmp/base.apk")  # ApkError at 70000 members
+    """
+    size = os.path.getsize(path)
+    if size > MAX_APK_BYTES:
+        raise ApkError(f"the APK has {size} bytes; expected at most {MAX_APK_BYTES}")
+    with open(path, "rb") as apk:
+        apk.seek(max(0, size - 22 - 0xFFFF))
+        tail = apk.read()
+    at = tail.rfind(END_RECORD)
+    if at < 0 or at + 22 > len(tail):
+        raise ApkError("no ZIP end record; expected an APK")
+    count, directory = struct.unpack_from("<HI", tail, at + 10)
+    if count > MAX_MEMBERS:
+        raise ApkError(f"the APK declares {count} members; expected at most {MAX_MEMBERS}")
+    if directory > MAX_CENTRAL_DIRECTORY:
+        raise ApkError(f"the central directory has {directory} bytes; expected at most {MAX_CENTRAL_DIRECTORY}")
+    if tail[max(0, at - 20) : at].startswith(ZIP64_LOCATOR):
+        raise ApkError("the APK is a ZIP64 archive; expected a plain ZIP")
+
+
+def read_member(apk: zipfile.ZipFile, name: str, limit: int) -> bytes:
+    """Decompress `name` in chunks, refusing a declared or decoded size past
+    `limit`, so a ZIP bomb stops at the cap instead of filling memory.
+
+    Example: read_member(apk, "AndroidManifest.xml", MAX_MANIFEST_BYTES)
+    """
+    info = apk.getinfo(name)
+    if info.file_size > limit:
+        raise ApkError(f"{name} declares {info.file_size} bytes; expected at most {limit}")
+    data = bytearray()
+    with apk.open(info) as member:
+        while chunk := member.read(READ_CHUNK):
+            data += chunk
+            if len(data) > limit:
+                raise ApkError(f"{name} decodes past {limit} bytes; expected at most {limit}")
+    return bytes(data)
+
+
+def raw_label(path: str) -> str:
+    """The manifest's label, or the string resource it names, unformatted."""
+    check_end_record(path)
+    with zipfile.ZipFile(path) as apk:
+        if len(apk.infolist()) > MAX_MEMBERS:
+            raise ApkError(f"the APK has {len(apk.infolist())} members; expected at most {MAX_MEMBERS}")
+        manifest = read_member(apk, "AndroidManifest.xml", MAX_MANIFEST_BYTES)
+        kind, label = manifest_label(manifest)
+        if kind != TYPE_REFERENCE:
+            return str(label)
+        left = min(MAX_ARSC_BYTES, MAX_DECODED_BYTES - len(manifest))
+        return resource_string(read_member(apk, "resources.arsc", left), label)
+
+
 def apk_label(path: str) -> str:
     """The label of the APK at `path`, on one line.
 
     Example: apk_label("/tmp/base.apk") → "Samsung Keyboard"
     """
-    with zipfile.ZipFile(path) as apk:
-        kind, label = manifest_label(apk.read("AndroidManifest.xml"))
-        if kind == TYPE_REFERENCE:
-            label = resource_string(apk.read("resources.arsc"), label)
+    label = raw_label(path)
     # One line for the status output: control characters become spaces.
     label = " ".join("".join(c if c.isprintable() else " " for c in str(label)).split())[:MAX_LABEL]
     if not label:
@@ -218,13 +317,31 @@ def apk_label(path: str) -> str:
     return label
 
 
+def lower_limit(kind: int, value: int) -> None:
+    """Set rlimit `kind` to `value`, never above the hard limit inherited."""
+    _, hard = resource.getrlimit(kind)
+    value = value if hard == resource.RLIM_INFINITY else min(value, hard)
+    resource.setrlimit(kind, (value, value if hard == resource.RLIM_INFINITY else hard))
+
+
+def limit_resources() -> None:
+    """Cap this process's address space and CPU time, so a hostile APK that
+    gets past the size checks still can't exhaust the host.
+
+    Example: limit_resources()  # then MemoryError past 512 MiB
+    """
+    lower_limit(resource.RLIMIT_AS, MAX_MEMORY_BYTES)
+    lower_limit(resource.RLIMIT_CPU, MAX_CPU_SECONDS)
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(f"Usage: apk-label.py APK; got {sys.argv[1:]}", file=sys.stderr)
         return 1
+    limit_resources()
     try:
         print(apk_label(sys.argv[1]))
-    except (ApkError, KeyError, OSError, zipfile.BadZipFile, struct.error, IndexError, UnicodeError) as error:
+    except (ApkError, KeyError, OSError, zipfile.BadZipFile, struct.error, IndexError, UnicodeError, MemoryError, EOFError, NotImplementedError, RuntimeError) as error:
         print(f"{sys.argv[1]}: {error}", file=sys.stderr)
         return 1
     return 0

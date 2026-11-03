@@ -16,6 +16,7 @@ repo_dir="$(dirname -- "$tests_dir")"
 # Each entry: "SUITE.sh" or "SUITE.sh CASE" (run with OMADROID_TEST_CASE=CASE).
 shell_suites=(
   apk-label.sh
+  app-labels.sh
   audio-codes.sh
   device-power.sh
   device-volume.sh

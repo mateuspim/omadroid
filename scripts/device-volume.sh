@@ -23,6 +23,9 @@ export LC_ALL=C
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 source "$script_dir/adb-lib.sh"
 source "$script_dir/app-cache-lib.sh"
+# Seconds an app-labels.sh run may take in all (a few slow APK pulls); what
+# it hasn't read by then is started again by a later status read.
+label_worker_seconds=$(at_most "${OMADROID_LABEL_WORKER_SECONDS:-}" 600)
 # Stream key → AudioManager.STREAM_* index. Aliased streams (TTS,
 # accessibility, DTMF) follow media or ringtone, so they aren't listed.
 declare -A stream_index=([call]=0 [system]=1 [ring]=2 [media]=3 [alarm]=4 [notification]=5 [assistant]=11)
@@ -215,8 +218,11 @@ start_label_reads() {
   [[ -n "$pending" ]] && command -v python3 >/dev/null 2>&1 || return 0
   # A reader still pulling an APK holds the lock; the next read after it ends
   # starts one for whatever is still unnamed.
+  # The reader is bounded as a whole, not only per APK: past
+  # label_worker_seconds, timeout TERMs its process group (KILL 5 s later);
+  # it removes its work folder on TERM, and the next run sweeps a KILL's.
   if ! label_reader_busy "$serialno"; then
-    setsid bash "$script_dir/app-labels.sh" "$serial" "$serialno" <<<"$pending" >/dev/null 2>&1 &
+    setsid timeout -k 5 "$label_worker_seconds" bash "$script_dir/app-labels.sh" "$serial" "$serialno" <<<"$pending" >/dev/null 2>&1 &
   fi
   awk 'FILENAME == ARGV[1] { pending[$1] = 1; next } ($2 in pending) { print "naming", $1 }' \
     <(printf '%s\n' "$pending") - <<<"$players"

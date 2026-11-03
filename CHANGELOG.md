@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.1 — 2026-11-03
+
+### Security
+
+- **Bounded APK label reads:** reading an app's label from its APK (Sound's
+  Apps list) limited the APK's size only on the device, so a compromised,
+  already-authorized device could fill the computer's disk or memory. The
+  host now caps the download (300 MiB, streamed), the ZIP (member count,
+  central directory, each member's decoded size and their total), the parser
+  (512 MiB of memory, 20 s of CPU, a 30 s timeout) and the whole background
+  run (600 s), and removes its work folder on every exit. Reported in the
+  marketplace review (omacom/omarchy-plugin-marketplace#13776).
+
 ## 1.1.0 — 2026-10-31
 
 ### Added

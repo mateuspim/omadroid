@@ -23,3 +23,15 @@ labels_file() {
 failed_labels_file() {
   printf '%s/app-labels/%s.failed' "$cache_root" "$1"
 }
+
+# DEFAULT, or VALUE when it is a smaller positive integer: tests shorten a
+# limit with it, and nothing can raise one.
+#   at_most "${OMADROID_LABEL_PARSE_SECONDS:-}" 30 → 30 (or less)
+at_most() {
+  local value="$1" default="$2"
+  if [[ "$value" =~ ^[1-9][0-9]{0,11}$ ]] && ((value < default)); then
+    echo "$value"
+    return
+  fi
+  echo "$default"
+}

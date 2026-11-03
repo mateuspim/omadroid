@@ -60,8 +60,29 @@ outside its own settings, and never calls `sudo`.
   the Sound section), labels read from the APKs of apps without a launcher
   icon, and per-firmware audio codes. It is owner-only (folders 700, files
   600), and app lists and package names are handled as files or stdin, never
-  as process arguments. An APK is copied to a private temporary folder only to
-  read its label, then deleted; it is parsed, never installed or executed.
+  as process arguments. An APK is copied to a private work folder inside that
+  cache only to read its label, then deleted; it is parsed, never installed
+  or executed.
+- **APK labels:** the device sends the APK, so it is treated as hostile. The
+  label reader (`scripts/app-labels.sh`, started in the background by Sound)
+  is bounded on the host, not only on the device:
+  - **Download:** the pull streams through `head -c`, so the host stores at
+    most 300 MiB + 1 byte; reaching that byte refuses the APK and stops adb.
+    One APK is on disk at a time.
+  - **ZIP:** `scripts/apk-label.py` refuses a file over 300 MiB, an end
+    record declaring more than 60,000 members or a central directory over
+    8 MiB, and ZIP64, before Python's `zipfile` reads it. It decompresses
+    only `AndroidManifest.xml` (at most 8 MiB) and `resources.arsc` (at most
+    64 MiB), 64 KiB at a time, at most 64 MiB in all, checking each
+    member's declared size first. String pools are decoded one string at a
+    time.
+  - **Parser:** `apk-label.py` caps its own address space at 512 MiB and
+    CPU time at 20 s (`setrlimit`), and runs under a 30 s `timeout`.
+  - **Worker:** the whole background run stops after 600 s (`timeout`,
+    TERM to its process group, KILL 5 s later); adb's 180 s per pull and the
+    64-package cap still apply. Its work folder is removed on every exit, and
+    the next run removes one a KILL left. Anything past a limit fails closed:
+    the app keeps its package name.
 - **Settings:** `~/.config/omarchy/omadroid.ini` holds remembered device ids
   and the last device's address, so OmaDroid makes it owner-only (600) when it
   starts. It changes only that file's permissions, never its content.

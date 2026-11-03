@@ -38,4 +38,27 @@ printf 'not an apk' >"$test_dir/broken.apk"
 refused "$test_dir/broken.apk" 'broken.apk'
 refused "$test_dir/missing.apk" 'missing.apk'
 
+# Hostile APKs (omacom/omarchy-plugin-marketplace#13776): each cap fails
+# closed with a plain reason, fast, before memory grows past it.
+hostile() {
+  local started=$SECONDS
+  python3 -I "$repo_dir/tests/make-apk.py" "$test_dir/$1.apk" "$1"
+  refused "$test_dir/$1.apk" "$2"
+  ((SECONDS - started < 10)) || fail "$1 took $((SECONDS - started)) s"
+}
+hostile bomb 'AndroidManifest.xml declares 9437184 bytes; expected at most 8388608'
+# zipfile stops at the declared 100 bytes; the CRC no longer matches.
+hostile liar 'Bad CRC-32'
+hostile aggregate 'resources.arsc declares'
+hostile members 'declares 60001 members; expected at most 60000'
+hostile zip64 'ZIP64'
+hostile bigdir 'central directory has 9437184 bytes'
+hostile hugepool 'lists 268435456 strings'
+truncate -s $((300 * 1024 * 1024 + 1)) "$test_dir/huge.apk"
+refused "$test_dir/huge.apk" 'has 314572801 bytes; expected at most 314572800'
+# The parser runs under address-space and CPU caps.
+limits="$(python3 -I -c 'import runpy, sys; m = runpy.run_path(sys.argv[1]); m["limit_resources"](); print(open("/proc/self/limits").read())' "$repo_dir/scripts/apk-label.py")"
+grep -Eq '^Max address space +536870912 ' <<<"$limits" || fail "no address-space cap: $limits"
+grep -Eq '^Max cpu time +20 ' <<<"$limits" || fail "no CPU cap: $limits"
+
 echo OMADROID_APK_LABEL_OK
